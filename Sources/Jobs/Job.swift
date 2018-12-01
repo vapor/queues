@@ -1,5 +1,5 @@
 import NIO
 
 public protocol Job: Codable {
-    func run(context: [String: Any]) throws -> EventLoopFuture<Void>
+    func dequeue(context: [String: Any]) throws -> EventLoopFuture<Void>
 }
