@@ -10,6 +10,7 @@ public struct JobsCommand: Command {
         let container = context.container
         let eventLoop = container.eventLoop
         let queueService = try container.make(QueueService.self)
+        let promise = eventLoop.newPromise(Void.self)
         
         let _ = eventLoop.scheduleRepeatedTask(initialDelay: .seconds(0), delay: queueService.refreshInterval) { task -> EventLoopFuture<Void> in
             //TODO: - execute the jobs here
@@ -17,6 +18,6 @@ public struct JobsCommand: Command {
             return container.future()
         }
         
-        return container.future()
+        return promise.futureResult
     }
 }
