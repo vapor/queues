@@ -2,17 +2,15 @@ import Foundation
 import Vapor
 
 public struct JobsProvider: Provider {
+    let refreshInterval: TimeAmount
     
-    /// In seconds
-    let refreshInterval: Int
-    
-    public init(refreshInterval: Int = 1) {
+    public init(refreshInterval: TimeAmount = .seconds(1)) {
         self.refreshInterval = refreshInterval
     }
     
     public func register(_ services: inout Services) throws {
         services.register { _ -> QueueService in
-            return QueueService()
+            return QueueService(refreshInterval: self.refreshInterval)
         }
     }
     
