@@ -1,17 +1,15 @@
 import Foundation
 
 public struct QueueConfiguration: Codable {
-    let retryOnError: Bool
-    let retryAttempts: Int?
+    let retryAttempts: Int
     let runOn: Date?
     let startOn: Date?
     let interval: Double?
     let stopOn: Date?
     let stopAfter: Int?
     
-    public static func oneOff(retryOnError: Bool, retryAttempts: Int?) -> QueueConfiguration {
-        return QueueConfiguration(retryOnError: retryOnError,
-                                  retryAttempts: retryAttempts,
+    public static func oneOff(retryAttempts: Int = 0) -> QueueConfiguration {
+        return QueueConfiguration(retryAttempts: retryAttempts,
                                   runOn: nil,
                                   startOn: nil,
                                   interval: nil,
@@ -19,9 +17,8 @@ public struct QueueConfiguration: Codable {
                                   stopAfter: nil)
     }
     
-    public static func scheduled(runOn: Date, retryOnError: Bool, retryAttempts: Int?) -> QueueConfiguration {
-        return QueueConfiguration(retryOnError: retryOnError,
-                                  retryAttempts: retryAttempts,
+    public static func scheduled(runOn: Date, retryAttempts: Int = 0) -> QueueConfiguration {
+        return QueueConfiguration(retryAttempts: retryAttempts,
                                   runOn: runOn,
                                   startOn: nil,
                                   interval: nil,
@@ -33,11 +30,10 @@ public struct QueueConfiguration: Codable {
                                  interval: Double,
                                  stopOn: Date?,
                                  stopAfter: Int?,
-                                 retryOnError: Bool,
-                                 retryAttempts: Int?) -> QueueConfiguration
+                                 retryAttempts: Int = 0) -> QueueConfiguration
     {
-        return QueueConfiguration(retryOnError: retryOnError,
-                                  retryAttempts: retryAttempts,
+        guard stopOn != nil || stopAfter != nil else { fatalError("Must specify either a stopOn date or a number of runs to stop after.") }
+        return QueueConfiguration(retryAttempts: retryAttempts,
                                   runOn: nil,
                                   startOn: startOn,
                                   interval: interval,
