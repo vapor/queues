@@ -9,6 +9,7 @@ public struct JobsCommand: Command {
     public func run(using context: CommandContext) throws -> EventLoopFuture<Void> {
         let container = context.container
         let eventLoop = container.eventLoop
+        
         let queueService = try container.make(QueueService.self)
         let promise = eventLoop.newPromise(Void.self)
         

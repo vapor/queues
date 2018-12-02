@@ -1,16 +1,19 @@
 import Foundation
 import Vapor
+import Redis
 
 public struct JobsProvider: Provider {
     let refreshInterval: TimeAmount
+    let redisClient: RedisClient
     
-    public init(refreshInterval: TimeAmount = .seconds(1)) {
+    public init(redisClient: RedisClient, refreshInterval: TimeAmount = .seconds(1)) {
+        self.redisClient = redisClient
         self.refreshInterval = refreshInterval
     }
     
     public func register(_ services: inout Services) throws {
-        services.register { _ -> QueueService in
-            return QueueService(refreshInterval: self.refreshInterval)
+        services.register { container -> QueueService in
+            return QueueService(refreshInterval: self.refreshInterval, redisClient: self.redisClient)
         }
     }
     

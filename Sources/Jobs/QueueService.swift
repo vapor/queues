@@ -1,11 +1,12 @@
 import Foundation
 import Vapor
+import Redis
 
 public struct QueueService: Service {
     let refreshInterval: TimeAmount
+    let redisClient: RedisClient
     
-    //TODO: - Need to return EventLoopFuture<Void> here
-    public func run(job: Job, retryCount: Int? = nil) {
-        
+    public func run(job: Job, retryCount: Int? = nil) -> EventLoopFuture<Void> {
+        return redisClient.future()
     }
 }
