@@ -6,7 +6,7 @@ public struct QueueService: Service {
     let refreshInterval: TimeAmount
     let redisClient: RedisClient
     
-    public func run(job: Job, retryCount: Int? = nil) -> EventLoopFuture<Void> {
+    public func dispatch(job: Job) -> EventLoopFuture<Void> {
         return redisClient.future()
     }
 }

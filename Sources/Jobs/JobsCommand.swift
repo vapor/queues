@@ -11,12 +11,13 @@ public struct JobsCommand: Command {
         let eventLoop = container.eventLoop
         
         let queueService = try container.make(QueueService.self)
+        let redisClient = queueService.redisClient
         let promise = eventLoop.newPromise(Void.self)
         
         let _ = eventLoop.scheduleRepeatedTask(initialDelay: .seconds(0), delay: queueService.refreshInterval) { task -> EventLoopFuture<Void> in
-            //TODO: - execute the jobs here
-            
-            return container.future()
+            return try redisClient.get(Constants.persistenceKey, as: Job.self).map(to: Void.self) { jobs in
+                
+            }
         }
         
         return promise.futureResult
