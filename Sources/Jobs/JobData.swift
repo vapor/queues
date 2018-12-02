@@ -1,8 +1,6 @@
 import Foundation
 
-struct JobData<T> where T: Job {
+struct JobData<T>: Codable where T: Job {
     let job: T
-    let configuration: QueueConfiguration
+    let maxRetryCount: Int?
 }
-
-extension JobData: Codable { }
