@@ -29,7 +29,7 @@ struct JobData: Codable {
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(self.key, forKey: .key)
-        let typeString = String(describing: self.data)
+        let typeString = String(describing: type(of: self.data))
         try container.encode(typeString, forKey: .type)
         
         let superEncoder = container.superEncoder(forKey: .data)
