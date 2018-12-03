@@ -1,6 +1,8 @@
 import Vapor
 
 public protocol Job: Codable {
+    var maxRetryCount: Int { get }
+    
     static func register()
     func dequeue(context: JobContext, worker: EventLoopGroup) throws -> EventLoopFuture<Void>
     func error(context: JobContext, error: Error, worker: EventLoopGroup) -> EventLoopFuture<Void>
@@ -9,7 +11,7 @@ public protocol Job: Codable {
 fileprivate typealias JobTypeDecoder = (Decoder) throws -> Job
 fileprivate var knownJobTypes: [String: JobTypeDecoder] = [:]
 
-extension Job {
+extension Job {    
     func error(context: JobContext, error: Error, worker: EventLoopGroup) -> EventLoopFuture<Void> {
         return worker.future()
     }
