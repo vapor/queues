@@ -3,10 +3,17 @@ import Vapor
 public protocol Job: Codable {
     static func register()
     func dequeue(context: JobContext, worker: EventLoopGroup) throws -> EventLoopFuture<Void>
+    func error(context: JobContext, error: Error, worker: EventLoopGroup) -> EventLoopFuture<Void>
 }
 
 fileprivate typealias JobTypeDecoder = (Decoder) throws -> Job
 fileprivate var knownJobTypes: [String: JobTypeDecoder] = [:]
+
+extension Job {
+    func error(context: JobContext, error: Error, worker: EventLoopGroup) -> EventLoopFuture<Void> {
+        return worker.future()
+    }
+}
 
 extension Job where Self: Job {
     static func register() {
