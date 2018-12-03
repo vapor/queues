@@ -7,6 +7,7 @@ public protocol JobsPersistenceLayer {
     func set<J: Job>(key: String, job: J) throws -> EventLoopFuture<Void>
 }
 
+//TODO: - Move this into a separate redis package
 extension RedisClient: JobsPersistenceLayer {
     public func set<J: Job>(key: String, job: J) throws -> EventLoopFuture<Void> {
         let jobData = JobData(key: key, data: job)

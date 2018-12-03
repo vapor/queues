@@ -17,17 +17,9 @@ extension Job {
     }
 }
 
+//TODO: - Clean these methods up and add a helper config type
 extension Job where Self: Job {
     static func register() {
         knownJobTypes[String(describing: Self.self)] = Self.init(from: )
     }
-}
-
-func decode(_ jobType: Any.Type, from decoder: Decoder) throws -> Job {
-    let jobTypeString = String(describing: jobType)
-    guard let jobDecoder = knownJobTypes[jobTypeString] else {
-        throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Unknown job type \(jobTypeString)"))
-    }
-    
-    return try jobDecoder(decoder)
 }
