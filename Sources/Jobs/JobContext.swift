@@ -8,16 +8,3 @@ public struct JobContext: Service {
         self.userInfo = [:]
     }
 }
-
-struct TestingService: Service { }
-
-extension JobContext {
-    var testingService: TestingService? {
-        get {
-            return userInfo[String(describing: self)] as? TestingService
-        }
-        set {
-            userInfo[String(describing: self)] = newValue
-        }
-    }
-}

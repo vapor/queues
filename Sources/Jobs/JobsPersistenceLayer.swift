@@ -23,11 +23,3 @@ extension RedisClient: JobsPersistenceLayer {
         }
     }
 }
-
-struct TestingRedisJob: Job {
-    let maxRetryCount = 0
-    
-    func dequeue(context: JobContext, worker: EventLoopGroup) throws -> EventLoopFuture<Void> {
-        return worker.future()
-    }
-}
