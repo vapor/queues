@@ -15,7 +15,7 @@ public struct JobsCommand: Command {
         let jobContext = JobContext()
         
         _ = eventLoop.scheduleRepeatedTask(initialDelay: .seconds(0), delay: queueService.refreshInterval) { task -> EventLoopFuture<Void> in
-            return queueService.persistenceLayer.getNext(key: queueService.persistenceKey).flatMap { job in
+            return queueService.persistenceLayer.getAndRemoveNext(key: queueService.persistenceKey).flatMap { job in
                 return try job
                     .dequeue(context: jobContext, worker: container)
                     .transform(to: ())
