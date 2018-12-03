@@ -6,6 +6,8 @@ public struct JobsCommand: Command {
     public var options: [CommandOption] = []
     public var help: [String] = ["Runs queued worker jobs"]
     
+    public init() { }
+    
     public func run(using context: CommandContext) throws -> EventLoopFuture<Void> {
         let container = context.container
         let eventLoop = container.eventLoop
