@@ -23,7 +23,7 @@ public struct JobsCommand: Command {
                     console.info("Dequeing Job", newLine: true)
                     return try job
                         .dequeue(context: jobContext, worker: container)
-                        .map { _ in console.info("Finished Running Job", newLine: true) }
+                        .always { console.info("Finished Running Job", newLine: true) }
                         .transform(to: ())
                         .catchFlatMap { error in
                             console.error("Job error: \(error)", newLine: true)
