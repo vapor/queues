@@ -4,10 +4,12 @@ import Redis
 
 public struct QueueService: Service {
     let refreshInterval: TimeAmount
-    let redisClient: RedisClient
+    let persistenceLayer: PersistenceLayer
     let persistenceKey: String
+    let jobContext: JobContext
+    let container: Container
     
     public func dispatch(job: Job) -> EventLoopFuture<Void> {
-        return redisClient.future()
+        return container.future()
     }
 }

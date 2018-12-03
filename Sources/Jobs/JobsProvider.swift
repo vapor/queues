@@ -4,18 +4,28 @@ import Redis
 
 public struct JobsProvider: Provider {
     let refreshInterval: TimeAmount
-    let redisClient: RedisClient
+    let persistenceLayer: PersistenceLayer
     let persistenceKey: String
+    let jobContext: JobContext
     
-    public init(redisClient: RedisClient, refreshInterval: TimeAmount = .seconds(1), persistenceKey: String = "vapor_jobs") {
-        self.redisClient = redisClient
+    public init(persistenceLayer: PersistenceLayer,
+                refreshInterval: TimeAmount = .seconds(1),
+                persistenceKey: String = "vapor_jobs",
+                jobContext: JobContext)
+    {
+        self.persistenceLayer = persistenceLayer
         self.refreshInterval = refreshInterval
         self.persistenceKey = persistenceKey
+        self.jobContext = jobContext
     }
     
     public func register(_ services: inout Services) throws {
         services.register { container -> QueueService in
-            return QueueService(refreshInterval: self.refreshInterval, redisClient: self.redisClient, persistenceKey: self.persistenceKey)
+            return QueueService(refreshInterval: self.refreshInterval,
+                                persistenceLayer: self.persistenceLayer,
+                                persistenceKey: self.persistenceKey,
+                                jobContext: self.jobContext,
+                                container: container)
         }
     }
     

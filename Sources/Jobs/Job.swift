@@ -2,7 +2,7 @@ import Vapor
 
 public protocol Job: Codable {
     static func register()
-    func dispatch(context: JobContext, worker: EventLoopGroup) throws -> EventLoopFuture<Void>
+    func dequeue(context: JobContext, worker: EventLoopGroup) throws -> EventLoopFuture<Void>
 }
 
 fileprivate typealias JobTypeDecoder = (Decoder) throws -> Job
