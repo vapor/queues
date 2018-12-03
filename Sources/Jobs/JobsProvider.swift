@@ -19,7 +19,8 @@ public struct JobsProvider: Provider {
         services.register { container -> QueueService in
             return QueueService(refreshInterval: self.refreshInterval,
                                 persistenceLayer: self.persistenceLayer,
-                                persistenceKey: self.persistenceKey)
+                                persistenceKey: self.persistenceKey,
+                                worker: container)
         }
     }
     

@@ -16,7 +16,7 @@ public struct JobsCommand: Command {
         
         _ = eventLoop.scheduleRepeatedTask(initialDelay: .seconds(0), delay: queueService.refreshInterval) { task -> EventLoopFuture<Void> in
             do {
-                return try queueService.persistenceLayer.get(key: queueService.persistenceKey).flatMap { job in
+                return try queueService.persistenceLayer.get(key: queueService.persistenceKey, worker: container).flatMap { job in
                     return try job
                         .dequeue(context: jobContext, worker: container)
                         .transform(to: ())
