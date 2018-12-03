@@ -6,7 +6,7 @@ public struct QueueService: Service {
     let persistenceLayer: JobsPersistenceLayer
     let persistenceKey: String
     
-    public func dispatch(job: Job) -> EventLoopFuture<Void> {
-        return persistenceLayer.set(key: persistenceKey, jobs: [job]).transform(to: ())
+    public func dispatch<J: Job>(job: J) throws -> EventLoopFuture<Void> {
+        return try persistenceLayer.set(key: persistenceKey, job: job).transform(to: ())
     }
 }

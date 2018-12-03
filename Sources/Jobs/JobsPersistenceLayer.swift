@@ -3,17 +3,23 @@ import NIO
 import Redis
 
 public protocol JobsPersistenceLayer {
-    func getAndRemoveNext(key: String) -> EventLoopFuture<Job>
-    func set(key: String, jobs: [Job]) -> EventLoopFuture<Void>
+    func get(key: String) throws -> EventLoopFuture<Job>
+    func set<J: Job>(key: String, job: J) throws -> EventLoopFuture<Void>
 }
 
 extension RedisClient: JobsPersistenceLayer {
-    public func getAndRemoveNext(key: String) -> EventLoopFuture<Job> {
-        return self.future(TestingRedisJob())
+    public func set<J: Job>(key: String, job: J) throws -> EventLoopFuture<Void> {
+        let jobData = JobData(key: key, data: job)
+        let data = try JSONEncoder().encode(jobData).convertToRedisData()
+        return lpush([data], into: key).transform(to: ())
     }
     
-    public func set(key: String, jobs: [Job]) -> EventLoopFuture<Void> {
-        return self.future()
+    public func get(key: String) throws  -> EventLoopFuture<Job> {
+        return rPop(key).map { redisData in
+            guard let data = redisData.data else { throw JobError.cannotConvertData }
+            let jobData = try JSONDecoder().decode(JobData.self, from: data)
+            return jobData.data
+        }
     }
 }
 
