@@ -19,7 +19,7 @@ struct JobData: Codable {
         let typeString = try container.decode(String.self, forKey: .type)
         
         guard let jobType = knownJobTypes[typeString] else {
-            throw throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Unknown job type \(typeString)"))
+            throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Unknown job type \(typeString)"))
         }
         
         let jobDecoder = try container.superDecoder(forKey: .data)
