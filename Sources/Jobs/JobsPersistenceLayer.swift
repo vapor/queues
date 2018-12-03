@@ -3,16 +3,22 @@ import NIO
 import Redis
 
 public protocol JobsPersistenceLayer {
-    func get(key: String) throws -> EventLoopFuture<[Job]>
-    func set(key: String, jobs: [Job]) throws -> EventLoopFuture<Void>
+    func getNext(key: String) -> EventLoopFuture<Job>
+    func set(key: String, jobs: [Job]) -> EventLoopFuture<Void>
 }
 
 extension RedisClient: JobsPersistenceLayer {
-    public func get(key: String) throws -> EventLoopFuture<[Job]> {
-        return self.future([])
+    public func getNext(key: String) -> EventLoopFuture<Job> {
+        return self.future(TestingRedisJob())
     }
     
-    public func set(key: String, jobs: [Job]) throws -> EventLoopFuture<Void> {
+    public func set(key: String, jobs: [Job]) -> EventLoopFuture<Void> {
         return self.future()
+    }
+}
+
+struct TestingRedisJob: Job {
+    func dequeue(context: JobContext, worker: EventLoopGroup) throws -> EventLoopFuture<Void> {
+        return worker.future()
     }
 }
