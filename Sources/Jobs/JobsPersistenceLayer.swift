@@ -19,7 +19,7 @@ extension RedisDatabase: JobsPersistenceLayer {
         }
     }
     
-    public func get(key: String, worker: EventLoopGroup) throws  -> EventLoopFuture<Job> {
+    public func get(key: String, worker: EventLoopGroup) throws -> EventLoopFuture<Job> {
         return self.newConnection(on: worker).flatMap { conn in
             return conn.rPop(key).and(result: conn)
         }.map { redisData, conn in

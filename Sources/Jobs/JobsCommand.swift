@@ -15,19 +15,24 @@ public struct JobsCommand: Command {
         let queueService = try container.make(QueueService.self)
         let promise = eventLoop.newPromise(Void.self)
         let jobContext = JobContext()
+        let console = context.console
         
         _ = eventLoop.scheduleRepeatedTask(initialDelay: .seconds(0), delay: queueService.refreshInterval) { task -> EventLoopFuture<Void> in
             do {
                 return try queueService.persistenceLayer.get(key: queueService.persistenceKey, worker: container).flatMap { job in
+                    console.info("Dequeing Job", newLine: true)
                     return try job
                         .dequeue(context: jobContext, worker: container)
+                        .map { _ in console.info("Finished Running Job", newLine: true) }
                         .transform(to: ())
                         .catchFlatMap { error in
+                            console.error("Job error: \(error)", newLine: true)
                             return job.error(context: jobContext, error: error, worker: container).transform(to: ())
                     }
                 }
             } catch {
                 //handle error somehow
+                console.error("Job error: \(error)", newLine: true)
             }
             
             return container.future()
