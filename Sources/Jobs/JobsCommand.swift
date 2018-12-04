@@ -3,7 +3,12 @@ import Vapor
 
 public struct JobsCommand: Command {
     public var arguments: [CommandArgument] = []
-    public var options: [CommandOption] = []
+    public var options: [CommandOption] {
+        return [
+            CommandOption.value(name: "queue")
+        ]
+    }
+
     public var help: [String] = ["Runs queued worker jobs"]
     
     public init() { }
@@ -16,10 +21,11 @@ public struct JobsCommand: Command {
         let promise = eventLoop.newPromise(Void.self)
         let jobContext = JobContext()
         let console = context.console
+        let queue = QueueType(name: context.options["queue"] ?? "default")
         
         _ = eventLoop.scheduleRepeatedTask(initialDelay: .seconds(0), delay: queueService.refreshInterval) { task -> EventLoopFuture<Void> in
             do {
-                return try queueService.persistenceLayer.get(key: queueService.persistenceKey, worker: container).flatMap { job in
+                return try queueService.persistenceLayer.get(key: queue.makeKey(with: queueService.persistenceKey), worker: container).flatMap { job in
                     console.info("Dequeing Job", newLine: true)
                     return try job
                         .dequeue(context: jobContext, worker: container)
