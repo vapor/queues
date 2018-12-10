@@ -17,13 +17,8 @@ struct JobData: Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.key = try container.decode(String.self, forKey: .key)
         let typeString = try container.decode(String.self, forKey: .type)
-        
-        guard let jobType = knownJobTypes[typeString] else {
-            throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Unknown job type \(typeString)"))
-        }
-        
         let jobDecoder = try container.superDecoder(forKey: .data)
-        self.data = try jobType(jobDecoder)
+        self.data = try JobsConfig.decode(jobType: typeString, from: jobDecoder)
     }
     
     func encode(to encoder: Encoder) throws {

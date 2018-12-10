@@ -8,18 +8,8 @@ public protocol Job: Codable {
     func error(context: JobContext, error: Error, worker: EventLoopGroup) -> EventLoopFuture<Void>
 }
 
-internal typealias JobTypeDecoder = (Decoder) throws -> Job
-internal var knownJobTypes: [String: JobTypeDecoder] = [:]
-
-extension Job {    
+extension Job {
     public func error(context: JobContext, error: Error, worker: EventLoopGroup) -> EventLoopFuture<Void> {
         return worker.future()
-    }
-}
-
-//TODO: - Clean these methods up and add a helper config type
-extension Job where Self: Job {
-    public static func register() {
-        knownJobTypes[String(describing: Self.self)] = Self.init(from: )
     }
 }
