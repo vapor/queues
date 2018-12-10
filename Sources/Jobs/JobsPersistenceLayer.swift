@@ -21,8 +21,12 @@ extension RedisDatabase: JobsPersistenceLayer {
     }
     
     public func get(key: String, worker: EventLoopGroup) -> EventLoopFuture<Job?> {
+        let processingKey = key + "-processing"
+        
         return self.newConnection(on: worker).flatMap { conn in
-            return conn.rpoplpush(source: key, destination: key + "-processing").and(result: conn)
+            return conn.rpoplpush(source: key, destination: processingKey).transform(to: conn)
+        }.flatMap { conn in
+            return conn.command("LPOP", [try processingKey.convertToRedisData()]).and(result: conn)
         }.map { redisData, conn in
             conn.close()
             guard let data = redisData.data else { return nil }
