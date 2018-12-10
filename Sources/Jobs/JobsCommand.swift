@@ -34,10 +34,7 @@ public struct JobsCommand: Command {
                     return try job
                         .dequeue(context: jobContext, worker: container)
                         .flatMap { _ in
-                            let jobData = JobData(key: key, data: job)
-                            let data = try JSONEncoder().encode(jobData)
-                            guard let jobString =  String(data: data, encoding: .utf8) else { throw Abort(.internalServerError) }
-                            
+                            guard let jobString = job.stringValue(key: key) else { throw Abort(.internalServerError) }
                             return try queueService.persistenceLayer.completed(key: key, jobString: jobString, worker: container)
                         }
                         .catchFlatMap { error in
