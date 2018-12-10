@@ -25,27 +25,21 @@ public struct JobsCommand: Command {
         
         let key = queue.makeKey(with: queueService.persistenceKey)
         _ = eventLoop.scheduleRepeatedTask(initialDelay: .seconds(0), delay: queueService.refreshInterval) { task -> EventLoopFuture<Void> in
-            do {
-                return try queueService.persistenceLayer.get(key: key, worker: container).flatMap { job in
-                    //No job found, go to the next iteration
-                    guard let job = job else { return container.future() }
-                    
-                    console.info("Dequeing Job", newLine: true)
-                    return try job
-                        .dequeue(context: jobContext, worker: container)
-                        .flatMap { _ in
-                            guard let jobString = job.stringValue(key: key) else { throw Abort(.internalServerError) }
-                            return try queueService.persistenceLayer.completed(key: key, jobString: jobString, worker: container)
-                        }
-                        .catchFlatMap { error in
-                            console.error("Job error: \(error)", newLine: true)
-                            return job.error(context: jobContext, error: error, worker: container).transform(to: ())
+            return queueService.persistenceLayer.get(key: key, worker: container).flatMap { job in
+                //No job found, go to the next iteration
+                guard let job = job else { return container.future() }
+                
+                console.info("Dequeing Job", newLine: true)
+                return job
+                    .dequeue(context: jobContext, worker: container)
+                    .flatMap { _ in
+                        guard let jobString = job.stringValue(key: key) else { throw Abort(.internalServerError) }
+                        return try queueService.persistenceLayer.completed(key: key, jobString: jobString, worker: container)
                     }
+                    .catchFlatMap { error in
+                        console.error("Job error: \(error)", newLine: true)
+                        return job.error(context: jobContext, error: error, worker: container).transform(to: ())
                 }
-            } catch {
-                //handle error somehow
-                console.error("Job error: \(error)", newLine: true)
-                return container.future()
             }
         }
         

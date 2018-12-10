@@ -3,7 +3,7 @@ import Foundation
 
 public protocol Job: Codable {
     var maxRetryCount: Int { get }
-    func dequeue(context: JobContext, worker: EventLoopGroup) throws -> EventLoopFuture<Void>
+    func dequeue(context: JobContext, worker: EventLoopGroup) -> EventLoopFuture<Void>
     func error(context: JobContext, error: Error, worker: EventLoopGroup) -> EventLoopFuture<Void>
 }
 
