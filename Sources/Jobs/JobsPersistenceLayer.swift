@@ -25,7 +25,7 @@ public protocol JobsPersistenceLayer: Service {
     /// - Returns: A future `Void` value used to signify completion
     func set<J: Job>(key: String, job: J, maxRetryCount: Int) -> EventLoopFuture<Void>
     
-    /// Called upon successful completion of the `Job`. Should be used for cleanup.
+    /// Called upon completion of the `Job`. Should be used for cleanup.
     ///
     /// - Parameters:
     ///   - key: The key that the `Job` was stored under

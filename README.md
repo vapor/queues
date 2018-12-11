@@ -60,18 +60,23 @@ public func configure(_ config: inout Config, _ env: inout Environment, _ servic
     databaseConfig.add(database: redisConfig, as: .redis)
     services.register(databaseConfig)
     
-    try jobs(&services, persistenceLayer: redisConfig)
+    services.register(JobsPersistenceLayer.self) { container -> RedisJobs in
+        return RedisJobs(database: redisConfig, eventLoop: container.next())
+    }
+    
+    try jobs(&services)
 }
 
 public func jobs(_ services: inout Services, persistenceLayer: JobsPersistenceLayer) throws {
-    /// Jobs
-    let jobsProvider = JobsProvider(persistenceLayer: persistenceLayer, refreshInterval: .seconds(1))
+    let jobsProvider = JobsProvider(refreshInterval: .seconds(10))
     try services.register(jobsProvider)
     
     //Register jobs
-    var jobsConfig = JobsConfig()
-    jobsConfig.add(EmailJob.self)
-    services.register(jobsConfig)
+    services.register { _ -> JobsConfig in
+        var jobsConfig = JobsConfig()
+        jobsConfig.add(EmailJob.self)
+        return jobsConfig
+    }
     
     services.register { _ -> CommandConfig in
         var commandConfig = CommandConfig.default()

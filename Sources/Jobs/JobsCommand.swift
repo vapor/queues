@@ -66,7 +66,17 @@ public struct JobsCommand: Command {
                         }
                         .catchFlatMap { error in
                             console.error("Job error: \(error)", newLine: true)
-                            return job.error(context: jobContext, error: error, worker: elg).transform(to: ())
+                            
+                            guard let jobString = job.stringValue(key: key, maxRetryCount: jobData.maxRetryCount) else {
+                                return eventLoop.future(error: Abort(.internalServerError))
+                            }
+                            
+                            return queueService
+                                .persistenceLayer
+                                .completed(key: key, jobString: jobString)
+                                .flatMap { _ in
+                                    return job.error(context: jobContext, error: error, worker: elg)
+                                }
                     }
                 }
             }
