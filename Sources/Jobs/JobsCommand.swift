@@ -25,15 +25,19 @@ public struct JobsCommand: Command {
         
         let key = queue.makeKey(with: queueService.persistenceKey)
         _ = eventLoop.scheduleRepeatedTask(initialDelay: .seconds(0), delay: queueService.refreshInterval) { task -> EventLoopFuture<Void> in
-            return queueService.persistenceLayer.get(key: key, worker: container).flatMap { job in
+            return queueService.persistenceLayer.get(key: key, worker: container).flatMap { jobData in
                 //No job found, go to the next iteration
-                guard let job = job else { return container.future() }
+                guard let jobData = jobData else { return container.future() }
+                let job = jobData.data
                 console.info("Dequeing Job", newLine: true)
                 
                 let futureJob = job.dequeue(context: jobContext, worker: container)
-                return self.firstFutureToSucceed(future: futureJob, tries: job.maxRetryCount, on: container)
+                return self.firstFutureToSucceed(future: futureJob, tries: jobData.maxRetryCount, on: container)
                     .flatMap { _ in
-                        guard let jobString = job.stringValue(key: key) else { return container.future(error: Abort(.internalServerError)) }
+                        guard let jobString = job.stringValue(key: key, maxRetryCount: jobData.maxRetryCount) else {
+                            return container.future(error: Abort(.internalServerError))
+                        }
+                        
                         return queueService.persistenceLayer.completed(key: key, jobString: jobString, worker: container)
                     }
                     .catchFlatMap { error in

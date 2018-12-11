@@ -7,7 +7,11 @@ public struct QueueService: Service {
     let persistenceKey: String
     let worker: EventLoopGroup
     
-    public func dispatch<J: Job>(job: J, queue: QueueType = .default) -> EventLoopFuture<Void> {
-        return persistenceLayer.set(key: queue.makeKey(with: persistenceKey), job: job, worker: worker).transform(to: ())
+    public func dispatch<J: Job>(job: J, maxRetryCount: Int = 0, queue: QueueType = .default) -> EventLoopFuture<Void> {
+        return persistenceLayer.set(key: queue.makeKey(with: persistenceKey),
+                                    job: job,
+                                    maxRetryCount: maxRetryCount,
+                                    worker: worker)
+            .transform(to: ())
     }
 }
