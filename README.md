@@ -136,9 +136,6 @@ You can use the `error` method on `Job` to catch any errors thrown in the proces
 
 # To-Do
 
-- Gracefully handle `SIGTERM` signals using the method detailed [here](https://github.com/apple/swift-nio-extras/blob/master/Sources/HTTPServerWithQuiescingDemo/main.swift#L59-L69)
-- Potentially switch from using `scheduleRepeatedTask` to `scheduleTask`
-- Investigate if there is a way to make `JobsConfig`.`storage` not static
 - Full documentation in the Vapor docs style
 - Potentially ship with a Fluent integration as well
 - Look into what it would take to pull this into the main Vapor org
