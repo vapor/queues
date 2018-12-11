@@ -21,7 +21,7 @@ public struct JobsCommand: Command {
         let promise = eventLoop.newPromise(Void.self)
         let jobContext = JobContext()
         let console = context.console
-        let queue = QueueType(name: context.options["queue"] ?? "default")
+        let queue = QueueType(name: context.options["queue"] ?? QueueType.default.name)
         
         let key = queue.makeKey(with: queueService.persistenceKey)
         _ = eventLoop.scheduleRepeatedTask(initialDelay: .seconds(0), delay: queueService.refreshInterval) { task -> EventLoopFuture<Void> in
