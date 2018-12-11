@@ -35,14 +35,6 @@ extension RedisDatabase: JobsPersistenceLayer {
     }
     
     public func completed(key: String, jobString: String, worker: EventLoopGroup) -> EventLoopFuture<Void> {
-        return self.newConnection(on: worker).flatMap(to: RedisClient.self) { conn in
-            let argumentKey = try "\(key)-processing".convertToRedisData()
-            let count = try (-1).convertToRedisData()
-            let value = try jobString.convertToRedisData()
-            
-            return conn.command("LREM", [argumentKey, count, value]).transform(to: conn)
-        }.map { conn in
-            conn.close()
-        }
+        return worker.future()
     }
 }
