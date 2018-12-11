@@ -4,13 +4,13 @@ import Redis
 
 public protocol JobsPersistenceLayer {
     func get(key: String, worker: EventLoopGroup) -> EventLoopFuture<Job?>
-    func set<J: Job>(key: String, job: J, worker: EventLoopGroup) throws -> EventLoopFuture<Void>
-    func completed(key: String, jobString: String, worker: EventLoopGroup) throws -> EventLoopFuture<Void>
+    func set<J: Job>(key: String, job: J, worker: EventLoopGroup) -> EventLoopFuture<Void>
+    func completed(key: String, jobString: String, worker: EventLoopGroup) -> EventLoopFuture<Void>
 }
 
 //TODO: - Move this into a separate redis package
 extension RedisDatabase: JobsPersistenceLayer {
-    public func set<J: Job>(key: String, job: J, worker: EventLoopGroup) throws -> EventLoopFuture<Void> {
+    public func set<J: Job>(key: String, job: J, worker: EventLoopGroup) -> EventLoopFuture<Void> {
         return self.newConnection(on: worker).flatMap(to: RedisClient.self) { conn in
             let jobData = JobData(key: key, data: job)
             let data = try JSONEncoder().encode(jobData).convertToRedisData()
@@ -35,7 +35,7 @@ extension RedisDatabase: JobsPersistenceLayer {
         }
     }
     
-    public func completed(key: String, jobString: String, worker: EventLoopGroup) throws -> EventLoopFuture<Void> {
+    public func completed(key: String, jobString: String, worker: EventLoopGroup) -> EventLoopFuture<Void> {
         return self.newConnection(on: worker).flatMap(to: RedisClient.self) { conn in
             let argumentKey = try "\(key)-processing".convertToRedisData()
             let count = try (-1).convertToRedisData()

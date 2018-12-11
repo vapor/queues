@@ -28,16 +28,25 @@ public struct JobsCommand: Command {
             return queueService.persistenceLayer.get(key: key, worker: container).flatMap { job in
                 //No job found, go to the next iteration
                 guard let job = job else { return container.future() }
-                
                 console.info("Dequeing Job", newLine: true)
+                
+                var remainingTries = job.maxRetryCount
+                
                 return job
                     .dequeue(context: jobContext, worker: container)
                     .flatMap { _ in
-                        guard let jobString = job.stringValue(key: key) else { throw Abort(.internalServerError) }
-                        return try queueService.persistenceLayer.completed(key: key, jobString: jobString, worker: container)
+                        guard let jobString = job.stringValue(key: key) else { return container.future(error: Abort(.internalServerError)) }
+                        return queueService.persistenceLayer.completed(key: key, jobString: jobString, worker: container)
                     }
                     .catchFlatMap { error in
-                        console.error("Job error: \(error)", newLine: true)
+                        if remainingTries == 0 {
+                            console.error("Job error: \(error)", newLine: true)
+                            return job.error(context: jobContext, error: error, worker: container).transform(to: ())
+                        }
+                        
+                        //TODO: - repeat here
+                        remainingTries = remainingTries - 1
+                        
                         return job.error(context: jobContext, error: error, worker: container).transform(to: ())
                 }
             }
