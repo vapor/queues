@@ -13,7 +13,7 @@ In addition, this library should be able to handle various persistence stores. I
 To use the Redis implementation of this package, add this to your `Package.swift`:
 
 ```swift
-.package(url: "https://github.com/vapor-community/redis-jobs.git", .branch("master"))
+.package(url: "https://github.com/vapor-community/redis-jobs.git", from: "0.1.0")
 ```
 
 You should not use this package alone unless you plan to reimplement the persistence layer. 
