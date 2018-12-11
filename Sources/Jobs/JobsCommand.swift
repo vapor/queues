@@ -30,8 +30,8 @@ public struct JobsCommand: Command {
         let console = context.console
         let queue = QueueType(name: context.options["queue"] ?? QueueType.default.name)
         let key = queue.makeKey(with: queueService.persistenceKey)
-
-        var isShuttingDown = false
+        var shuttingDownHandler = JobsShuttingDownHandler()
+        
         let quiesce = ServerQuiescingHelper(group: elg)
         let signalQueue = DispatchQueue(label: "vapor.jobs.command.SignalHandlingQueue")
         let signalSource = DispatchSource.makeSignalSource(signal: SIGTERM, queue: signalQueue)
@@ -39,7 +39,7 @@ public struct JobsCommand: Command {
         signalSource.setEventHandler {
             print("SIGTERM RECEIVED")
             signalSource.cancel()
-            isShuttingDown = true
+            shuttingDownHandler.set(isShuttingDown: true)
             quiesce.initiateShutdown(promise: fullyShutdownPromise)
         }
         signal(SIGTERM, SIG_IGN)
@@ -50,7 +50,7 @@ public struct JobsCommand: Command {
             let eventLoop = elg.next()
             
             _ = eventLoop.scheduleRepeatedTask(initialDelay: .seconds(0), delay: queueService.refreshInterval) { task -> EventLoopFuture<Void> in
-                if !isShuttingDown {
+                if !shuttingDownHandler.get() {
                     return queueService.persistenceLayer.get(key: key).flatMap { jobData in
                         //No job found, go to the next iteration
                         guard let jobData = jobData else { return eventLoop.future() }
@@ -98,5 +98,42 @@ public struct JobsCommand: Command {
                 return self.firstFutureToSucceed(future: future, tries: tries - 1, on: worker)
             }
         }
+    }
+}
+
+
+/// A handler to synchronize the access of `isShuttingDown`
+private struct JobsShuttingDownHandler {
+    
+    /// The Lock used for synchronizing
+    private let lock: NSLock
+    
+    /// Whether or not the app is shutting down
+    private var isShuttingDown: Bool
+    
+    /// Creates a new handler
+    init() {
+        self.lock = .init()
+        self.isShuttingDown = false
+    }
+    
+    /// Sets the shutting down variable
+    ///
+    /// - Parameter isShuttingDown: Whether or not the app is shutting down
+    mutating func set(isShuttingDown: Bool) {
+        lock.lock()
+        defer { lock.unlock() }
+        
+        self.isShuttingDown = isShuttingDown
+    }
+    
+    /// Returns the `isShuttingDown` value
+    ///
+    /// - Returns: Whether or not the app is shutting fown
+    func get() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        
+        return isShuttingDown
     }
 }
