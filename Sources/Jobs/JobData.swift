@@ -2,7 +2,7 @@ import Foundation
 
 
 /// Holds information about the Job that is to be encoded to the persistence store.
-public struct JobData: Codable {
+public struct JobData: Encodable {
     
     /// The persistence key for the backing store.
     var key: String
@@ -33,18 +33,6 @@ public struct JobData: Codable {
     /// - maxRetryCount: See `maxRetryCount`
     enum CodingKeys: String, CodingKey {
         case key, type, data, maxRetryCount
-    }
-    
-    /// Initializes a new `JobData` object from a given `Decoder`.
-    ///
-    /// - Parameter decoder: The specified `Decoder` to use.
-    public init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.key = try container.decode(String.self, forKey: .key)
-        self.maxRetryCount = try container.decode(Int.self, forKey: .maxRetryCount)
-        let typeString = try container.decode(String.self, forKey: .type)
-        let jobDecoder = try container.superDecoder(forKey: .data)
-        self.data = try JobsConfig.decode(jobType: typeString, from: jobDecoder)
     }
     
     /// Encodes a new `JobData` object from a given `Encoder`.

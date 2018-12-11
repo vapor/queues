@@ -11,8 +11,9 @@ public protocol JobsPersistenceLayer {
     ///
     /// - Parameters:
     ///   - key: The key that the data is stored under.
+    ///   - jobsConfig: The `JobsConfig` registered via services
     /// - Returns: The retrieved `JobData`, if it exists.
-    func get(key: String) -> EventLoopFuture<JobData?>
+    func get(key: String, jobsConfig: JobsConfig) -> EventLoopFuture<JobData?>
     
     /// Handles adding a `Job` to the persistence layer for future processing.
     ///

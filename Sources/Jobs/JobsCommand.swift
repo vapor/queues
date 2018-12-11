@@ -45,8 +45,11 @@ public struct JobsCommand: Command {
         
         var repeatedTasks: [RepeatedTask] = []
         for eventLoop in elg.makeIterator()! {
+            let sub = context.container.subContainer(on: eventLoop)
+            let config = try sub.make(JobsConfig.self)
+            
             let task = eventLoop.scheduleRepeatedTask(initialDelay: .seconds(0), delay: queueService.refreshInterval) { task -> EventLoopFuture<Void> in
-                return queueService.persistenceLayer.get(key: key).flatMap { jobData in
+                return queueService.persistenceLayer.get(key: key, jobsConfig: config).flatMap { jobData in
                     //No job found, go to the next iteration
                     guard let jobData = jobData else { return eventLoop.future() }
                     let job = jobData.data

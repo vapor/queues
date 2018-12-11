@@ -13,9 +13,6 @@ public struct QueueService: Service {
     /// See `JobsProvider`.`persistenceKey`
     let persistenceKey: String
     
-    /// An `EventLoopGroup` that can be used to generate future values
-    let worker: EventLoopGroup
-    
     /// Dispatches a job to the queue for future execution
     ///
     /// - Parameters:
