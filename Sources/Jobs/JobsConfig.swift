@@ -24,17 +24,24 @@ public struct JobsConfig: Service {
     }
     
     
-    /// Decodes a `Job` from a given type and decoder.
+    /// Decodes a `JobData` container from a given decoder.
     ///
     /// - Parameters:
-    ///   - jobType: The type of string. Retrieved via `String(describing: job)`
     ///   - decoder: The decoder to use
-    /// - Returns: A `Job`
-    public func decode(jobType: String, from decoder: Decoder) throws -> Job {
-        guard let jobDecoder = storage[jobType] else {
-            throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Unknown job type \(jobType)"))
+    /// - Returns: A `JobData` container
+    public func decode(from decoder: Decoder) throws -> JobData? {
+        enum Keys: String, CodingKey {
+            case key, type, data, maxRetryCount
         }
         
-        return try jobDecoder(decoder)
+        let container = try decoder.container(keyedBy: Keys.self)
+        let type = try container.decode(String.self, forKey: .type)
+        let maxRetryCount = try container.decode(Int.self, forKey: .maxRetryCount)
+        let key = try container.decode(String.self, forKey: .key)
+        
+        guard let jobType = storage[type] else { return nil }
+        let job = try jobType(container.superDecoder(forKey: .data))
+        
+        return JobData(key: key, data: job, maxRetryCount: maxRetryCount)
     }
 }

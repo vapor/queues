@@ -26,7 +26,7 @@ public struct JobsCommand: Command {
     public func run(using context: CommandContext) throws -> EventLoopFuture<Void> {
         let elg = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
         let queueService = try context.container.make(QueueService.self)
-        let jobContext = JobContext()
+        let jobContext = (try? context.container.make(JobContext.self)) ?? JobContext()
         let console = context.console
         let queue = QueueType(name: context.options["queue"] ?? QueueType.default.name)
         let key = queue.makeKey(with: queueService.persistenceKey)
