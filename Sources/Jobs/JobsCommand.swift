@@ -28,7 +28,6 @@ public struct JobsCommand: Command {
         let eventLoop = container.eventLoop
         
         let queueService = try container.make(QueueService.self)
-        let promise = eventLoop.newPromise(Void.self)
         let jobContext = JobContext()
         let console = context.console
         let queue = QueueType(name: context.options["queue"] ?? QueueType.default.name)
@@ -48,8 +47,8 @@ public struct JobsCommand: Command {
         signal(SIGTERM, SIG_IGN)
         signalSource.resume()
         
-        if !isShuttingDown {
-            _ = eventLoop.scheduleRepeatedTask(initialDelay: .seconds(0), delay: queueService.refreshInterval) { task -> EventLoopFuture<Void> in
+        _ = eventLoop.scheduleRepeatedTask(initialDelay: .seconds(0), delay: queueService.refreshInterval) { task -> EventLoopFuture<Void> in
+            if !isShuttingDown {
                 return queueService.persistenceLayer.get(key: key, worker: container).flatMap { jobData in
                     //No job found, go to the next iteration
                     guard let jobData = jobData else { return container.future() }
@@ -71,9 +70,11 @@ public struct JobsCommand: Command {
                     }
                 }
             }
+            
+            return container.future()
         }
         
-        return promise.futureResult
+        return fullyShutdownPromise.futureResult
     }
     
     /// Returns the first time a given future succeeds and is under the `tries`
