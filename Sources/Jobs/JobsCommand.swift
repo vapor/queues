@@ -24,20 +24,18 @@ public struct JobsCommand: Command {
     
     /// See `Command`.`run(using:)`
     public func run(using context: CommandContext) throws -> EventLoopFuture<Void> {
-        let container = context.container
-        let eventLoop = container.eventLoop
-        
-        let queueService = try container.make(QueueService.self)
+        let elg = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
+        let queueService = try context.container.make(QueueService.self)
         let jobContext = JobContext()
         let console = context.console
         let queue = QueueType(name: context.options["queue"] ?? QueueType.default.name)
         let key = queue.makeKey(with: queueService.persistenceKey)
-        
+
         var isShuttingDown = false
-        let quiesce = ServerQuiescingHelper(group: container)
+        let quiesce = ServerQuiescingHelper(group: elg)
         let signalQueue = DispatchQueue(label: "vapor.jobs.command.SignalHandlingQueue")
         let signalSource = DispatchSource.makeSignalSource(signal: SIGTERM, queue: signalQueue)
-        let fullyShutdownPromise: EventLoopPromise<Void> = container.next().newPromise()
+        let fullyShutdownPromise: EventLoopPromise<Void> = elg.next().newPromise()
         signalSource.setEventHandler {
             print("SIGTERM RECEIVED")
             signalSource.cancel()
@@ -47,33 +45,39 @@ public struct JobsCommand: Command {
         signal(SIGTERM, SIG_IGN)
         signalSource.resume()
         
-        _ = eventLoop.scheduleRepeatedTask(initialDelay: .seconds(0), delay: queueService.refreshInterval) { task -> EventLoopFuture<Void> in
-            if !isShuttingDown {
-                return queueService.persistenceLayer.get(key: key, worker: container).flatMap { jobData in
-                    //No job found, go to the next iteration
-                    guard let jobData = jobData else { return container.future() }
-                    let job = jobData.data
-                    console.info("Dequeing Job", newLine: true)
-                    
-                    let futureJob = job.dequeue(context: jobContext, worker: container)
-                    return self.firstFutureToSucceed(future: futureJob, tries: jobData.maxRetryCount, on: container)
-                        .flatMap { _ in
-                            guard let jobString = job.stringValue(key: key, maxRetryCount: jobData.maxRetryCount) else {
-                                return container.future(error: Abort(.internalServerError))
+        for i in 0..<System.coreCount {
+            print("Scheduling work on #\(i)")
+            let eventLoop = elg.next()
+            
+            _ = eventLoop.scheduleRepeatedTask(initialDelay: .seconds(0), delay: queueService.refreshInterval) { task -> EventLoopFuture<Void> in
+                if !isShuttingDown {
+                    return queueService.persistenceLayer.get(key: key).flatMap { jobData in
+                        //No job found, go to the next iteration
+                        guard let jobData = jobData else { return eventLoop.future() }
+                        let job = jobData.data
+                        console.info("Dequeing Job", newLine: true)
+                        
+                        let futureJob = job.dequeue(context: jobContext, worker: elg)
+                        return self.firstFutureToSucceed(future: futureJob, tries: jobData.maxRetryCount, on: elg)
+                            .flatMap { _ in
+                                guard let jobString = job.stringValue(key: key, maxRetryCount: jobData.maxRetryCount) else {
+                                    return eventLoop.future(error: Abort(.internalServerError))
+                                }
+                                
+                                return queueService.persistenceLayer.completed(key: key, jobString: jobString)
                             }
-                            
-                            return queueService.persistenceLayer.completed(key: key, jobString: jobString, worker: container)
+                            .catchFlatMap { error in
+                                console.error("Job error: \(error)", newLine: true)
+                                return job.error(context: jobContext, error: error, worker: elg).transform(to: ())
                         }
-                        .catchFlatMap { error in
-                            console.error("Job error: \(error)", newLine: true)
-                            return job.error(context: jobContext, error: error, worker: container).transform(to: ())
                     }
                 }
+                
+                return eventLoop.future()
             }
             
-            return container.future()
         }
-        
+
         return fullyShutdownPromise.futureResult
     }
     

@@ -26,8 +26,7 @@ public struct QueueService: Service {
     public func dispatch<J: Job>(job: J, maxRetryCount: Int = 0, queue: QueueType = .default) -> EventLoopFuture<Void> {
         return persistenceLayer.set(key: queue.makeKey(with: persistenceKey),
                                     job: job,
-                                    maxRetryCount: maxRetryCount,
-                                    worker: worker)
+                                    maxRetryCount: maxRetryCount)
             .transform(to: ())
     }
 }
