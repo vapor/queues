@@ -1,18 +1,26 @@
 import Foundation
 import Vapor
 
+/// The command to start the Queue job
 public struct JobsCommand: Command {
+    
+    /// See `Command`.`arguments`
     public var arguments: [CommandArgument] = []
+    
+    /// See `Command`.`options`
     public var options: [CommandOption] {
         return [
             CommandOption.value(name: "queue")
         ]
     }
 
+    /// See `Command`.`help`
     public var help: [String] = ["Runs queued worker jobs"]
     
+    /// Creates a new `JobCommand`
     public init() { }
     
+    /// See `Command`.`run(using:)`
     public func run(using context: CommandContext) throws -> EventLoopFuture<Void> {
         let container = context.container
         let eventLoop = container.eventLoop
@@ -50,7 +58,14 @@ public struct JobsCommand: Command {
         return promise.futureResult
     }
     
-    private func firstFutureToSucceed<T>(future: Future<T>, tries: Int, on worker: Worker) -> Future<T> {
+    /// Returns the first time a given future succeeds and is under the `tries`
+    ///
+    /// - Parameters:
+    ///   - future: The future to run recursively
+    ///   - tries: The number of tries to execute this future before returning a failure
+    ///   - worker: An `EventLoopGroup` that can be used to generate future values
+    /// - Returns: The completed future, with or without an error
+    private func firstFutureToSucceed<T>(future: Future<T>, tries: Int, on worker: EventLoopGroup) -> Future<T> {
         return future.map { complete in
             return complete
         }.catchFlatMap { error in
