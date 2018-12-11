@@ -30,28 +30,31 @@ public struct JobsCommand: Command {
                 guard let job = job else { return container.future() }
                 console.info("Dequeing Job", newLine: true)
                 
-                var remainingTries = job.maxRetryCount
-                
-                return job
-                    .dequeue(context: jobContext, worker: container)
+                let futureJob = job.dequeue(context: jobContext, worker: container)
+                return self.firstFutureToSucceed(future: futureJob, tries: job.maxRetryCount, on: container)
                     .flatMap { _ in
                         guard let jobString = job.stringValue(key: key) else { return container.future(error: Abort(.internalServerError)) }
                         return queueService.persistenceLayer.completed(key: key, jobString: jobString, worker: container)
                     }
                     .catchFlatMap { error in
-                        if remainingTries == 0 {
-                            console.error("Job error: \(error)", newLine: true)
-                            return job.error(context: jobContext, error: error, worker: container).transform(to: ())
-                        }
-                        
-                        //TODO: - repeat here
-                        remainingTries = remainingTries - 1
-                        
+                        console.error("Job error: \(error)", newLine: true)
                         return job.error(context: jobContext, error: error, worker: container).transform(to: ())
                 }
             }
         }
         
         return promise.futureResult
+    }
+    
+    private func firstFutureToSucceed<T>(future: Future<T>, tries: Int, on worker: Worker) -> Future<T> {
+        return future.map { complete in
+            return complete
+        }.catchFlatMap { error in
+            if tries == 0 {
+                return worker.future(error: error)
+            } else {
+                return self.firstFutureToSucceed(future: future, tries: tries - 1, on: worker)
+            }
+        }
     }
 }
