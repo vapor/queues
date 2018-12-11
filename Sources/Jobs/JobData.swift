@@ -19,7 +19,7 @@ public struct JobData: Codable {
     ///   - key: See `key`
     ///   - data: See `data`
     ///   - maxRetryCount: See `maxRetryCount`
-    init(key: String, data: Job, maxRetryCount: Int) {
+    public init(key: String, data: Job, maxRetryCount: Int) {
         self.key = key
         self.data = data
         self.maxRetryCount = maxRetryCount
