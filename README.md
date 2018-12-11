@@ -7,7 +7,16 @@ The goal of this library is twofold:
 1. Allow users to schedule tasks that will be executed at some point in the future.
 2. Transparently handle errors, success, and retries. 
 
-In addition, this library should be able to handle various persistence stores. It ships with Redis by default (the implementation can be found at [INSERT LINK TO SEPARATE REDIS IMPL]). Eventually, it would be fantastic to get this added to the core Vapor org. 
+In addition, this library should be able to handle various persistence stores. It ships with Redis by default (the implementation can be found at https://github.com/vapor-community/redis-jobs). Eventually, it would be fantastic to get this added to the core Vapor org. 
+
+# Installation
+To use the Redis implementation of this package, add this to your `Package.swift`:
+
+```swift
+.package(url: "https://github.com/vapor-community/redis-jobs.git", .branch("master"))
+```
+
+You should not use this package alone unless you plan to reimplement the persistence layer. 
 
 # Usage
 There's a full example of this implementation at https://github.com/mcdappdev/jobs-example.
@@ -131,6 +140,6 @@ You can use the `error` method on `Job` to catch any errors thrown in the proces
 - Potentially switch from using `scheduleRepeatedTask` to `scheduleTask`
 - Investigate if there is a way to make `JobsConfig`.`storage` not static
 - Full documentation in the Vapor docs style
-- Split off Redis into separate package 
 - Potentially ship with a Fluent integration as well
 - Look into what it would take to pull this into the main Vapor org
+- Tag versions
