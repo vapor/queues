@@ -1,5 +1,7 @@
 import Foundation
 import Vapor
+import NIO
+import NIOExtras
 
 /// The command to start the Queue job
 public struct JobsCommand: Command {
@@ -30,27 +32,43 @@ public struct JobsCommand: Command {
         let jobContext = JobContext()
         let console = context.console
         let queue = QueueType(name: context.options["queue"] ?? QueueType.default.name)
-        
         let key = queue.makeKey(with: queueService.persistenceKey)
-        _ = eventLoop.scheduleRepeatedTask(initialDelay: .seconds(0), delay: queueService.refreshInterval) { task -> EventLoopFuture<Void> in
-            return queueService.persistenceLayer.get(key: key, worker: container).flatMap { jobData in
-                //No job found, go to the next iteration
-                guard let jobData = jobData else { return container.future() }
-                let job = jobData.data
-                console.info("Dequeing Job", newLine: true)
-                
-                let futureJob = job.dequeue(context: jobContext, worker: container)
-                return self.firstFutureToSucceed(future: futureJob, tries: jobData.maxRetryCount, on: container)
-                    .flatMap { _ in
-                        guard let jobString = job.stringValue(key: key, maxRetryCount: jobData.maxRetryCount) else {
-                            return container.future(error: Abort(.internalServerError))
+        
+        var isShuttingDown = false
+        let quiesce = ServerQuiescingHelper(group: container)
+        let signalQueue = DispatchQueue(label: "vapor.jobs.command.SignalHandlingQueue")
+        let signalSource = DispatchSource.makeSignalSource(signal: SIGTERM, queue: signalQueue)
+        let fullyShutdownPromise: EventLoopPromise<Void> = container.next().newPromise()
+        signalSource.setEventHandler {
+            print("SIGTERM RECEIVED")
+            signalSource.cancel()
+            isShuttingDown = true
+            quiesce.initiateShutdown(promise: fullyShutdownPromise)
+        }
+        signal(SIGTERM, SIG_IGN)
+        signalSource.resume()
+        
+        if !isShuttingDown {
+            _ = eventLoop.scheduleRepeatedTask(initialDelay: .seconds(0), delay: queueService.refreshInterval) { task -> EventLoopFuture<Void> in
+                return queueService.persistenceLayer.get(key: key, worker: container).flatMap { jobData in
+                    //No job found, go to the next iteration
+                    guard let jobData = jobData else { return container.future() }
+                    let job = jobData.data
+                    console.info("Dequeing Job", newLine: true)
+                    
+                    let futureJob = job.dequeue(context: jobContext, worker: container)
+                    return self.firstFutureToSucceed(future: futureJob, tries: jobData.maxRetryCount, on: container)
+                        .flatMap { _ in
+                            guard let jobString = job.stringValue(key: key, maxRetryCount: jobData.maxRetryCount) else {
+                                return container.future(error: Abort(.internalServerError))
+                            }
+                            
+                            return queueService.persistenceLayer.completed(key: key, jobString: jobString, worker: container)
                         }
-                        
-                        return queueService.persistenceLayer.completed(key: key, jobString: jobString, worker: container)
+                        .catchFlatMap { error in
+                            console.error("Job error: \(error)", newLine: true)
+                            return job.error(context: jobContext, error: error, worker: container).transform(to: ())
                     }
-                    .catchFlatMap { error in
-                        console.error("Job error: \(error)", newLine: true)
-                        return job.error(context: jobContext, error: error, worker: container).transform(to: ())
                 }
             }
         }
