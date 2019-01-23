@@ -7,13 +7,13 @@ The goal of this library is twofold:
 1. Allow users to schedule tasks that will be executed at some point in the future.
 2. Transparently handle errors, success, and retries. 
 
-In addition, this library should be able to handle various persistence stores. It ships with Redis by default (the implementation can be found at https://github.com/vapor-community/redis-jobs). Eventually, it would be fantastic to get this added to the core Vapor org. 
+In addition, this library should be able to handle various persistence stores. It ships with Redis by default (the implementation can be found at https://github.com/vapor-community/jobs-redis-driver). Eventually, it would be fantastic to get this added to the core Vapor org. 
 
 # Installation
 To use the Redis implementation of this package, add this to your `Package.swift`:
 
 ```swift
-.package(url: "https://github.com/vapor-community/redis-jobs.git", from: "0.1.0")
+.package(url: "https://github.com/vapor-community/jobs-redis-driver.git", from: "0.1.0")
 ```
 
 You should not use this package alone unless you plan to reimplement the persistence layer. 
@@ -61,7 +61,7 @@ public func configure(_ config: inout Config, _ env: inout Environment, _ servic
     services.register(databaseConfig)
     
     services.register(JobsPersistenceLayer.self) { container -> RedisJobs in
-        return RedisJobs(database: redisConfig, eventLoop: container.next())
+        return JobsRedisDriver(database: redisConfig, eventLoop: container.next())
     }
     
     try jobs(&services)
