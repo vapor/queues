@@ -32,4 +32,11 @@ public protocol JobsPersistenceLayer: Service {
     ///   - jobString: A string representation of the `Job`
     /// - Returns: A future `Void` value used to signify completion
     func completed(key: String, jobString: String) -> EventLoopFuture<Void>
+    
+    
+    /// Returns the processing version of the key, used for
+    ///
+    /// - Parameter key: The base key
+    /// - Returns: The processing key
+    func processingKey(key: String) -> String
 }
