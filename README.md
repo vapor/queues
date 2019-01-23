@@ -47,6 +47,9 @@ struct EmailJob: Job {
 Next, configure the `Jobs` package in your `configure.swift`:
 
 ```swift
+import Jobs
+import JobsRedisDriver
+
 public func configure(_ config: inout Config, _ env: inout Environment, _ services: inout Services) throws {
     /// Redis
     //MARK: - Redis
@@ -60,7 +63,7 @@ public func configure(_ config: inout Config, _ env: inout Environment, _ servic
     databaseConfig.add(database: redisConfig, as: .redis)
     services.register(databaseConfig)
     
-    services.register(JobsPersistenceLayer.self) { container -> RedisJobs in
+    services.register(JobsPersistenceLayer.self) { container -> JobsRedisDriver in
         return JobsRedisDriver(database: redisConfig, eventLoop: container.next())
     }
     
