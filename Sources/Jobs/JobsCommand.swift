@@ -3,7 +3,7 @@ import Vapor
 import NIO
 
 /// The command to start the Queue job
-public struct JobsCommand: Command {
+public class JobsCommand: Command {
     
     /// See `Command`.`arguments`
     public var arguments: [CommandArgument] = []
@@ -27,7 +27,7 @@ public struct JobsCommand: Command {
             self._isShuttingDown = newValue
         }
     }
-    
+
     private var _isShuttingDown: Bool = false
     private var _lock: NSLock
     
@@ -48,6 +48,7 @@ public struct JobsCommand: Command {
         let signalSource = DispatchSource.makeSignalSource(signal: SIGTERM, queue: signalQueue)
         signalSource.setEventHandler {
             print("SIGTERM RECEIVED")
+            self.isShuttingDown = true
             signalSource.cancel()
         }
         signal(SIGTERM, SIG_IGN)
