@@ -15,7 +15,7 @@ public struct JobsCommand: Command {
             CommandOption.value(name: "queue")
         ]
     }
-
+    
     /// See `Command`.`help`
     public var help: [String] = ["Runs queued worker jobs"]
     
@@ -25,12 +25,8 @@ public struct JobsCommand: Command {
     /// See `Command`.`run(using:)`
     public func run(using context: CommandContext) throws -> EventLoopFuture<Void> {
         let elg = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
-        let queueService = try context.container.make(QueueService.self)
-        let jobContext = (try? context.container.make(JobContext.self)) ?? JobContext()
-        let console = context.console
-        let queue = QueueType(name: context.options["queue"] ?? QueueType.default.name)
-        let key = queue.makeKey(with: queueService.persistenceKey)
         
+        //SIGTERM shutdown handler
         let quiesce = ServerQuiescingHelper(group: elg)
         let signalQueue = DispatchQueue(label: "vapor.jobs.command.SignalHandlingQueue")
         let signalSource = DispatchSource.makeSignalSource(signal: SIGTERM, queue: signalQueue)
@@ -46,45 +42,60 @@ public struct JobsCommand: Command {
         var repeatedTasks: [RepeatedTask] = []
         for eventLoop in elg.makeIterator()! {
             let sub = context.container.subContainer(on: eventLoop)
-            let config = try sub.make(JobsConfig.self)
+            let console = context.console
+            let queueName = context.options["queue"] ?? QueueType.default.name
             
-            let task = eventLoop.scheduleRepeatedTask(initialDelay: .seconds(0), delay: queueService.refreshInterval) { task -> EventLoopFuture<Void> in
-                return queueService.persistenceLayer.get(key: key, jobsConfig: config).flatMap { jobData in
-                    //No job found, go to the next iteration
-                    guard let jobData = jobData else { return eventLoop.future() }
-                    let job = jobData.data
-                    console.info("Dequeing Job", newLine: true)
-                    
-                    let futureJob = job.dequeue(context: jobContext, worker: elg)
-                    return self.firstFutureToSucceed(future: futureJob, tries: jobData.maxRetryCount, on: elg)
-                        .flatMap { _ in
-                            guard let jobString = job.stringValue(key: key, maxRetryCount: jobData.maxRetryCount) else {
-                                return eventLoop.future(error: Abort(.internalServerError))
-                            }
-                            
-                            return queueService.persistenceLayer.completed(key: key, jobString: jobString)
-                        }
-                        .catchFlatMap { error in
-                            console.error("Job error: \(error)", newLine: true)
-                            
-                            guard let jobString = job.stringValue(key: key, maxRetryCount: jobData.maxRetryCount) else {
-                                return eventLoop.future(error: Abort(.internalServerError))
-                            }
-                            
-                            return queueService
-                                .persistenceLayer
-                                .completed(key: key, jobString: jobString)
-                                .flatMap { _ in
-                                    return job.error(context: jobContext, error: error, worker: elg)
-                                }
-                    }
-                }
+            eventLoop.submit {
+                repeatedTasks.append(try self.setupTask(eventLoop: eventLoop, container: sub, queueName: queueName, console: console))
+            }.catch {
+                console.error("Could not boot EventLoop: \($0)")
             }
-            
-            repeatedTasks.append(task)
         }
         
         return fullyShutdownPromise.futureResult.map { repeatedTasks.forEach { $0.cancel() } }
+    }
+    
+    private func setupTask(eventLoop: EventLoop, container: SubContainer, queueName: String, console: Console) throws -> RepeatedTask {
+        let queue = QueueType(name: queueName)
+        let queueService = try container.make(QueueService.self)
+        let jobContext = (try? container.make(JobContext.self)) ?? JobContext()
+        let key = queue.makeKey(with: queueService.persistenceKey)
+        let config = try container.make(JobsConfig.self)
+        
+        let task = eventLoop.scheduleRepeatedTask(initialDelay: .seconds(0), delay: queueService.refreshInterval) { task -> EventLoopFuture<Void> in
+            return queueService.persistenceLayer.get(key: key, jobsConfig: config).flatMap { jobData in
+                //No job found, go to the next iteration
+                guard let jobData = jobData else { return eventLoop.future() }
+                let job = jobData.data
+                console.info("Dequeing Job", newLine: true)
+                
+                let futureJob = job.dequeue(context: jobContext, worker: eventLoop)
+                return self.firstFutureToSucceed(future: futureJob, tries: jobData.maxRetryCount, on: eventLoop)
+                    .flatMap { _ in
+                        guard let jobString = job.stringValue(key: key, maxRetryCount: jobData.maxRetryCount) else {
+                            return eventLoop.future(error: Abort(.internalServerError))
+                        }
+                        
+                        return queueService.persistenceLayer.completed(key: key, jobString: jobString)
+                    }
+                    .catchFlatMap { error in
+                        console.error("Job error: \(error)", newLine: true)
+                        
+                        guard let jobString = job.stringValue(key: key, maxRetryCount: jobData.maxRetryCount) else {
+                            return eventLoop.future(error: Abort(.internalServerError))
+                        }
+                        
+                        return queueService
+                            .persistenceLayer
+                            .completed(key: key, jobString: jobString)
+                            .flatMap { _ in
+                                return job.error(context: jobContext, error: error, worker: eventLoop)
+                        }
+                }
+            }
+        }
+        
+        return task
     }
     
     /// Returns the first time a given future succeeds and is under the `tries`
