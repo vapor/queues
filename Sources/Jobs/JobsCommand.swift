@@ -61,8 +61,9 @@ public class JobsCommand: Command {
             let queueName = context.options["queue"] ?? QueueType.default.name
             let shutdownPromise: EventLoopPromise<Void> = eventLoop.newPromise()
             
+            shutdownPromises.append(shutdownPromise)
+            
             eventLoop.submit {
-                shutdownPromises.append(shutdownPromise)
                 try self.setupTask(eventLoop: eventLoop,
                                    container: sub,
                                    queueName: queueName,

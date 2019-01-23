@@ -83,15 +83,6 @@
         }
       },
       {
-        "package": "swift-nio-extras",
-        "repositoryURL": "https://github.com/apple/swift-nio-extras.git",
-        "state": {
-          "branch": null,
-          "revision": "28154e042e1de46c0fb7da93f9b6d6518ef09156",
-          "version": "0.1.2"
-        }
-      },
-      {
         "package": "swift-nio-ssl",
         "repositoryURL": "https://github.com/apple/swift-nio-ssl.git",
         "state": {

@@ -10,13 +10,12 @@ let package = Package(
             targets: ["Jobs"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/vapor/vapor.git", from: "3.0.0"),
-        .package(url: "https://github.com/apple/swift-nio-extras.git", .upToNextMinor(from: "0.1.0"))
+        .package(url: "https://github.com/vapor/vapor.git", from: "3.0.0")
     ],
     targets: [
         .target(
             name: "Jobs",
-            dependencies: ["Vapor", "NIOExtras"]),
+            dependencies: ["Vapor"]),
         .testTarget(
             name: "JobsTests",
             dependencies: ["Jobs"]),
