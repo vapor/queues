@@ -34,7 +34,7 @@ public protocol JobsPersistenceLayer: Service {
     func completed(key: String, jobString: String) -> EventLoopFuture<Void>
     
     
-    /// Returns the processing version of the key, used for
+    /// Returns the processing version of the key
     ///
     /// - Parameter key: The base key
     /// - Returns: The processing key
