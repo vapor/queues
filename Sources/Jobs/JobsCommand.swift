@@ -1,7 +1,6 @@
 import Foundation
 import Vapor
 import NIO
-import NIOExtras
 
 /// The command to start the Queue job
 public struct JobsCommand: Command {
@@ -16,54 +15,87 @@ public struct JobsCommand: Command {
         ]
     }
     
+    private var isShuttingDown: Bool {
+        get {
+            self._lock.lock()
+            defer { self._lock.unlock() }
+            return self._isShuttingDown
+        }
+        set {
+            self._lock.lock()
+            defer { self._lock.unlock() }
+            self._isShuttingDown = newValue
+        }
+    }
+    
+    private var _isShuttingDown: Bool = false
+    private var _lock: NSLock
+    
     /// See `Command`.`help`
     public var help: [String] = ["Runs queued worker jobs"]
     
     /// Creates a new `JobCommand`
-    public init() { }
+    public init() {
+        _lock = NSLock()
+    }
     
     /// See `Command`.`run(using:)`
     public func run(using context: CommandContext) throws -> EventLoopFuture<Void> {
         let elg = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
         
         //SIGTERM shutdown handler
-        let quiesce = ServerQuiescingHelper(group: elg)
         let signalQueue = DispatchQueue(label: "vapor.jobs.command.SignalHandlingQueue")
         let signalSource = DispatchSource.makeSignalSource(signal: SIGTERM, queue: signalQueue)
-        let fullyShutdownPromise: EventLoopPromise<Void> = elg.next().newPromise()
         signalSource.setEventHandler {
             print("SIGTERM RECEIVED")
             signalSource.cancel()
-            quiesce.initiateShutdown(promise: fullyShutdownPromise)
         }
         signal(SIGTERM, SIG_IGN)
         signalSource.resume()
         
-        var repeatedTasks: [RepeatedTask] = []
+        var shutdownPromises: [EventLoopPromise<Void>] = []
         for eventLoop in elg.makeIterator()! {
             let sub = context.container.subContainer(on: eventLoop)
             let console = context.console
             let queueName = context.options["queue"] ?? QueueType.default.name
+            let shutdownPromise: EventLoopPromise<Void> = eventLoop.newPromise()
             
             eventLoop.submit {
-                repeatedTasks.append(try self.setupTask(eventLoop: eventLoop, container: sub, queueName: queueName, console: console))
+                shutdownPromises.append(shutdownPromise)
+                try self.setupTask(eventLoop: eventLoop,
+                                   container: sub,
+                                   queueName: queueName,
+                                   console: console,
+                                   promise: shutdownPromise)
             }.catch {
                 console.error("Could not boot EventLoop: \($0)")
             }
         }
         
-        return fullyShutdownPromise.futureResult.map { repeatedTasks.forEach { $0.cancel() } }
+        return .andAll(shutdownPromises.map { $0.futureResult }, eventLoop: elg.next())
     }
     
-    private func setupTask(eventLoop: EventLoop, container: SubContainer, queueName: String, console: Console) throws -> RepeatedTask {
+    private func setupTask(eventLoop: EventLoop,
+                           container: SubContainer,
+                           queueName: String,
+                           console: Console,
+                           promise: EventLoopPromise<Void>) throws
+    {
         let queue = QueueType(name: queueName)
         let queueService = try container.make(QueueService.self)
         let jobContext = (try? container.make(JobContext.self)) ?? JobContext()
         let key = queue.makeKey(with: queueService.persistenceKey)
         let config = try container.make(JobsConfig.self)
         
-        let task = eventLoop.scheduleRepeatedTask(initialDelay: .seconds(0), delay: queueService.refreshInterval) { task -> EventLoopFuture<Void> in
+        _ = eventLoop.scheduleRepeatedTask(initialDelay: .seconds(0), delay: queueService.refreshInterval) { task -> EventLoopFuture<Void> in
             return queueService.persistenceLayer.get(key: key, jobsConfig: config).flatMap { jobData in
+                //Check if shutting down
+                
+                if self.isShuttingDown {
+                    task.cancel()
+                    promise.succeed()
+                }
+                
                 //No job found, go to the next iteration
                 guard let jobData = jobData else { return eventLoop.future() }
                 let job = jobData.data
@@ -94,8 +126,6 @@ public struct JobsCommand: Command {
                 }
             }
         }
-        
-        return task
     }
     
     /// Returns the first time a given future succeeds and is under the `tries`
