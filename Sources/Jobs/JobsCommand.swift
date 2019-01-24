@@ -54,16 +54,6 @@ public class JobsCommand: Command {
         signal(SIGTERM, SIG_IGN)
         termSignalSource.resume()
         
-        //SIGINT
-        let intSignalSource = DispatchSource.makeSignalSource(signal: SIGINT, queue: signalQueue)
-        intSignalSource.setEventHandler {
-            print("SIGTERM RECEIVED")
-            self.isShuttingDown = true
-            intSignalSource.cancel()
-        }
-        signal(SIGINT, SIG_IGN)
-        intSignalSource.resume()
-        
         var shutdownPromises: [EventLoopPromise<Void>] = []
         for eventLoop in elg.makeIterator()! {
             let sub = context.container.subContainer(on: eventLoop)
