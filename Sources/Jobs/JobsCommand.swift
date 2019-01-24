@@ -123,7 +123,7 @@ public class JobsCommand: Command {
                         return queueService.persistenceLayer.completed(key: key, jobString: jobString)
                     }
                     .catchFlatMap { error in
-                        console.error("Job error: \(error)", newLine: true)
+                        console.error("[\(jobData.id)] Error: \(error)", newLine: true)
                         
                         guard let jobString = job.stringValue(key: key, maxRetryCount: jobData.maxRetryCount, id: jobData.id) else {
                             return eventLoop.future(error: Abort(.internalServerError))
