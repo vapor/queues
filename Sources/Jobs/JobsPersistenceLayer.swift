@@ -6,7 +6,7 @@ import Vapor
 public protocol JobsPersistenceLayer: Service {
     
     /// The event loop to be run on
-    var eventLoop: EventLoop { get set }
+    var eventLoop: EventLoop { get }
     
     /// Returns a `JobData` wrapper for a specified key.
     ///
