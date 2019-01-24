@@ -42,17 +42,27 @@ public class JobsCommand: Command {
     /// See `Command`.`run(using:)`
     public func run(using context: CommandContext) throws -> EventLoopFuture<Void> {
         let elg = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
-        
-        //SIGTERM shutdown handler
         let signalQueue = DispatchQueue(label: "vapor.jobs.command.SignalHandlingQueue")
-        let signalSource = DispatchSource.makeSignalSource(signal: SIGTERM, queue: signalQueue)
-        signalSource.setEventHandler {
+        
+        //SIGTERM
+        let termSignalSource = DispatchSource.makeSignalSource(signal: SIGTERM, queue: signalQueue)
+        termSignalSource.setEventHandler {
             print("SIGTERM RECEIVED")
             self.isShuttingDown = true
-            signalSource.cancel()
+            termSignalSource.cancel()
         }
         signal(SIGTERM, SIG_IGN)
-        signalSource.resume()
+        termSignalSource.resume()
+        
+        //SIGINT
+        let intSignalSource = DispatchSource.makeSignalSource(signal: SIGINT, queue: signalQueue)
+        intSignalSource.setEventHandler {
+            print("SIGTERM RECEIVED")
+            self.isShuttingDown = true
+            intSignalSource.cancel()
+        }
+        signal(SIGINT, SIG_IGN)
+        intSignalSource.resume()
         
         var shutdownPromises: [EventLoopPromise<Void>] = []
         for eventLoop in elg.makeIterator()! {
