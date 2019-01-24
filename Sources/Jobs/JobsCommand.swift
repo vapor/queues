@@ -47,12 +47,22 @@ public class JobsCommand: Command {
         //SIGTERM
         let termSignalSource = DispatchSource.makeSignalSource(signal: SIGTERM, queue: signalQueue)
         termSignalSource.setEventHandler {
-            print("SIGTERM RECEIVED")
+            print("Shutting down remaining jobs.")
             self.isShuttingDown = true
             termSignalSource.cancel()
         }
         signal(SIGTERM, SIG_IGN)
         termSignalSource.resume()
+        
+        //SIGINT
+        let intSignalSource = DispatchSource.makeSignalSource(signal: SIGINT, queue: signalQueue)
+        intSignalSource.setEventHandler {
+            print("Shutting down remaining jobs.")
+            self.isShuttingDown = true
+            intSignalSource.cancel()
+        }
+        signal(SIGINT, SIG_IGN)
+        intSignalSource.resume()
         
         var shutdownPromises: [EventLoopPromise<Void>] = []
         for eventLoop in elg.makeIterator()! {
@@ -101,12 +111,12 @@ public class JobsCommand: Command {
                 //No job found, go to the next iteration
                 guard let jobData = jobData else { return eventLoop.future() }
                 let job = jobData.data
-                console.info("Dequeing Job", newLine: true)
+                console.info("Dequeing Job \(jobData.id)", newLine: true)
                 
                 let futureJob = job.dequeue(context: jobContext, worker: eventLoop)
                 return self.firstFutureToSucceed(future: futureJob, tries: jobData.maxRetryCount, on: eventLoop)
                     .flatMap { _ in
-                        guard let jobString = job.stringValue(key: key, maxRetryCount: jobData.maxRetryCount) else {
+                        guard let jobString = job.stringValue(key: key, maxRetryCount: jobData.maxRetryCount, id: jobData.id) else {
                             return eventLoop.future(error: Abort(.internalServerError))
                         }
                         
@@ -115,7 +125,7 @@ public class JobsCommand: Command {
                     .catchFlatMap { error in
                         console.error("Job error: \(error)", newLine: true)
                         
-                        guard let jobString = job.stringValue(key: key, maxRetryCount: jobData.maxRetryCount) else {
+                        guard let jobString = job.stringValue(key: key, maxRetryCount: jobData.maxRetryCount, id: jobData.id) else {
                             return eventLoop.future(error: Abort(.internalServerError))
                         }
                         

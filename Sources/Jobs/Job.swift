@@ -34,9 +34,10 @@ extension Job {
     /// - Parameters:
     ///   - key: The persistence key specified by the end-user
     ///   - maxRetryCount: The maxRetryCount for the job
+    ///   - id: A unique ID for the job
     /// - Returns: A string representing the job. Will be `nil` if there is an encoding error.
-    public func stringValue(key: String, maxRetryCount: Int) -> String? {
-        let jobData = JobData(key: key, data: self, maxRetryCount: maxRetryCount)
+    public func stringValue(key: String, maxRetryCount: Int, id: String) -> String? {
+        let jobData = JobData(key: key, data: self, maxRetryCount: maxRetryCount, id: id)
         guard let data = try? JSONEncoder().encode(jobData) else { return nil }
         guard let jobString = String(data: data, encoding: .utf8) else { return nil }
         return jobString

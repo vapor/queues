@@ -13,16 +13,20 @@ public struct JobData: Encodable {
     /// The maxRetryCount for the `Job`.
     var maxRetryCount: Int
     
+    /// A unique ID for the job
+    var id: String
+    
     /// Creates a new `JobData` holding object
     ///
     /// - Parameters:
     ///   - key: See `key`
     ///   - data: See `data`
     ///   - maxRetryCount: See `maxRetryCount`
-    public init(key: String, data: Job, maxRetryCount: Int) {
+    public init(key: String, data: Job, maxRetryCount: Int, id: String) {
         self.key = key
         self.data = data
         self.maxRetryCount = maxRetryCount
+        self.id = id
     }
     
     /// Coding keys for the `JobData` encodable object
@@ -32,7 +36,7 @@ public struct JobData: Encodable {
     /// - data: See `data`
     /// - maxRetryCount: See `maxRetryCount`
     enum CodingKeys: String, CodingKey {
-        case key, type, data, maxRetryCount
+        case key, type, data, maxRetryCount, id
     }
     
     /// Encodes a new `JobData` object from a given `Encoder`.
@@ -42,6 +46,7 @@ public struct JobData: Encodable {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(self.key, forKey: .key)
         try container.encode(self.maxRetryCount, forKey: .maxRetryCount)
+        try container.encode(self.id, forKey: .id)
         let typeString = String(describing: type(of: self.data))
         try container.encode(typeString, forKey: .type)
         

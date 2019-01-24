@@ -31,17 +31,18 @@ public struct JobsConfig: Service {
     /// - Returns: A `JobData` container
     public func decode(from decoder: Decoder) throws -> JobData? {
         enum Keys: String, CodingKey {
-            case key, type, data, maxRetryCount
+            case key, type, data, maxRetryCount, id
         }
         
         let container = try decoder.container(keyedBy: Keys.self)
         let type = try container.decode(String.self, forKey: .type)
         let maxRetryCount = try container.decode(Int.self, forKey: .maxRetryCount)
         let key = try container.decode(String.self, forKey: .key)
+        let id = try container.decode(String.self, forKey: .id)
         
         guard let jobType = storage[type] else { return nil }
         let job = try jobType(container.superDecoder(forKey: .data))
         
-        return JobData(key: key, data: job, maxRetryCount: maxRetryCount)
+        return JobData(key: key, data: job, maxRetryCount: maxRetryCount, id: id)
     }
 }
