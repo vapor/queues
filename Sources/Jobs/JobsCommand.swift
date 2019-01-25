@@ -41,6 +41,8 @@ public class JobsCommand: Command {
     
     /// See `Command`.`run(using:)`
     public func run(using context: CommandContext) throws -> EventLoopFuture<Void> {
+        context.console.info("Starting Jobs worker")
+
         let elg = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
         let signalQueue = DispatchQueue(label: "vapor.jobs.command.SignalHandlingQueue")
         
@@ -111,19 +113,20 @@ public class JobsCommand: Command {
                 //No job found, go to the next iteration
                 guard let jobData = jobData else { return eventLoop.future() }
                 let job = jobData.data
-                console.info("Dequeing Job \(jobData.id)", newLine: true)
+                console.info("Dequeing Job job_id=[\(jobData.id)]", newLine: true)
                 
                 let futureJob = job.dequeue(context: jobContext, worker: eventLoop)
                 return self.firstFutureToSucceed(future: futureJob, tries: jobData.maxRetryCount, on: eventLoop)
                     .flatMap { _ in
                         guard let jobString = job.stringValue(key: key, maxRetryCount: jobData.maxRetryCount, id: jobData.id) else {
+                            console.error("Error: Could not get string value of Job. job_id=[\(jobData.id)]", newLine: true)
                             return eventLoop.future(error: Abort(.internalServerError))
                         }
                         
                         return queueService.persistenceLayer.completed(key: key, jobString: jobString)
                     }
                     .catchFlatMap { error in
-                        console.error("[\(jobData.id)] Error: \(error)", newLine: true)
+                        console.error("Error: \(error) job_id=[\(jobData.id)]", newLine: true)
                         
                         guard let jobString = job.stringValue(key: key, maxRetryCount: jobData.maxRetryCount, id: jobData.id) else {
                             return eventLoop.future(error: Abort(.internalServerError))
