@@ -14,7 +14,7 @@ public protocol Job: AnyJob {
     ///   - context: The JobContext. Can be used to store and retrieve services
     ///   - data: The `JobData` for this handler
     /// - Returns: A future `Void` value used to signify completion
-    func dequeue(context: JobContext, data: Data) -> EventLoopFuture<Void>
+    func dequeue(_ context: JobContext, _ data: Data) -> EventLoopFuture<Void>
 
     
     /// Called when there is an error at any stage of the Job's execution.
@@ -23,7 +23,7 @@ public protocol Job: AnyJob {
     ///   - context: The JobContext. Can be used to store and retrieve services
     ///   - error: The error returned by the job.
     /// - Returns: A future `Void` value used to signify completion
-    func error(context: JobContext, error: Error) -> EventLoopFuture<Void>
+    func error(_ context: JobContext, _ error: Error) -> EventLoopFuture<Void>
 }
 
 extension Job {
@@ -34,15 +34,15 @@ extension Job {
     }
     
     /// See `Job.error`
-    func error(context: JobContext, error: Error) -> EventLoopFuture<Void> {
+    func error(_ context: JobContext, _ error: Error) -> EventLoopFuture<Void> {
         return context.eventLoop.future()
     }
     
     /// See `AnyJob.anyDequeue`
-    public func anyDequeue(context: JobContext, storage: JobStorage) -> EventLoopFuture<Void> {
+    public func anyDequeue(_ context: JobContext, _ storage: JobStorage) -> EventLoopFuture<Void> {
         do {
             let data = try JSONDecoder().decode(Data.self, from: storage.data)
-            return self.dequeue(context: context, data: data)
+            return self.dequeue(context, data)
         } catch {
             return context.eventLoop.future(error: error)
         }

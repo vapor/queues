@@ -13,7 +13,7 @@ public protocol AnyJob {
     ///   - context: The context for the job
     ///   - storage: The `JobStorage` metadata object
     /// - Returns: A future void, signifying completion
-    func anyDequeue(context: JobContext, storage: JobStorage) -> EventLoopFuture<Void>
+    func anyDequeue(_ context: JobContext, _ storage: JobStorage) -> EventLoopFuture<Void>
     
     /// Handles errors thrown from `anyDequeue`
     ///
@@ -21,5 +21,5 @@ public protocol AnyJob {
     ///   - context: The context for the job
     ///   - error: The error thrown
     /// - Returns: A future void, signifying completion
-    func error(context: JobContext, error: Error) -> EventLoopFuture<Void>
+    func error(_ context: JobContext, _ error: Error) -> EventLoopFuture<Void>
 }
