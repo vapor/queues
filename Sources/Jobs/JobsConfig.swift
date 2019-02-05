@@ -19,7 +19,7 @@ public struct JobsConfig: Service {
     /// This must be called on all `Job` objects before they can be run in a queue.
     ///
     /// - Parameter job: The `Job` to add.
-    mutating public func add(_ job: AnyJob) throws {
+    mutating public func add(_ job: AnyJob) {
         storage[String(describing: job)] = job
     }
     
