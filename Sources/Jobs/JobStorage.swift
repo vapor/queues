@@ -29,12 +29,8 @@ public struct JobStorage: Codable {
     
     /// Returns a string representation of the JobStorage object
     ///
-    /// - Parameters:
-    ///   - key: See `JobStorage`.`key`
-    ///   - maxRetryCount: See `JobStorage`.`maxRetryCount`
-    ///   - id: See `JobStorage`.`id`
     /// - Returns: The string representation
-    public func stringValue(key: String, maxRetryCount: Int, id: String) -> String? {
+    public func stringValue() -> String? {
         guard let jobStorageData = try? JSONEncoder().encode(self) else { return nil }
         guard let jobString = String(data: jobStorageData, encoding: .utf8) else { return nil }
         return jobString
