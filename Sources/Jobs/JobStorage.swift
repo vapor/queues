@@ -18,12 +18,7 @@ public struct JobStorage: Encodable {
     /// The name of the `Job`
     var jobName: String
     
-    /// Creates a new `JobData` holding object
-    ///
-    /// - Parameters:
-    ///   - key: See `key`
-    ///   - data: See `data`
-    ///   - maxRetryCount: See `maxRetryCount`
+    /// Creates a new `JobStorage` holding object
     public init(key: String, data: Data, maxRetryCount: Int, id: String, jobName: String) {
         self.key = key
         self.data = data
@@ -57,6 +52,13 @@ public struct JobStorage: Encodable {
         try self.data.encode(to: superEncoder)
     }
     
+    /// Returns a string representation of the JobStorage object
+    ///
+    /// - Parameters:
+    ///   - key: See `JobStorage`.`key`
+    ///   - maxRetryCount: See `JobStorage`.`maxRetryCount`
+    ///   - id: See `JobStorage`.`id`
+    /// - Returns: The string representation
     public func stringValue(key: String, maxRetryCount: Int, id: String) -> String? {
         guard let jobStorageData = try? JSONEncoder().encode(self) else { return nil }
         guard let jobString = String(data: jobStorageData, encoding: .utf8) else { return nil }

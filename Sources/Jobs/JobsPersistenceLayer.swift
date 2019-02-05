@@ -12,7 +12,6 @@ public protocol JobsPersistenceLayer: Service {
     ///
     /// - Parameters:
     ///   - key: The key that the data is stored under.
-    ///   - jobsConfig: The `JobsConfig` registered via services
     /// - Returns: The retrieved `JobStorage`, if it exists.
     func get(key: String) -> EventLoopFuture<JobStorage?>
     
@@ -20,9 +19,9 @@ public protocol JobsPersistenceLayer: Service {
     ///
     /// - Parameters:
     ///   - key: The key to add the `Job` under.
-    ///   - job: The `Job` to add.
+    ///   - jobStorage: The `JobStorage` object to persist.
     /// - Returns: A future `Void` value used to signify completion
-    func set(key: String, job: JobStorage) -> EventLoopFuture<Void>
+    func set(key: String, jobStorage: JobStorage) -> EventLoopFuture<Void>
     
     /// Called upon completion of the `Job`. Should be used for cleanup.
     ///

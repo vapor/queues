@@ -1,7 +1,7 @@
 import Foundation
 
 /// A specific queue that jobs are run on.
-public struct QueueType {
+public struct QueueName {
     
     /// The name of the queue
     public let name: String
@@ -23,7 +23,7 @@ public struct QueueType {
 }
 
 /// Create a custom queue type by extending `QueueType` and adding a static variable with the custom name.
-extension QueueType {
+extension QueueName {
     /// The default queue that jobs are run on
-    public static let `default` = QueueType(name: "default")
+    public static let `default` = QueueName(name: "default")
 }

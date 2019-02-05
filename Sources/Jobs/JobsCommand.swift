@@ -70,7 +70,7 @@ public class JobsCommand: Command {
         for eventLoop in elg.makeIterator()! {
             let sub = context.container.subContainer(on: eventLoop)
             let console = context.console
-            let queueName = context.options["queue"] ?? QueueType.default.name
+            let queueName = context.options["queue"] ?? QueueName.default.name
             let shutdownPromise: EventLoopPromise<Void> = eventLoop.newPromise()
             
             shutdownPromises.append(shutdownPromise)
@@ -95,7 +95,7 @@ public class JobsCommand: Command {
                            console: Console,
                            promise: EventLoopPromise<Void>) throws
     {
-        let queue = QueueType(name: queueName)
+        let queue = QueueName(name: queueName)
         let queueService = try container.make(QueueService.self)
         let jobContext = try container.make(JobContext.self)
         let key = queue.makeKey(with: queueService.persistenceKey)
