@@ -14,7 +14,7 @@ public protocol JobData: Codable {
     static var jobName: String { get }
 }
 
-extension JobData {
+public extension JobData {
     
     /// See `JobData.jobName`
     static var jobName: String {

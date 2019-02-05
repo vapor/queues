@@ -26,7 +26,7 @@ public protocol Job: AnyJob {
     func error(_ context: JobContext, _ error: Error) -> EventLoopFuture<Void>
 }
 
-extension Job {
+public extension Job {
     
     /// The jobName of the Job
     static var jobName: String {
