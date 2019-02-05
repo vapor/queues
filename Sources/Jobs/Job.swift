@@ -28,8 +28,8 @@ public protocol Job: AnyJob {
 
 extension Job {
     
-    /// The key of the Job
-    static var key: String {
+    /// The jobName of the Job
+    static var jobName: String {
         return Data.jobName
     }
     
