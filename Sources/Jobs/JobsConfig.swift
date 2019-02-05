@@ -5,10 +5,10 @@ import Vapor
 public struct JobsConfig: Service {
     
     /// Decoder type
-    internal typealias JobTypeDecoder = (Decoder) throws -> Job
+    internal typealias JobTypeDecoder = (Decoder) throws -> JobData
     
     /// Type storage
-    internal var storage: [String: JobTypeDecoder]
+    internal var storage: [String: AnyJob]
     
     /// Creates an empty `JobsConfig`
     public init() {
@@ -19,30 +19,16 @@ public struct JobsConfig: Service {
     /// This must be called on all `Job` objects before they can be run in a queue.
     ///
     /// - Parameter job: The `Job` to add.
-    mutating public func add<J: Job>(_ job: J.Type) {
-        storage[String(describing: job)] = J.init(from: )
+    mutating public func add(_ job: AnyJob) throws {
+        storage[String(describing: job)] = job
     }
     
     
-    /// Decodes a `JobData` container from a given decoder.
+    /// Returns the `AnyJob` for the string it was registered under
     ///
-    /// - Parameters:
-    ///   - decoder: The decoder to use
-    /// - Returns: A `JobData` container
-    public func decode(from decoder: Decoder) throws -> JobData? {
-        enum Keys: String, CodingKey {
-            case key, type, data, maxRetryCount, id
-        }
-        
-        let container = try decoder.container(keyedBy: Keys.self)
-        let type = try container.decode(String.self, forKey: .type)
-        let maxRetryCount = try container.decode(Int.self, forKey: .maxRetryCount)
-        let key = try container.decode(String.self, forKey: .key)
-        let id = try container.decode(String.self, forKey: .id)
-        
-        guard let jobType = storage[type] else { return nil }
-        let job = try jobType(container.superDecoder(forKey: .data))
-        
-        return JobData(key: key, data: job, maxRetryCount: maxRetryCount, id: id)
+    /// - Parameter key: The key of the job
+    /// - Returns: The `AnyJob`
+    func make(for key: String) -> AnyJob? {
+        return storage[key]
     }
 }

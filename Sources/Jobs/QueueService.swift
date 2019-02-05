@@ -20,10 +20,14 @@ public struct QueueService: Service {
     ///   - maxRetryCount: The number of retries to attempt upon error before calling `Job`.`error()`
     ///   - queue: The queue to run this job on
     /// - Returns: A future `Void` value used to signify completion
-    public func dispatch<J: Job>(job: J, maxRetryCount: Int = 0, queue: QueueType = .default) -> EventLoopFuture<Void> {
-        return persistenceLayer.set(key: queue.makeKey(with: persistenceKey),
-                                    job: job,
-                                    maxRetryCount: maxRetryCount)
-            .transform(to: ())
+    public func dispatch<J: JobData>(jobData: J, maxRetryCount: Int = 0, queue: QueueType = .default) throws -> EventLoopFuture<Void> {
+        let data = try JSONEncoder().encode(jobData)
+        let jobStorage = JobStorage(key: persistenceKey,
+                                    data: data,
+                                    maxRetryCount: maxRetryCount,
+                                    id: UUID().uuidString,
+                                    jobName: J.jobName)
+        
+        return persistenceLayer.set(key: queue.makeKey(with: persistenceKey), job: jobStorage).transform(to: ())
     }
 }

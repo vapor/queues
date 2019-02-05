@@ -1,9 +1,12 @@
 import NIO
 import Foundation
-
+import Vapor
 
 /// A task that can be queued for future execution.
-public protocol Job: Codable {
+public protocol Job: AnyJob {
+    
+    /// The data associated with a job
+    associatedtype Data: JobData
     
     /// Called when it's this Job's turn to be dequeued.
     ///
@@ -11,8 +14,8 @@ public protocol Job: Codable {
     ///   - context: The JobContext. Can be used to store and retrieve services
     ///   - worker: An `EventLoopGroup` that can be used to generate future values
     /// - Returns: A future `Void` value used to signify completion
-    func dequeue(context: JobContext, worker: EventLoopGroup) -> EventLoopFuture<Void>
-    
+    func dequeue(context: JobContext, data: Foundation.Data) -> EventLoopFuture<Void>
+
     
     /// Called when there is an error at any stage of the Job's execution.
     ///
@@ -21,25 +24,23 @@ public protocol Job: Codable {
     ///   - error: The error returned by the job.
     ///   - worker: An `EventLoopGroup` that can be used to generate future values
     /// - Returns: A future `Void` value used to signify completion
-    func error(context: JobContext, error: Error, worker: EventLoopGroup) -> EventLoopFuture<Void>
+    func error(context: JobContext, error: Error) -> EventLoopFuture<Void>
 }
 
 extension Job {
-    public func error(context: JobContext, error: Error, worker: EventLoopGroup) -> EventLoopFuture<Void> {
-        return worker.future()
+    static var key: String {
+        return Data.jobName
     }
     
-    /// Generates a string value from a `Job` using `JobData` and `JSONEncoder`
-    ///
-    /// - Parameters:
-    ///   - key: The persistence key specified by the end-user
-    ///   - maxRetryCount: The maxRetryCount for the job
-    ///   - id: A unique ID for the job
-    /// - Returns: A string representing the job. Will be `nil` if there is an encoding error.
-    public func stringValue(key: String, maxRetryCount: Int, id: String) -> String? {
-        let jobData = JobData(key: key, data: self, maxRetryCount: maxRetryCount, id: id)
-        guard let data = try? JSONEncoder().encode(jobData) else { return nil }
-        guard let jobString = String(data: data, encoding: .utf8) else { return nil }
-        return jobString
+    func error(context: JobContext, error: Error) -> EventLoopFuture<Void> {
+        return context.eventLoop.future()
+    }
+    
+    public func anyDequeue(context: JobContext, storage: JobStorage) -> EventLoopFuture<Void> {
+        guard let data = try? JSONDecoder().decode(Foundation.Data.self, from: storage.data) else {
+            return context.eventLoop.future(error: Abort(.internalServerError, reason: "Could not convert data"))
+        }
+        
+        return self.dequeue(context: context, data: data)
     }
 }

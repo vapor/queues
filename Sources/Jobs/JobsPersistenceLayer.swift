@@ -13,26 +13,24 @@ public protocol JobsPersistenceLayer: Service {
     /// - Parameters:
     ///   - key: The key that the data is stored under.
     ///   - jobsConfig: The `JobsConfig` registered via services
-    /// - Returns: The retrieved `JobData`, if it exists.
-    func get(key: String, jobsConfig: JobsConfig) -> EventLoopFuture<JobData?>
+    /// - Returns: The retrieved `JobStorage`, if it exists.
+    func get(key: String) -> EventLoopFuture<JobStorage?>
     
     /// Handles adding a `Job` to the persistence layer for future processing.
     ///
     /// - Parameters:
     ///   - key: The key to add the `Job` under.
     ///   - job: The `Job` to add.
-    ///   - maxRetryCount: Maximum number of times this job should be retried before failing.
     /// - Returns: A future `Void` value used to signify completion
-    func set<J: Job>(key: String, job: J, maxRetryCount: Int) -> EventLoopFuture<Void>
+    func set(key: String, job: JobStorage) -> EventLoopFuture<Void>
     
     /// Called upon completion of the `Job`. Should be used for cleanup.
     ///
     /// - Parameters:
     ///   - key: The key that the `Job` was stored under
-    ///   - jobString: A string representation of the `Job`
+    ///   - jobStorage: The jobStorage holding the `Job` that was completed
     /// - Returns: A future `Void` value used to signify completion
-    func completed(key: String, jobString: String) -> EventLoopFuture<Void>
-    
+    func completed(key: String, jobStorage: JobStorage) -> EventLoopFuture<Void>
     
     /// Returns the processing version of the key
     ///

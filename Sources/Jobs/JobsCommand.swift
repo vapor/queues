@@ -97,12 +97,12 @@ public class JobsCommand: Command {
     {
         let queue = QueueType(name: queueName)
         let queueService = try container.make(QueueService.self)
-        let jobContext = (try? container.make(JobContext.self)) ?? JobContext()
+        let jobContext = try container.make(JobContext.self)
         let key = queue.makeKey(with: queueService.persistenceKey)
         let config = try container.make(JobsConfig.self)
         
         _ = eventLoop.scheduleRepeatedTask(initialDelay: .seconds(0), delay: queueService.refreshInterval) { task -> EventLoopFuture<Void> in
-            return queueService.persistenceLayer.get(key: key, jobsConfig: config).flatMap { jobData in
+            return queueService.persistenceLayer.get(key: key).flatMap { jobStorage in
                 //Check if shutting down
                 
                 if self.isShuttingDown {
@@ -111,33 +111,25 @@ public class JobsCommand: Command {
                 }
                 
                 //No job found, go to the next iteration
-                guard let jobData = jobData else { return eventLoop.future() }
-                let job = jobData.data
-                console.info("Dequeing Job job_id=[\(jobData.id)]", newLine: true)
+                guard let jobStorage = jobStorage else { return eventLoop.future() }
+                guard let job = config.make(for: jobStorage.jobName) else {
+                    return eventLoop.future(error: Abort(.internalServerError, reason: "Please register \(jobStorage.jobName)"))
+                }
                 
-                let futureJob = job.dequeue(context: jobContext, worker: eventLoop)
-                return self.firstFutureToSucceed(future: futureJob, tries: jobData.maxRetryCount, on: eventLoop)
-                    .flatMap { _ in
-                        guard let jobString = job.stringValue(key: key, maxRetryCount: jobData.maxRetryCount, id: jobData.id) else {
-                            console.error("Error: Could not get string value of Job. job_id=[\(jobData.id)]", newLine: true)
-                            return eventLoop.future(error: Abort(.internalServerError))
-                        }
-                        
-                        return queueService.persistenceLayer.completed(key: key, jobString: jobString)
+                console.info("Dequeing Job job_id=[\(jobStorage.id)]", newLine: true)
+                
+                let futureJob = job.anyDequeue(context: jobContext, storage: jobStorage)
+                return self.firstFutureToSucceed(future: futureJob, tries: jobStorage.maxRetryCount, on: eventLoop).flatMap { _ in
+                    return queueService.persistenceLayer.completed(key: key, jobStorage: jobStorage)
+                }.catchFlatMap { error in
+                    console.error("Error: \(error) job_id=[\(jobStorage.id)]", newLine: true)
+                    
+                    return queueService
+                        .persistenceLayer
+                        .completed(key: key, jobStorage: jobStorage)
+                        .flatMap { _ in
+                            return job.error(context: jobContext, error: error)
                     }
-                    .catchFlatMap { error in
-                        console.error("Error: \(error) job_id=[\(jobData.id)]", newLine: true)
-                        
-                        guard let jobString = job.stringValue(key: key, maxRetryCount: jobData.maxRetryCount, id: jobData.id) else {
-                            return eventLoop.future(error: Abort(.internalServerError))
-                        }
-                        
-                        return queueService
-                            .persistenceLayer
-                            .completed(key: key, jobString: jobString)
-                            .flatMap { _ in
-                                return job.error(context: jobContext, error: error, worker: eventLoop)
-                        }
                 }
             }
         }
