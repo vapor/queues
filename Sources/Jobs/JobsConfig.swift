@@ -4,9 +4,6 @@ import Vapor
 /// A `Service` to configure `Job`s
 public struct JobsConfig: Service {
     
-    /// Decoder type
-    internal typealias JobTypeDecoder = (Decoder) throws -> JobData
-    
     /// Type storage
     internal var storage: [String: AnyJob]
     
@@ -19,8 +16,8 @@ public struct JobsConfig: Service {
     /// This must be called on all `Job` objects before they can be run in a queue.
     ///
     /// - Parameter job: The `Job` to add.
-    mutating public func add(_ job: AnyJob) {
-        storage[String(describing: job)] = job
+    mutating public func add<J: Job>(_ job: J) {
+        storage[String(describing: J.Data.self)] = job
     }
     
     
