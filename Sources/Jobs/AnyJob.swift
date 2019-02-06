@@ -20,6 +20,7 @@ public protocol AnyJob {
     /// - Parameters:
     ///   - context: The context for the job
     ///   - error: The error thrown
+    ///   - storage: The JobStorage
     /// - Returns: A future void, signifying completion
-    func error(_ context: JobContext, _ error: Error) -> EventLoopFuture<Void>
+    func error(_ context: JobContext, _ error: Error, _ storage: JobStorage) -> EventLoopFuture<Void>
 }

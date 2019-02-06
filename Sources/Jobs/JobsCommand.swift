@@ -128,7 +128,7 @@ public class JobsCommand: Command {
                         .persistenceLayer
                         .completed(key: key, jobStorage: jobStorage)
                         .flatMap { _ in
-                            return job.error(jobContext, error)
+                            return job.error(jobContext, error, jobStorage)
                     }
                 }
             }
