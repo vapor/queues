@@ -13,7 +13,7 @@ public struct JobStorage: Codable {
     var maxRetryCount: Int
     
     /// A unique ID for the job
-    var id: String
+    public internal(set) var id: String
     
     /// The name of the `Job`
     var jobName: String
