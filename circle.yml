@@ -8,7 +8,7 @@ jobs:
       - checkout
       - run: swift build
       - run: swift test
-  linux-redis:
+  linux-redis-driver:
     docker:
       - image: vapor/swift:5.0
       - image: redis:5.0
