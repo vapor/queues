@@ -1,15 +1,12 @@
 import XCTest
-@testable import Jobs
+import Jobs
 
 final class JobsTests: XCTestCase {
-    func testExample() {
-        // This is an example of a functional test case.
-        // Use XCTAssert and related functions to verify your tests produce the correct
-        // results.
-        XCTAssertEqual(Jobs().text, "Hello, World!")
+    func testStub() {
+        // nothing here yet
     }
 
     static var allTests = [
-        ("testExample", testExample),
+        ("testStub", testStub),
     ]
 }
