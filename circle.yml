@@ -1,0 +1,41 @@
+version: 2
+
+jobs:
+  linux:
+    docker:
+      - image: swift:4.2
+    steps:
+      - checkout
+      - run: swift build
+      - run: swift test
+  linux-redis-driver:
+    docker:
+      - image: swift:4.2
+      - image: redis:5.0
+    steps:
+      - run: 
+          command: git clone -b master https://github.com/vapor-community/jobs-redis-driver.git
+          working_directory: ~/
+      - run:
+          command: swift package edit jobs --revision $CIRCLE_SHA1
+          working_directory: ~/jobs-redis-driver
+      - run: 
+          command: swift test
+          working_directory: ~/jobs-redis-driver
+
+  linux-release:
+    docker:
+      - image: swift:4.2
+    steps:
+      - checkout
+      - run: swift build
+      - run: swift test
+
+workflows:
+  version: 2
+  tests:
+    jobs:
+      - linux
+      - linux-redis-driver
+      - linux-release
+
