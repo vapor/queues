@@ -5,6 +5,14 @@ extension Date {
     func years(from date: Date) -> Int? {
         return Calendar.current.dateComponents([.year], from: date, to: self).year ?? nil
     }
+
+    func quarters(from date: Date) -> Int? {
+        // bug in quarter on ios12
+        //return Calendar.current.dateComponents([.quarter], from: date, to: self).quarter ?? nil
+        let formatter = DateFormatter()
+        formatter.dateFormat = "Q"
+        return Int(formatter.string(from: date))
+    }
     /// Returns the amount of months from another date
     func months(from date: Date) -> Int? {
         return Calendar.current.dateComponents([.month], from: date, to: self).month ?? nil

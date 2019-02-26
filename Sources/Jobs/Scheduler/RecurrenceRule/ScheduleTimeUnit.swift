@@ -7,7 +7,7 @@
 
 import Foundation
 
-public enum ScheduleTimeUnit {
+public enum ScheduleTimeUnit: CaseIterable {
     case second
     case minute
     case hour
@@ -18,11 +18,14 @@ public enum ScheduleTimeUnit {
 }
 
 public enum RecurrenceRuleTimeUnit: CaseIterable {
-    case year
-    case month
-    case dayOfMonth
-    case dayOfWeek
-    case hour
-    case minute
     case second
+    case minute
+    case hour
+    case dayOfWeek
+    case dayOfMonth
+    case weekOfMonth
+    case weekOfYear
+    case month
+    case quarter
+    case year
 }
