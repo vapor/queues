@@ -1,45 +1,59 @@
 import NIO
 import Foundation
-
+import Vapor
 
 /// A task that can be queued for future execution.
-public protocol Job: Codable {
+public protocol Job: AnyJob {
+    
+    /// The data associated with a job
+    associatedtype Data: JobData
     
     /// Called when it's this Job's turn to be dequeued.
     ///
     /// - Parameters:
     ///   - context: The JobContext. Can be used to store and retrieve services
-    ///   - worker: An `EventLoopGroup` that can be used to generate future values
+    ///   - data: The `JobData` for this handler
     /// - Returns: A future `Void` value used to signify completion
-    func dequeue(context: JobContext, worker: EventLoopGroup) -> EventLoopFuture<Void>
-    
+    func dequeue(_ context: JobContext, _ data: Data) -> EventLoopFuture<Void>
+
     
     /// Called when there is an error at any stage of the Job's execution.
     ///
     /// - Parameters:
     ///   - context: The JobContext. Can be used to store and retrieve services
     ///   - error: The error returned by the job.
-    ///   - worker: An `EventLoopGroup` that can be used to generate future values
     /// - Returns: A future `Void` value used to signify completion
-    func error(context: JobContext, error: Error, worker: EventLoopGroup) -> EventLoopFuture<Void>
+    func error(_ context: JobContext, _ error: Error, _ data: Data) -> EventLoopFuture<Void>
 }
 
-extension Job {
-    public func error(context: JobContext, error: Error, worker: EventLoopGroup) -> EventLoopFuture<Void> {
-        return worker.future()
+public extension Job {
+    
+    /// The jobName of the Job
+    static var jobName: String {
+        return Data.jobName
     }
     
-    /// Generates a string value from a `Job` using `JobData` and `JSONEncoder`
-    ///
-    /// - Parameters:
-    ///   - key: The persistence key specified by the end-user
-    ///   - maxRetryCount: The maxRetryCount for the job
-    ///   - id: A unique ID for the job
-    /// - Returns: A string representing the job. Will be `nil` if there is an encoding error.
-    public func stringValue(key: String, maxRetryCount: Int, id: String) -> String? {
-        let jobData = JobData(key: key, data: self, maxRetryCount: maxRetryCount, id: id)
-        guard let data = try? JSONEncoder().encode(jobData) else { return nil }
-        guard let jobString = String(data: data, encoding: .utf8) else { return nil }
-        return jobString
+    /// See `Job.error`
+    func error(_ context: JobContext, _ error: Error, _ data: Data) -> EventLoopFuture<Void> {
+        return context.eventLoop.future()
+    }
+    
+    func error(_ context: JobContext, _ error: Error, _ storage: JobStorage) -> EventLoopFuture<Void> {
+        do {
+            let data = try JSONDecoder().decode(Data.self, from: storage.data)
+            return self.error(context, error, data)
+        } catch {
+            return context.eventLoop.future(error: error)
+        }
+    }
+    
+    /// See `AnyJob.anyDequeue`
+    public func anyDequeue(_ context: JobContext, _ storage: JobStorage) -> EventLoopFuture<Void> {
+        do {
+            let data = try JSONDecoder().decode(Data.self, from: storage.data)
+            return self.dequeue(context, data)
+        } catch {
+            return context.eventLoop.future(error: error)
+        }
     }
 }

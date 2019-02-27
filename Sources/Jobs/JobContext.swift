@@ -7,8 +7,12 @@ public struct JobContext: Service {
     /// Storage for the wrapper.
     public var userInfo: [String: Any]
     
+    /// Event loop for jobs to access
+    public var eventLoop: EventLoop
+    
     /// Creates an empty `JobContext`
-    public init() {
+    public init(eventLoop: EventLoop) {
+        self.eventLoop = eventLoop
         self.userInfo = [:]
     }
 }

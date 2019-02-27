@@ -2,3 +2,6 @@
 /.build
 /Packages
 /*.xcodeproj
+DerivedData
+Package.resolved
+
