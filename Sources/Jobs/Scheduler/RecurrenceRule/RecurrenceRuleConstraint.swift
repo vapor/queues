@@ -13,12 +13,14 @@ enum RecurrenceRuleConstraintError: Error {
 }
 
 final class RecurrenceRuleConstraint {
-    private var setConstraint = Set<Int>()
-    private var rangeConstraint: ClosedRange<Int>?
-    private var stepConstraint: Int? = nil
+    private(set) var setConstraint = Set<Int>()
+    private(set) var rangeConstraint: ClosedRange<Int>?
+    private(set) var stepConstraint: Int? = nil
 
     private let validLowerBound: Int?
     private let validUpperBound: Int?
+
+    private var lowestPossibleValue: Int?
 
     init(validLowerBound: Int?, validUpperBound: Int?) {
         self.validLowerBound = validLowerBound
@@ -48,10 +50,21 @@ final class RecurrenceRuleConstraint {
         }
     }
 
+    private func challengeLowestPossibleValue(_ challenger: Int) {
+        if let low = lowestPossibleValue {
+            if challenger < low {
+                lowestPossibleValue = challenger
+            }
+        } else {
+            lowestPossibleValue = challenger
+        }
+    }
+
     // set
     public func addToSet(_ amount: Int) throws {
         try validate(amount)
 
+        challengeLowestPossibleValue(amount)
         setConstraint.insert(amount)
     }
 
@@ -63,6 +76,7 @@ final class RecurrenceRuleConstraint {
 
         // insert all amounts
         for amount in amounts {
+            challengeLowestPossibleValue(amount)
             setConstraint.insert(amount)
         }
     }
@@ -75,6 +89,7 @@ final class RecurrenceRuleConstraint {
         try validate(lowerBound)
         try validate(upperBound)
 
+        challengeLowestPossibleValue(lowerBound)
         self.rangeConstraint = lowerBound...upperBound
     }
 
@@ -82,6 +97,7 @@ final class RecurrenceRuleConstraint {
     public func setStep(_ amount: Int) throws {
         try validate(amount)
 
+        challengeLowestPossibleValue(0)
         stepConstraint = amount
     }
 
@@ -132,6 +148,82 @@ final class RecurrenceRuleConstraint {
             return EvaluationState.passing
         } else {
             return EvaluationState.failed
+        }
+    }
+
+    public func nextValidValue(currentValue: Int) -> Int? {
+        var lowestValueGreaterThanCurrentValue: Int? = nil
+
+        if setConstraint.count > 0 {
+            for value in setConstraint {
+                if value >= currentValue {
+                    if let low = lowestValueGreaterThanCurrentValue {
+                        if value < low {
+                            lowestValueGreaterThanCurrentValue = value
+                        }
+                    } else {
+                        lowestValueGreaterThanCurrentValue = value
+                    }
+                }
+            }
+        }
+
+        if let rangeConstraint = rangeConstraint {
+            if (currentValue + 1) <= rangeConstraint.upperBound {
+                if let low = lowestValueGreaterThanCurrentValue {
+                    if low >= (currentValue + 1) {
+                        lowestValueGreaterThanCurrentValue = (currentValue + 1)
+                    }
+                } else {
+                    lowestValueGreaterThanCurrentValue = (currentValue + 1)
+                }
+            }
+        }
+
+        // step
+        if let stepValue = stepConstraint {
+            var multiple = 0
+            var shouldStopLooking = false
+
+            if let validUpperBound = validUpperBound {
+                // others
+                var shouldStopLooking = false
+                while multiple <= validUpperBound && shouldStopLooking == false {
+                    if multiple >= currentValue {
+                        if let low = lowestValueGreaterThanCurrentValue {
+                            if multiple < low  {
+                                lowestValueGreaterThanCurrentValue = multiple
+                            }
+                        } else {
+                            lowestValueGreaterThanCurrentValue = multiple
+                        }
+                        shouldStopLooking = true
+                    }
+                    multiple = multiple + stepValue
+                }
+            } else {
+                // year
+                while shouldStopLooking == false {
+                    if multiple >= currentValue {
+                        if let low = lowestValueGreaterThanCurrentValue {
+                            if multiple < low  {
+                                lowestValueGreaterThanCurrentValue = multiple
+                            }
+                        } else {
+                            lowestValueGreaterThanCurrentValue = multiple
+                        }
+                        shouldStopLooking = true
+                    }
+
+                    multiple = multiple + stepValue
+                }
+            }
+        }
+
+        if lowestValueGreaterThanCurrentValue != nil {
+            return lowestValueGreaterThanCurrentValue
+        } else {
+            return lowestPossibleValue
         }
     }
 

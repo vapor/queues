@@ -85,6 +85,31 @@ extension Date {
         }
     }
 
+    func resolveCalendarComponent(for ruleTimeUnit: RecurrenceRuleTimeUnit) -> Calendar.Component {
+        switch ruleTimeUnit {
+        case .second:
+            return .second
+        case .minute:
+            return .minute
+        case .hour:
+            return .hour
+        case .dayOfWeek:
+            return .weekday
+        case .dayOfMonth:
+            return .day
+        case .weekOfMonth:
+            return .weekOfMonth
+        case .weekOfYear:
+            return .weekOfYear
+        case .month:
+            return .month
+        case .quarter:
+            return .quarter
+        case .year:
+            return .year
+        }
+    }
+
     func resolveDateComponentValue(for ruleTimeUnit: RecurrenceRuleTimeUnit) -> Int? {
         switch ruleTimeUnit {
         case .second:

@@ -22,6 +22,9 @@ enum RecurrenceRuleError: Error {
 
     case noSetConstraintForRecurrenceRuleTimeUnit
     case couldNotResolveDateComponentValueFromRecurrenceRuleTimeUnit
+    case noConstraintsSetForRecurrenceRule
+
+    case coundNotResolveNextInstanceWithin1000Years
 }
 
 public class RecurrenceRule {
@@ -225,46 +228,192 @@ public class RecurrenceRule {
         return self
     }
 
+    private func resolveLowestCadence() -> RecurrenceRuleTimeUnit {
+        if secondConstraint.isConstraintActive {
+            return .second
+        } else if minuteConstraint.isConstraintActive {
+            return .minute
+        } else if hourConstraint.isConstraintActive {
+            return .hour
+        } else if dayOfMonthConstraint.isConstraintActive {
+            return .dayOfMonth
+        } else if monthConstraint.isConstraintActive {
+            return .month
+        } else {
+            return .year
+        }
+    }
+
+    private func resolveCadenceLevel(_ ruleTimeUnit: RecurrenceRuleTimeUnit) -> Int {
+        switch ruleTimeUnit {
+        case .second:
+            return 0
+        case .minute:
+            return 1
+        case .hour:
+            return 2
+        case .dayOfMonth:
+            return 3
+        case .month:
+            return 4
+        default:
+            return 6
+        }
+    }
+
     public func evaluate(date: Date) throws -> Bool {
+        return try evaluate(date: date).isValid
+    }
+
+    private func evaluate(date: Date) throws -> (isValid: Bool, ruleTimeUnitFailedOn: RecurrenceRuleTimeUnit?) {
         var ruleEvaluationState = EvaluationState.noComparisonAttempted
+        var ruleTimeUnitFailedOn: RecurrenceRuleTimeUnit? = nil
 
-        try RecurrenceRuleTimeUnit.allCases.forEach {
-            if ruleEvaluationState == .failed {
-                // break enum iteraton
-                return
-            }
-
-            let constraint = resolveConstraint($0)
-            guard let dateComponentValue = date.resolveDateComponentValue(for: $0) else {
+        for ruleTimeUnit in recurrenceRuleTimeUnits {
+            let constraint = resolveConstraint(ruleTimeUnit)
+            guard let dateComponentValue = date.resolveDateComponentValue(for: ruleTimeUnit) else {
                 throw RecurrenceRuleError.couldNotResolveDateComponentValueFromRecurrenceRuleTimeUnit
             }
 
+            // evaluate the constraint
             let constraintEvalutionState = constraint.evaluate(dateComponentValue)
+
             if constraintEvalutionState != .noComparisonAttempted {
                 ruleEvaluationState = constraintEvalutionState
             } else {
+                let lowestCadence = resolveLowestCadence()
+                let lowestCadenceLevel = resolveCadenceLevel(lowestCadence)
+                let currentConstraintCadenceLevel = resolveCadenceLevel(ruleTimeUnit)
+
                 /// If second, minute, hour, dayOfMonth or month constraints are not set
                 /// they must be at their default values to avoid rule passing on every second
-                if $0 == .second && dateComponentValue != 0 {
-                    ruleEvaluationState = .failed
-                } else if $0 == .minute && dateComponentValue != 0 {
-                    ruleEvaluationState = .failed
-                } else if $0 == .hour && dateComponentValue != 0 {
-                    ruleEvaluationState = .failed
-                } else if $0 == .dayOfMonth && dateComponentValue != 1 {
-                    ruleEvaluationState = .failed
-                } else if $0 == .month && dateComponentValue != 1 {
-                    ruleEvaluationState = .failed
+                if (currentConstraintCadenceLevel <= lowestCadenceLevel) {
+                    if ruleTimeUnit == .second && dateComponentValue != 0 {
+                        ruleEvaluationState = .failed
+                    } else if ruleTimeUnit == .minute && dateComponentValue != 0 {
+                        ruleEvaluationState = .failed
+                    } else if ruleTimeUnit == .hour && dateComponentValue != 0 {
+                        ruleEvaluationState = .failed
+                    } else if ruleTimeUnit == .dayOfMonth && dateComponentValue != 1 {
+                        ruleEvaluationState = .failed
+                    } else if ruleTimeUnit == .month && dateComponentValue != 1 {
+                        ruleEvaluationState = .failed
+                    }
                 }
+            }
+
+            if ruleEvaluationState == .failed {
+                // break  iteraton
+                ruleTimeUnitFailedOn = ruleTimeUnit
+                break
             }
 
         }
 
         if ruleEvaluationState == .passing {
-            return true
+            return (isValid: true, ruleTimeUnitFailedOn)
         } else {
-            return false
+            return (isValid: false, ruleTimeUnitFailedOn)
         }
     }
+
+    private func isYearConstraintPossible(date: Date) -> Bool {
+        let currentYear = date.year()!
+
+        if yearConstraint.isConstraintActive {
+            for year in yearConstraint.setConstraint {
+                if year >= currentYear {
+                    return true
+                }
+            }
+
+            if let rangeConstraint = yearConstraint.rangeConstraint {
+                if rangeConstraint.contains(currentYear) {
+                    return true
+                }
+            }
+
+            if yearConstraint.stepConstraint != nil {
+                return true
+            }
+
+            return false
+        } else {
+            return true
+        }
+    }
+
+    private func resolveTimeUnitOfActiveConstraintWithLowestCadenceLevel() -> RecurrenceRuleTimeUnit? {
+        var activeConstraintTimeUnitWithLowestCadenceLevel: RecurrenceRuleTimeUnit? = nil
+
+        for ruleTimeUnit in recurrenceRuleTimeUnits {
+            let constraint = resolveConstraint(ruleTimeUnit)
+            if constraint.isConstraintActive {
+                activeConstraintTimeUnitWithLowestCadenceLevel = ruleTimeUnit
+            }
+        }
+
+        return activeConstraintTimeUnitWithLowestCadenceLevel
+    }
+
+    private func resolveNextValidValue(for ruleTimeUnit: RecurrenceRuleTimeUnit, date: Date) throws -> Int {
+        guard let currentValue = date.resolveDateComponentValue(for: ruleTimeUnit) else {
+            throw RecurrenceRuleError.couldNotResolveDateComponentValueFromRecurrenceRuleTimeUnit
+        }
+
+        switch ruleTimeUnit {
+        case .second:
+            return secondConstraint.nextValidValue(currentValue: currentValue)!
+        case .minute:
+            return minuteConstraint.nextValidValue(currentValue: currentValue)!
+        case .hour:
+           return hourConstraint.nextValidValue(currentValue: currentValue)!
+        case .dayOfWeek:
+            return dayOfWeekConstraint.nextValidValue(currentValue: currentValue)!
+        case .dayOfMonth:
+            return dayOfMonthConstraint.nextValidValue(currentValue: currentValue)!
+        case .weekOfMonth:
+            return weekOfMonthConstraint.nextValidValue(currentValue: currentValue)!
+        case .weekOfYear:
+            return weekOfYearConstraint.nextValidValue(currentValue: currentValue)!
+        case .month:
+            return monthConstraint.nextValidValue(currentValue: currentValue)!
+        case .quarter:
+            return quarterConstraint.nextValidValue(currentValue: currentValue)!
+        case .year:
+            return yearConstraint.nextValidValue(currentValue: currentValue)!
+        }
+
+    }
+
+    public func resolveNextDateThatSatisfiesRule(date: Date) throws -> Date {
+        guard let timeUnitOfLowestActiveConstraint = resolveTimeUnitOfActiveConstraintWithLowestCadenceLevel() else {
+            throw RecurrenceRuleError.noConstraintsSetForRecurrenceRule
+        }
+
+        var dateToTest = date.dateByIncrementing(timeUnitOfLowestActiveConstraint)
+        if dateToTest == nil {
+            throw RecurrenceRuleError.coundNotResolveNextInstanceWithin1000Years
+        }
+
+        var nextInstanceFound = false
+        while isYearConstraintPossible(date: dateToTest!) && nextInstanceFound == false {
+            if let ruleTimeUnitFailedOn = try self.evaluate(date: dateToTest!).ruleTimeUnitFailedOn {
+                let nextValidValue = try resolveNextValidValue(for: ruleTimeUnitFailedOn, date: dateToTest!)
+                dateToTest = try dateToTest!.nextDateWhere(next: ruleTimeUnitFailedOn, is: nextValidValue)
+            } else {
+                nextInstanceFound = true
+            }
+
+            print(dateToTest!.componentsToString())
+        }
+
+        if nextInstanceFound {
+            return dateToTest!
+        } else {
+            throw RecurrenceRuleError.coundNotResolveNextInstanceWithin1000Years
+        }
+    }
+
     
 }

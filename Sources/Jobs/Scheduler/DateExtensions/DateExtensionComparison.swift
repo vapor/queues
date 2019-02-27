@@ -37,4 +37,16 @@ extension Date {
     func seconds(from date: Date) -> Int? {
         return Calendar.current.dateComponents([.second], from: date, to: self).second ?? nil
     }
+
+
+    func dateByIncrementing(_ ruleTimeUnit:RecurrenceRuleTimeUnit) -> Date? {
+        let calendarComponent = resolveCalendarComponent(for: ruleTimeUnit)
+
+        return Calendar.current.date(byAdding: calendarComponent, value: 1, to: self)
+    }
+
+    func dateOfNextQuarter() -> Date? {
+        return Calendar.current.date(byAdding: .quarter, value: 1, to: self)
+    }
+
 }
