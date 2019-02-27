@@ -1,10 +1,3 @@
-//
-//  DateExtensionRetrival.swift
-//  App
-//
-//  Created by Reid Nantes on 2019-01-27.
-//
-
 import Foundation
 
 extension Date {

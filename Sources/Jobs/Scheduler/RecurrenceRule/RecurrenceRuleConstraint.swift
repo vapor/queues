@@ -1,10 +1,3 @@
-//
-//  RecurrenceRuleConstraint.swift
-//  Async
-//
-//  Created by Reid Nantes on 2019-02-22.
-//
-
 import Foundation
 
 enum RecurrenceRuleConstraintError: Error {

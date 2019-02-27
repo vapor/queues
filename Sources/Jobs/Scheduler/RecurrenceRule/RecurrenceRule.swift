@@ -1,9 +1,3 @@
-//
-//  ReccurrenceRule.swift
-//
-//  Created by Reid Nantes on 2019-01-26.
-//
-
 import Foundation
 
 enum RecurrenceRuleError: Error {
@@ -405,7 +399,7 @@ public class RecurrenceRule {
                 nextInstanceFound = true
             }
 
-            print(dateToTest!.componentsToString())
+//            print(dateToTest!.componentsToString())
         }
 
         if nextInstanceFound {
