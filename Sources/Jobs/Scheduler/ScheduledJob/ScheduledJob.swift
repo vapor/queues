@@ -1,10 +1,10 @@
 import Foundation
 
 public struct ScheduledJob {
-    let job: Job
+    let job: AnyJob
     let recurrenceRule: RecurrenceRule
 
-    public init(job: Job, at recurrenceRule: RecurrenceRule) {
+    public init(job: AnyJob, at recurrenceRule: RecurrenceRule) {
         self.job = job
         self.recurrenceRule = recurrenceRule
     }

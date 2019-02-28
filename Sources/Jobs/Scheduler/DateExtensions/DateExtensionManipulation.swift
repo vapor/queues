@@ -4,9 +4,10 @@ extension Date {
     enum DateManipulationError: Error {
         case couldNotFindNextDate
         case couldNotValidateDateComponentValue
+        case couldNotSetDateComponentToDefaultValue
     }
 
-    func setValuesToDefault(LowerThan ruleTimeUnit: RecurrenceRuleTimeUnit, date: Date) -> Date {
+    func setValuesToDefault(lowerThan ruleTimeUnit: RecurrenceRuleTimeUnit, date: Date) -> Date {
         var lowerCadenceLevelUnits = [RecurrenceRuleTimeUnit]()
         switch ruleTimeUnit {
         case .second:
@@ -46,7 +47,10 @@ extension Date {
         let dateComponent = resolveCalendarComponent(for: ruleTimeUnit)
         let unitsToSubtract = currentValue - defaultValue
 
-        return Calendar.current.date(byAdding: dateComponent, value: -unitsToSubtract, to: date)!
+        guard let dateWithDefaultComponentValue = Calendar.current.date(byAdding: dateComponent, value: -unitsToSubtract, to: date) else {
+            throw DateManipulationError.couldNotSetDateComponentToDefaultValue
+        }
+        return dateWithDefaultComponentValue
     }
 
     func nextDateWhere(next ruleTimeUnit: RecurrenceRuleTimeUnit, is nextValue: Int) throws -> Date? {
@@ -54,7 +58,7 @@ extension Date {
             throw DateManipulationError.couldNotFindNextDate
         }
         let dateComponent = resolveCalendarComponent(for: ruleTimeUnit)
-        let dateWithDefaultValues = setValuesToDefault(LowerThan: ruleTimeUnit, date: self)
+        let dateWithDefaultValues = setValuesToDefault(lowerThan: ruleTimeUnit, date: self)
 
         let unitsToAdd = try resolveUnitsToAdd(ruleTimeUnit: ruleTimeUnit, currentValue: currentValue, nextValue: nextValue)
         return Calendar.current.date(byAdding: dateComponent, value: unitsToAdd, to: dateWithDefaultValues)
@@ -92,7 +96,7 @@ extension Date {
     }
 
     func rangeOfValidBounds(_ ruleTimeUnit: RecurrenceRuleTimeUnit) -> Int? {
-        if let validLowerBound = resolveValidLowerBound(ruleTimeUnit), let  validUpperBound = resolveValidUpperBound(ruleTimeUnit) {
+        if let validLowerBound = resolveValidLowerBound(ruleTimeUnit), let validUpperBound = resolveValidUpperBound(ruleTimeUnit) {
             return validUpperBound - validLowerBound
         } else {
             return nil

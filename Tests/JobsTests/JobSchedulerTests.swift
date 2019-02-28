@@ -92,11 +92,9 @@ final class JobSchedulerTests: XCTestCase {
         let date2 = try date1.nextDateWhere(next: .month, is: 4)!
         XCTAssertEqual(dateFormatter.date(from: "2019-04-01T00:00:00")!, date2)
 
-
         let date3 = try date2.nextDateWhere(next: .dayOfMonth, is: 26)!
         /// should reset values less than dayOfMonth to their default values
         XCTAssertEqual(dateFormatter.date(from: "2019-04-26T00:00:00")!, date3)
-
 
         let date4 = try date3.nextDateWhere(next: .minute, is: 33)!
         /// should reset values less than dayOfMonth to their default values

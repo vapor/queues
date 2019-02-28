@@ -8,7 +8,7 @@ enum RecurrenceRuleConstraintError: Error {
 final class RecurrenceRuleConstraint {
     private(set) var setConstraint = Set<Int>()
     private(set) var rangeConstraint: ClosedRange<Int>?
-    private(set) var stepConstraint: Int? = nil
+    private(set) var stepConstraint: Int?
 
     private let validLowerBound: Int?
     private let validUpperBound: Int?
@@ -145,7 +145,7 @@ final class RecurrenceRuleConstraint {
     }
 
     public func nextValidValue(currentValue: Int) -> Int? {
-        var lowestValueGreaterThanCurrentValue: Int? = nil
+        var lowestValueGreaterThanCurrentValue: Int?
 
         if setConstraint.count > 0 {
             for value in setConstraint {
@@ -184,7 +184,7 @@ final class RecurrenceRuleConstraint {
                 while multiple <= validUpperBound && shouldStopLooking == false {
                     if multiple >= currentValue {
                         if let low = lowestValueGreaterThanCurrentValue {
-                            if multiple < low  {
+                            if multiple < low {
                                 lowestValueGreaterThanCurrentValue = multiple
                             }
                         } else {
@@ -199,7 +199,7 @@ final class RecurrenceRuleConstraint {
                 while shouldStopLooking == false {
                     if multiple >= currentValue {
                         if let low = lowestValueGreaterThanCurrentValue {
-                            if multiple < low  {
+                            if multiple < low {
                                 lowestValueGreaterThanCurrentValue = multiple
                             }
                         } else {

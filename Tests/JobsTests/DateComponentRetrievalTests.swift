@@ -81,7 +81,6 @@ final class DateComponentRetrievalTests: XCTestCase {
         let dec272019 = dateFormatter.date(from: "2019-12-27T00:00:00")!
         XCTAssertEqual(52, dec272019.weekOfYear())
 
-
         /// Must be careful because even though it Dec 31, 2019 is in the last week of the year
         /// this is because 2019 has 52 weeks + <7 days
         /// weekOfYear returns 1
@@ -94,7 +93,6 @@ final class DateComponentRetrievalTests: XCTestCase {
         XCTAssertEqual(2019, dec312019.year())
         XCTAssertEqual(2020, dec312019.yearForWeekOfYear())
         XCTAssertEqual(52, dec312019.weeksInYear())
-
 
         // Fri, Dec 25, 2020
         let dec252020 = dateFormatter.date(from: "2020-12-25T00:00:00")!
@@ -142,10 +140,12 @@ final class DateComponentRetrievalTests: XCTestCase {
         XCTAssertEqual(4, oct012019.quarter())
     }
 
-
     static var allTests = [
         ("testDateComponentRetrival", testDateComponentRetrival),
+        ("testDayOfWeek", testDayOfWeek),
+        ("testWeekOfMonth", testWeekOfMonth),
+        ("testWeekOfYear", testWeekOfYear),
         ("testWeeksInYear", testWeeksInYear),
-        ("testQuarters", testQuarters),
+        ("testQuarters", testQuarters)
     ]
 }

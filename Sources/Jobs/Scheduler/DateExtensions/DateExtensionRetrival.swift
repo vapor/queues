@@ -63,7 +63,7 @@ extension Date {
     // finds the number of weeks in a given year
     func weeksInYear() -> Int? {
         //return NSCalendar.current.range(of: .weekOfYear, in: .yearForWeekOfYear, for: self)?.count
-        func p(_ year: Int) -> Int {
+        func weeksInYearFormula(_ year: Int) -> Int {
             return (year + year/4 - year/100 + year/400) % 7
         }
 
@@ -71,7 +71,7 @@ extension Date {
             return nil
         }
 
-        if p(year) == 4 || p(year-1) == 3 {
+        if weeksInYearFormula(year) == 4 || weeksInYearFormula(year-1) == 3 {
             return 53
         } else {
             return 52
@@ -144,6 +144,58 @@ extension Date {
              return self.month()
         case .year:
             return self.year()
+        }
+    }
+
+    // inclusive
+    func resolveValidUpperBound(_ ruleTimeUnit: RecurrenceRuleTimeUnit) -> Int? {
+        switch ruleTimeUnit {
+        case .second:
+            return 59
+        case .minute:
+            return 59
+        case .hour:
+            return 23
+        case .dayOfWeek:
+            return 7
+        case .dayOfMonth:
+            return 31
+        case .weekOfMonth:
+            return 5
+        case .weekOfYear:
+            return 52
+        case .month:
+            return 12
+        case .quarter:
+            return 4
+        case .year:
+            return nil
+        }
+    }
+
+    // inclusive
+    func resolveValidLowerBound(_ ruleTimeUnit: RecurrenceRuleTimeUnit) -> Int? {
+        switch ruleTimeUnit {
+        case .second:
+            return 0
+        case .minute:
+            return 0
+        case .hour:
+            return 0
+        case .dayOfWeek:
+            return 1
+        case .dayOfMonth:
+            return 1
+        case .weekOfMonth:
+            return 1
+        case .weekOfYear:
+            return 1
+        case .month:
+            return 1
+        case .quarter:
+            return 1
+        case .year:
+            return 1970
         }
     }
 

@@ -1,29 +1,16 @@
 import Foundation
 
 enum RecurrenceRuleError: Error {
-    case yearNotGreaterThan1970
-    case quarterNotBetweenZeroAnd3
-    case monthNotBetweenOneAndTwelve
-    case weekOfYearNotBetweenOneAndFiftyTwo
-    case weekOfMonthNotBetweenOneAndFive
-    case dayOfMonthNotBetweenOneAndThirtyOne
-    case dayOfWeekNotBetweenZeroAndSix
-    case hourNotBetweenZeroAndTwentyThree
-    case minuteNotBetweenZeroAndFiftyNine
-    case secondNotBetweenZeroAndFiftyNine
-
     case lowerBoundGreaterThanUpperBound
-
     case noSetConstraintForRecurrenceRuleTimeUnit
     case couldNotResolveDateComponentValueFromRecurrenceRuleTimeUnit
     case noConstraintsSetForRecurrenceRule
-
     case coundNotResolveNextInstanceWithin1000Years
+    case couldNotResolveYearConstraitFromDate
+    case couldNotResloveNextValueFromConstraint
 }
 
 public class RecurrenceRule {
-    let referenceDate: Date
-
     // year (>=1970)
     // quarter (1-4)
     // month (1-12) ex: 1 is january, 12 is December
@@ -45,11 +32,18 @@ public class RecurrenceRule {
     let minuteConstraint = RecurrenceRuleConstraint.init(validLowerBound: 0, validUpperBound: 59)
     let secondConstraint = RecurrenceRuleConstraint.init(validLowerBound: 0, validUpperBound: 59)
 
-    public init() {
-        self.referenceDate = Date()
-    }
-
-
+    let recurrenceRuleTimeUnits: [RecurrenceRuleTimeUnit] = [
+        .year,
+        .quarter,
+        .month,
+        .weekOfYear,
+        .weekOfMonth,
+        .dayOfMonth,
+        .dayOfWeek,
+        .hour,
+        .minute,
+        .second
+    ]
 
     func resolveConstraint(_ ruleTimeUnit: RecurrenceRuleTimeUnit) -> RecurrenceRuleConstraint {
         switch ruleTimeUnit {
@@ -75,7 +69,6 @@ public class RecurrenceRule {
             return self.yearConstraint
         }
     }
-
 
     // step
     public func every(_ timeAmount: ScheduleTimeAmount) throws -> Self {
@@ -135,7 +128,6 @@ public class RecurrenceRule {
         return self
     }
 
-
     // arrays
     public func atSeconds(_ seconds: [Int]) throws -> Self {
         try secondConstraint.addToSet(seconds)
@@ -163,7 +155,7 @@ public class RecurrenceRule {
     }
 
     public func atMonths(_ months: [Int]) throws -> Self {
-       try monthConstraint.addToSet(months)
+        try monthConstraint.addToSet(months)
         return self
     }
 
@@ -175,50 +167,41 @@ public class RecurrenceRule {
     // ranges
     public func whenSecondInRange(lowerBound: Int, upperBound: Int) throws -> Self {
         try secondConstraint.createRange(lowerBound: lowerBound, upperBound: upperBound)
-
         return self
     }
 
     public func whenMinuteInRange(lowerBound: Int, upperBound: Int) throws -> Self {
         try minuteConstraint.createRange(lowerBound: lowerBound, upperBound: upperBound)
-
         return self
     }
 
     public func whenHourInRange(lowerBound: Int, upperBound: Int) throws -> Self {
         try hourConstraint.createRange(lowerBound: lowerBound, upperBound: upperBound)
-
         return self
     }
 
     public func whenDayOfWeekInRange(lowerBound: Int, upperBound: Int) throws -> Self {
         try dayOfWeekConstraint.createRange(lowerBound: lowerBound, upperBound: upperBound)
-
         return self
     }
 
     public func whenDayOfMonthInRange(lowerBound: Int, upperBound: Int) throws -> Self {
         try dayOfMonthConstraint.createRange(lowerBound: lowerBound, upperBound: upperBound)
-
         return self
     }
 
-    
     public func whenMonthInRange(lowerBound: Int, upperBound: Int) throws -> Self {
         try monthConstraint.createRange(lowerBound: lowerBound, upperBound: upperBound)
-
         return self
     }
 
     public func whenQuarterInRange(lowerBound: Int, upperBound: Int) throws -> Self {
         try quarterConstraint.createRange(lowerBound: lowerBound, upperBound: upperBound)
-
         return self
     }
 
     public func whenYearInRange(lowerBound: Int, upperBound: Int) throws -> Self {
         try yearConstraint.createRange(lowerBound: lowerBound, upperBound: upperBound)
-
         return self
     }
 
@@ -261,7 +244,7 @@ public class RecurrenceRule {
 
     private func evaluate(date: Date) throws -> (isValid: Bool, ruleTimeUnitFailedOn: RecurrenceRuleTimeUnit?) {
         var ruleEvaluationState = EvaluationState.noComparisonAttempted
-        var ruleTimeUnitFailedOn: RecurrenceRuleTimeUnit? = nil
+        var ruleTimeUnitFailedOn: RecurrenceRuleTimeUnit?
 
         for ruleTimeUnit in recurrenceRuleTimeUnits {
             let constraint = resolveConstraint(ruleTimeUnit)
@@ -311,8 +294,10 @@ public class RecurrenceRule {
         }
     }
 
-    private func isYearConstraintPossible(date: Date) -> Bool {
-        let currentYear = date.year()!
+    private func isYearConstraintPossible(date: Date) throws -> Bool {
+        guard let currentYear = date.year() else {
+            throw RecurrenceRuleError.couldNotResolveYearConstraitFromDate
+        }
 
         if yearConstraint.isConstraintActive {
             for year in yearConstraint.setConstraint {
@@ -338,7 +323,7 @@ public class RecurrenceRule {
     }
 
     private func resolveTimeUnitOfActiveConstraintWithLowestCadenceLevel() -> RecurrenceRuleTimeUnit? {
-        var activeConstraintTimeUnitWithLowestCadenceLevel: RecurrenceRuleTimeUnit? = nil
+        var activeConstraintTimeUnitWithLowestCadenceLevel: RecurrenceRuleTimeUnit?
 
         for ruleTimeUnit in recurrenceRuleTimeUnits {
             let constraint = resolveConstraint(ruleTimeUnit)
@@ -355,29 +340,12 @@ public class RecurrenceRule {
             throw RecurrenceRuleError.couldNotResolveDateComponentValueFromRecurrenceRuleTimeUnit
         }
 
-        switch ruleTimeUnit {
-        case .second:
-            return secondConstraint.nextValidValue(currentValue: currentValue)!
-        case .minute:
-            return minuteConstraint.nextValidValue(currentValue: currentValue)!
-        case .hour:
-           return hourConstraint.nextValidValue(currentValue: currentValue)!
-        case .dayOfWeek:
-            return dayOfWeekConstraint.nextValidValue(currentValue: currentValue)!
-        case .dayOfMonth:
-            return dayOfMonthConstraint.nextValidValue(currentValue: currentValue)!
-        case .weekOfMonth:
-            return weekOfMonthConstraint.nextValidValue(currentValue: currentValue)!
-        case .weekOfYear:
-            return weekOfYearConstraint.nextValidValue(currentValue: currentValue)!
-        case .month:
-            return monthConstraint.nextValidValue(currentValue: currentValue)!
-        case .quarter:
-            return quarterConstraint.nextValidValue(currentValue: currentValue)!
-        case .year:
-            return yearConstraint.nextValidValue(currentValue: currentValue)!
+        let constraint = resolveConstraint(ruleTimeUnit)
+        guard let nextValidValue = constraint.nextValidValue(currentValue: currentValue) else {
+             throw RecurrenceRuleError.couldNotResloveNextValueFromConstraint
         }
 
+        return nextValidValue
     }
 
     public func resolveNextDateThatSatisfiesRule(date: Date) throws -> Date {
@@ -386,28 +354,33 @@ public class RecurrenceRule {
         }
 
         var dateToTest = date.dateByIncrementing(timeUnitOfLowestActiveConstraint)
-        if dateToTest == nil {
-            throw RecurrenceRuleError.coundNotResolveNextInstanceWithin1000Years
-        }
 
         var nextInstanceFound = false
-        while isYearConstraintPossible(date: dateToTest!) && nextInstanceFound == false {
-            if let ruleTimeUnitFailedOn = try self.evaluate(date: dateToTest!).ruleTimeUnitFailedOn {
-                let nextValidValue = try resolveNextValidValue(for: ruleTimeUnitFailedOn, date: dateToTest!)
-                dateToTest = try dateToTest!.nextDateWhere(next: ruleTimeUnitFailedOn, is: nextValidValue)
+        while nextInstanceFound == false {
+            guard let currentDateToTest = dateToTest else {
+                throw RecurrenceRuleError.coundNotResolveNextInstanceWithin1000Years
+            }
+            if try isYearConstraintPossible(date: currentDateToTest) == false {
+                throw RecurrenceRuleError.coundNotResolveNextInstanceWithin1000Years
+            }
+
+            if let ruleTimeUnitFailedOn = try self.evaluate(date: currentDateToTest).ruleTimeUnitFailedOn {
+                let nextValidValue = try resolveNextValidValue(for: ruleTimeUnitFailedOn, date: currentDateToTest)
+                dateToTest = try currentDateToTest.nextDateWhere(next: ruleTimeUnitFailedOn, is: nextValidValue)
             } else {
                 nextInstanceFound = true
             }
-
-//            print(dateToTest!.componentsToString())
         }
 
         if nextInstanceFound {
-            return dateToTest!
+            if let nextDate = dateToTest {
+                return nextDate
+            } else {
+                throw RecurrenceRuleError.coundNotResolveNextInstanceWithin1000Years
+            }
         } else {
             throw RecurrenceRuleError.coundNotResolveNextInstanceWithin1000Years
         }
     }
 
-    
 }

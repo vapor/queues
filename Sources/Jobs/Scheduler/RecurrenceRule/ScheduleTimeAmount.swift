@@ -5,7 +5,6 @@ public struct ScheduleTimeAmount {
     public let amount: Int
     public let timeUnit: ScheduleTimeUnit
 
-
     private init(_ amount: Int, timeUnit: ScheduleTimeUnit) {
         self.amount = amount
         self.timeUnit = timeUnit
@@ -15,7 +14,7 @@ public struct ScheduleTimeAmount {
         return ScheduleTimeAmount(amount, timeUnit: .second)
     }
 
-    public static func minutes(_ amount: Int) -> ScheduleTimeAmount{
+    public static func minutes(_ amount: Int) -> ScheduleTimeAmount {
         return ScheduleTimeAmount(amount, timeUnit: .minute)
     }
 
