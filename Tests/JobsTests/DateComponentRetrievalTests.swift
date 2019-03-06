@@ -3,10 +3,17 @@ import XCTest
 
 final class DateComponentRetrievalTests: XCTestCase {
 
+    func testCalendarIdentifier() {
+        let gregorianCalendar = Calendar.init(identifier: .gregorian)
+        let iso8601Calendar = Calendar.init(identifier: .gregorian)
+
+        XCTAssertEqual(gregorianCalendar.identifier, Calendar.current.identifier)
+        XCTAssertEqual(iso8601Calendar.identifier, Calendar.current.identifier)
+    }
+
     func testDateComponentRetrival() {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-        dateFormatter.timeZone = TimeZone.init(abbreviation: "EST")
 
         // Sat, Feb 16, 2019
         let feb162019 = dateFormatter.date(from: "2019-02-16T14:42:20")!
@@ -27,7 +34,6 @@ final class DateComponentRetrievalTests: XCTestCase {
     func testDayOfWeek() {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-        dateFormatter.timeZone = TimeZone.init(abbreviation: "EST")
 
         // Sat, Feb 16, 2019
         let feb162019 = dateFormatter.date(from: "2019-02-16T14:42:20")!
@@ -41,7 +47,6 @@ final class DateComponentRetrievalTests: XCTestCase {
     func testWeekOfMonth() {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-        dateFormatter.timeZone = TimeZone.init(abbreviation: "EST")
 
         // Fri, Feb 1, 2019
         let feb012019 = dateFormatter.date(from: "2019-02-01T00:00:00")!
@@ -71,7 +76,6 @@ final class DateComponentRetrievalTests: XCTestCase {
     func testWeekOfYear() {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-        dateFormatter.timeZone = TimeZone.init(abbreviation: "EST")
 
         // Tue, Jan 1, 2019
         let jan012019 = dateFormatter.date(from: "2019-01-01T00:00:00")!
@@ -109,7 +113,6 @@ final class DateComponentRetrievalTests: XCTestCase {
     func testWeeksInYear() {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-        dateFormatter.timeZone = TimeZone.init(abbreviation: "EST")
 
         let jan012019 = dateFormatter.date(from: "2019-02-01T00:00:00")!
         XCTAssertEqual(52, jan012019.weeksInYear())
@@ -121,7 +124,6 @@ final class DateComponentRetrievalTests: XCTestCase {
     func testQuarters() {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd"
-        dateFormatter.timeZone = TimeZone.init(abbreviation: "EST")
 
         // jan 1 2019
         let jan012019 = dateFormatter.date(from: "2019-01-01")!
@@ -138,6 +140,33 @@ final class DateComponentRetrievalTests: XCTestCase {
         // oct 1 2019
         let oct012019 = dateFormatter.date(from: "2019-10-01")!
         XCTAssertEqual(4, oct012019.quarter())
+    }
+
+    func testTimeZone() {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+
+        guard let timeZoneEST = TimeZone.init(abbreviation: "EST") else {
+            XCTFail()
+            return
+        }
+
+        guard let timeZoneUTC = TimeZone.init(abbreviation: "UTC") else {
+            XCTFail()
+            return
+        }
+
+        // jan 20 2019 EST
+        dateFormatter.timeZone = timeZoneEST
+        let jan152019EST = dateFormatter.date(from: "2019-01-20T13:00:00")!
+        XCTAssertEqual(13, jan152019EST.hour(atTimeZone: timeZoneEST))
+        XCTAssertEqual(18, jan152019EST.hour(atTimeZone: timeZoneUTC))
+
+        // jan 20 2019 UTC (5 hours ahead of EST)
+        dateFormatter.timeZone = timeZoneUTC
+        let jan152019UTC = dateFormatter.date(from: "2019-01-20T13:00:00")!
+        XCTAssertEqual(13, jan152019UTC.hour(atTimeZone: timeZoneUTC))
+        XCTAssertEqual(8, jan152019UTC.hour(atTimeZone: timeZoneEST))
     }
 
     static var allTests = [

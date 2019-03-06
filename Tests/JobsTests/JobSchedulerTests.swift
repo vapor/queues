@@ -1,11 +1,142 @@
 import XCTest
+import NIO
 @testable import Jobs
 
 final class JobSchedulerTests: XCTestCase {
-    func testReccurrenceRuleSimple() throws {
+
+    func testRecurrenceRuleCreation() throws {
+        let reccurrenceRule = try RecurrenceRule()
+
+        // second (0-59)
+        XCTAssertThrowsError(try reccurrenceRule.atSecond(-1))
+        XCTAssertNoThrow(try reccurrenceRule.atSecond(0))
+        XCTAssertNoThrow(try reccurrenceRule.atSecond(59))
+        XCTAssertThrowsError(try reccurrenceRule.atSecond(60))
+
+        // minute (0-59)
+        XCTAssertThrowsError(try reccurrenceRule.atMinute(-1))
+        XCTAssertNoThrow(try reccurrenceRule.atMinute(0))
+        XCTAssertNoThrow(try reccurrenceRule.atMinute(59))
+        XCTAssertThrowsError(try reccurrenceRule.atMinute(60))
+
+        // hour (0-23)
+        XCTAssertThrowsError(try reccurrenceRule.atHour(-1))
+        XCTAssertNoThrow(try reccurrenceRule.atHour(0))
+        XCTAssertNoThrow(try reccurrenceRule.atHour(23))
+        XCTAssertThrowsError(try reccurrenceRule.atHour(24))
+
+        // dayOfWeek (1-7) ex: 1 sunday, 7 saturday
+        XCTAssertThrowsError(try reccurrenceRule.atDayOfWeek(0))
+        XCTAssertNoThrow(try reccurrenceRule.atDayOfWeek(1))
+        XCTAssertNoThrow(try reccurrenceRule.atDayOfWeek(7))
+        XCTAssertThrowsError(try reccurrenceRule.atDayOfWeek(8))
+
+        // dayOfMonth (1-31) ex: 1 is the 1st of month, 31 is the 31st of month
+        XCTAssertThrowsError(try reccurrenceRule.atDayOfMonth(0))
+        XCTAssertNoThrow(try reccurrenceRule.atDayOfMonth(1))
+        XCTAssertNoThrow(try reccurrenceRule.atDayOfMonth(31))
+        XCTAssertThrowsError(try reccurrenceRule.atDayOfMonth(32))
+
+        // weekOfMonth (1-5)
+        XCTAssertThrowsError(try reccurrenceRule.atWeekOfMonth(0))
+        XCTAssertNoThrow(try reccurrenceRule.atWeekOfMonth(1))
+        XCTAssertNoThrow(try reccurrenceRule.atWeekOfMonth(5))
+        XCTAssertThrowsError(try reccurrenceRule.atWeekOfMonth(6))
+
+        // weekOfYear (1-52)
+        XCTAssertThrowsError(try reccurrenceRule.atWeekOfYear(0))
+        XCTAssertNoThrow(try reccurrenceRule.atWeekOfYear(1))
+        XCTAssertNoThrow(try reccurrenceRule.atWeekOfYear(52))
+        XCTAssertThrowsError(try reccurrenceRule.atWeekOfYear(53))
+
+        // month (1-12) ex: 1 is January, 12 is December
+        XCTAssertThrowsError(try reccurrenceRule.atMonth(0))
+        XCTAssertNoThrow(try reccurrenceRule.atMonth(1))
+        XCTAssertNoThrow(try reccurrenceRule.atMonth(12))
+        XCTAssertThrowsError(try reccurrenceRule.atMonth(13))
+
+        // quarter (1-4)
+        XCTAssertThrowsError(try reccurrenceRule.atQuarter(0))
+        XCTAssertNoThrow(try reccurrenceRule.atQuarter(1))
+        XCTAssertNoThrow(try reccurrenceRule.atQuarter(4))
+        XCTAssertThrowsError(try reccurrenceRule.atQuarter(5))
+
+        // year (1970-3000)
+//        XCTAssertThrowsError(try reccurrenceRule.atYear(1969))
+        XCTAssertNoThrow(try reccurrenceRule.atYear(1970))
+        XCTAssertNoThrow(try reccurrenceRule.atYear(3000))
+//        XCTAssertThrowsError(try reccurrenceRule.atYear(3001))
+    }
+
+    func testRecurrenceRuleCreationStep() throws {
+        let reccurrenceRule = try RecurrenceRule()
+
+        // second (0-59)
+        XCTAssertThrowsError(try reccurrenceRule.atSecond(-1))
+        XCTAssertNoThrow(try reccurrenceRule.atSecond(0))
+        XCTAssertNoThrow(try reccurrenceRule.atSecond(59))
+        XCTAssertThrowsError(try reccurrenceRule.atSecond(60))
+
+        // minute (0-59)
+        XCTAssertThrowsError(try reccurrenceRule.atMinute(-1))
+        XCTAssertNoThrow(try reccurrenceRule.atMinute(0))
+        XCTAssertNoThrow(try reccurrenceRule.atMinute(59))
+        XCTAssertThrowsError(try reccurrenceRule.atMinute(60))
+
+        // hour (0-23)
+        XCTAssertThrowsError(try reccurrenceRule.atHour(-1))
+        XCTAssertNoThrow(try reccurrenceRule.atHour(0))
+        XCTAssertNoThrow(try reccurrenceRule.atHour(23))
+        XCTAssertThrowsError(try reccurrenceRule.atHour(24))
+
+        // dayOfWeek (1-7) ex: 1 sunday, 7 saturday
+        XCTAssertThrowsError(try reccurrenceRule.atDayOfWeek(0))
+        XCTAssertNoThrow(try reccurrenceRule.atDayOfWeek(1))
+        XCTAssertNoThrow(try reccurrenceRule.atDayOfWeek(7))
+        XCTAssertThrowsError(try reccurrenceRule.atDayOfWeek(8))
+
+        // dayOfMonth (1-31) ex: 1 is the 1st of month, 31 is the 31st of month
+        XCTAssertThrowsError(try reccurrenceRule.atDayOfMonth(0))
+        XCTAssertNoThrow(try reccurrenceRule.atDayOfMonth(1))
+        XCTAssertNoThrow(try reccurrenceRule.atDayOfMonth(31))
+        XCTAssertThrowsError(try reccurrenceRule.atDayOfMonth(32))
+
+        // weekOfMonth (1-5)
+        XCTAssertThrowsError(try reccurrenceRule.atWeekOfMonth(0))
+        XCTAssertNoThrow(try reccurrenceRule.atWeekOfMonth(1))
+        XCTAssertNoThrow(try reccurrenceRule.atWeekOfMonth(5))
+        XCTAssertThrowsError(try reccurrenceRule.atWeekOfMonth(6))
+
+        // weekOfYear (1-52)
+        XCTAssertThrowsError(try reccurrenceRule.atWeekOfYear(0))
+        XCTAssertNoThrow(try reccurrenceRule.atWeekOfYear(1))
+        XCTAssertNoThrow(try reccurrenceRule.atWeekOfYear(52))
+        XCTAssertThrowsError(try reccurrenceRule.atWeekOfYear(53))
+
+        // month (1-12) ex: 1 is January, 12 is December
+        XCTAssertThrowsError(try reccurrenceRule.atMonth(0))
+        XCTAssertNoThrow(try reccurrenceRule.atMonth(1))
+        XCTAssertNoThrow(try reccurrenceRule.atMonth(12))
+        XCTAssertThrowsError(try reccurrenceRule.atMonth(13))
+
+        // quarter (1-4)
+        XCTAssertThrowsError(try reccurrenceRule.atQuarter(0))
+        XCTAssertNoThrow(try reccurrenceRule.atQuarter(1))
+        XCTAssertNoThrow(try reccurrenceRule.atQuarter(4))
+        XCTAssertThrowsError(try reccurrenceRule.atQuarter(5))
+
+        // year (1970-3000)
+        //        XCTAssertThrowsError(try reccurrenceRule.atYear(1969))
+        XCTAssertNoThrow(try reccurrenceRule.atYear(1970))
+        XCTAssertNoThrow(try reccurrenceRule.atYear(3000))
+        //        XCTAssertThrowsError(try reccurrenceRule.atYear(3001))
+    }
+
+
+
+    func testReccurrenceRuleEvaluationSimple() throws {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-        dateFormatter.timeZone = TimeZone.init(abbreviation: "EST")
 
         let reccurrenceRule = try RecurrenceRule().atMonth(2).atHour(3)
 
@@ -22,10 +153,9 @@ final class JobSchedulerTests: XCTestCase {
         XCTAssertEqual(false, try reccurrenceRule.evaluate(date: date3))
     }
 
-    func testReccurrenceRuleStepSimple() throws {
+    func testReccurrenceRuleEvaluationStepSimple() throws {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-        dateFormatter.timeZone = TimeZone.init(abbreviation: "EST")
 
         let reccurrenceRule = try RecurrenceRule().atMonth(2).every(.minutes(15))
 
@@ -50,10 +180,9 @@ final class JobSchedulerTests: XCTestCase {
         XCTAssertEqual(true, try reccurrenceRule.evaluate(date: date5))
     }
 
-    func testReccurrenceRuleStepNotDivisible() throws {
+    func testReccurrenceRuleEvaluationStepNotDivisible() throws {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-        dateFormatter.timeZone = TimeZone.init(abbreviation: "EST")
 
         let reccurrenceRule = try RecurrenceRule().atMonth(2).every(.minutes(22))
 
@@ -81,22 +210,65 @@ final class JobSchedulerTests: XCTestCase {
 
     }
 
-    func testNextDateWhere() throws {
+    func testReccurrenceRuleEvaluationTimezone() throws {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-        dateFormatter.timeZone = TimeZone.init(abbreviation: "EST")
+
+        guard let timeZoneEST = TimeZone.init(abbreviation: "EST") else {
+            XCTFail()
+            return
+        }
+
+        guard let timeZoneUTC = TimeZone.init(abbreviation: "UTC") else {
+            XCTFail()
+            return
+        }
+
+        // Fri, Feb 1, 2019 03:00:00 EST
+        dateFormatter.timeZone = timeZoneEST
+        let dateEST = dateFormatter.date(from: "2019-02-15T22:00:30")!
+
+        // test EST
+        let reccurrenceRuleEST = try RecurrenceRule().atMonth(2).atDayOfMonth(15).atHour(22).atSecond(30).usingTimeZone(timeZoneEST)
+        XCTAssertEqual(true, try reccurrenceRuleEST.evaluate(date: dateEST))
+
+        // test UTC with EST date
+        let reccurrenceRuleUTC = try RecurrenceRule().atMonth(2).atDayOfMonth(15).atHour(22).atSecond(30).usingTimeZone(timeZoneUTC)
+        XCTAssertEqual(false, try reccurrenceRuleUTC.evaluate(date: dateEST))
+
+        // test UTC with UTC date
+        // Fri, Feb 1, 2019 03:00:00 UTC
+        dateFormatter.timeZone = timeZoneUTC
+        let dateUTC = dateFormatter.date(from: "2019-02-15T22:00:30")!
+        XCTAssertEqual(true, try reccurrenceRuleUTC.evaluate(date: dateUTC))
+    }
+
+    func testNextDateWhereSimple() throws {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
 
         // Fri, Feb 1, 2019 03:00:00
         let date1 = dateFormatter.date(from: "2019-02-01T03:00:00")!
         /// should reset values less than month to their default values
-        let date2 = try date1.nextDateWhere(next: .month, is: 4)!
+        let date2 = try date1.nextDate(where: .month, is: 4)!
+        XCTAssertEqual(dateFormatter.date(from: "2019-04-01T00:00:00")!, date2)
+    }
+
+    func testNextDateWhere() throws {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+
+        // Fri, Feb 1, 2019 03:00:00
+        let date1 = dateFormatter.date(from: "2019-02-01T03:00:00")!
+        /// should reset values less than month to their default values
+        let date2 = try date1.nextDate(where: .month, is: 4)!
         XCTAssertEqual(dateFormatter.date(from: "2019-04-01T00:00:00")!, date2)
 
-        let date3 = try date2.nextDateWhere(next: .dayOfMonth, is: 26)!
+        let date3 = try date2.nextDate(where: .dayOfMonth, is: 26)!
         /// should reset values less than dayOfMonth to their default values
         XCTAssertEqual(dateFormatter.date(from: "2019-04-26T00:00:00")!, date3)
 
-        let date4 = try date3.nextDateWhere(next: .minute, is: 33)!
+        let date4 = try date3.nextDate(where: .minute, is: 33)!
         /// should reset values less than dayOfMonth to their default values
         XCTAssertEqual(dateFormatter.date(from: "2019-04-26T00:33:00")!, date4)
     }
@@ -104,7 +276,6 @@ final class JobSchedulerTests: XCTestCase {
     func testResolveNextDateThatSatisfiesRule() throws {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-        dateFormatter.timeZone = TimeZone.init(abbreviation: "EST")
 
         let reccurrenceRule = try RecurrenceRule().atMonth(4).atDayOfMonth(26).every(.minutes(33))
 
@@ -120,20 +291,19 @@ final class JobSchedulerTests: XCTestCase {
     func testResolveNextDateThatSatisfiesRuleLeapYear() throws {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-        dateFormatter.timeZone = TimeZone.init(abbreviation: "EST")
 
-        let reccurrenceRule = try RecurrenceRule().atMonth(2).atDayOfMonth(29)
+        let reccurrenceRule = try RecurrenceRule().atMonth(2).atDayOfMonth(29).atMinute(25).atSecond(1)
 
         // Fri, Feb 1, 2019 03:00:00
         let date1 = dateFormatter.date(from: "2019-02-01T03:00:00")!
         let date2 = try reccurrenceRule.resolveNextDateThatSatisfiesRule(date: date1)
-        XCTAssertEqual(dateFormatter.date(from: "2020-02-29T00:00:00")!, date2)
+        XCTAssertEqual(dateFormatter.date(from: "2020-02-29T00:25:01")!, date2)
     }
 
     static var allTests = [
-        ("testReccurrenceRuleSimple", testReccurrenceRuleSimple),
-        ("testReccurrenceRuleStepSimple", testReccurrenceRuleStepSimple),
-        ("testReccurrenceRuleStepNotDivisible", testReccurrenceRuleStepNotDivisible),
+        ("testReccurrenceRuleEvaluationSimple", testReccurrenceRuleEvaluationSimple),
+        ("testReccurrenceRuleEvaluationStepSimple", testReccurrenceRuleEvaluationStepSimple),
+        ("testReccurrenceRuleStepEvaluationNotDivisible", testReccurrenceRuleEvaluationStepNotDivisible),
         ("testNextDateWhere", testNextDateWhere),
         ("testResolveNextDateThatSatisfiesRule", testResolveNextDateThatSatisfiesRule),
         ("testResolveNextDateThatSatisfiesRuleLeapYear", testResolveNextDateThatSatisfiesRuleLeapYear)

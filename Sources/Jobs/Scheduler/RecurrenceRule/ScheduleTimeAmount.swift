@@ -38,3 +38,20 @@ public struct ScheduleTimeAmount {
         return ScheduleTimeAmount(amount, timeUnit: .year)
     }
 }
+
+// potentially use insread of multiple funtions
+public struct RecurrenceRuleTimeAmount {
+    public let amounts: Set<Int>
+    public let timeUnit: RecurrenceRuleTimeUnit
+
+    private init(_ amount: Int, timeUnit: RecurrenceRuleTimeUnit) throws {
+        _ = try Calendar.current.validate(ruleTimeUnit: timeUnit, value: amount)
+        self.amounts = [amount]
+        self.timeUnit = timeUnit
+    }
+
+    public static func second(_ amount: Int) throws -> RecurrenceRuleTimeAmount {
+        return try RecurrenceRuleTimeAmount(amount, timeUnit: .second)
+    }
+
+}
