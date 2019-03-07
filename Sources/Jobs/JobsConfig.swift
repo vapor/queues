@@ -17,7 +17,12 @@ public struct JobsConfig: Service {
     ///
     /// - Parameter job: The `Job` to add.
     mutating public func add<J: Job>(_ job: J) {
-        storage[String(describing: J.Data.self)] = job
+        let key = String(describing: J.Data.self)
+        if let existing = storage[key] {
+            print("WARNING: A job is already registered with key \(key): \(existing)")
+        }
+        
+        storage[key] = job
     }
     
     
