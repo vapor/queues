@@ -277,12 +277,16 @@ extension Date {
             return self.minute(atTimeZone: timeZone)
         case .hour:
             return self.hour(atTimeZone: timeZone)
-        case .day:
+        case .dayOfWeek:
             return self.dayOfWeek(atTimeZone: timeZone)
+        case .day:
+            return self.dayOfMonth(atTimeZone: timeZone)
         case .week:
             return self.dayOfWeek(atTimeZone: timeZone)
         case .month:
             return self.month(atTimeZone: timeZone)
+        case .quarter:
+            return self.quarter(atTimeZone: timeZone)
         case .year:
             return self.year(atTimeZone: timeZone)
         }

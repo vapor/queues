@@ -68,71 +68,123 @@ final class JobSchedulerTests: XCTestCase {
 //        XCTAssertThrowsError(try reccurrenceRule.atYear(3001))
     }
 
+    func testRecurrenceRuleCreationSet() throws {
+        let reccurrenceRule = try RecurrenceRule()
+
+        // second (0-59)
+        XCTAssertThrowsError(try reccurrenceRule.atSeconds([0, 59, -1]))
+        XCTAssertNoThrow(try reccurrenceRule.atSeconds([0, 59]))
+        XCTAssertThrowsError(try reccurrenceRule.atSeconds([0, 59, 60]))
+
+        // minute (0-59)
+        XCTAssertThrowsError(try reccurrenceRule.atMinutes([0, 59, -1]))
+        XCTAssertNoThrow(try reccurrenceRule.atMinutes([0, 59]))
+        XCTAssertThrowsError(try reccurrenceRule.atMinutes([0, 59, 60]))
+
+        // hour (0-23)
+        XCTAssertThrowsError(try reccurrenceRule.atHours([0, 23, -1]))
+        XCTAssertNoThrow(try reccurrenceRule.atHours([0, 23]))
+        XCTAssertThrowsError(try reccurrenceRule.atHours([0, 23, 24]))
+
+        // dayOfWeek (1-7) ex: 1 sunday, 7 saturday
+        XCTAssertThrowsError(try reccurrenceRule.atDaysOfWeek([1, 7, 0]))
+        XCTAssertNoThrow(try reccurrenceRule.atDaysOfWeek([1, 7]))
+        XCTAssertThrowsError(try reccurrenceRule.atDaysOfWeek([1, 7, 8]))
+
+        // dayOfMonth (1-31) ex: 1 is the 1st of month, 31 is the 31st of month
+        XCTAssertThrowsError(try reccurrenceRule.atDaysOfMonth([1, 31, 0]))
+        XCTAssertNoThrow(try reccurrenceRule.atDaysOfMonth([1, 31]))
+        XCTAssertThrowsError(try reccurrenceRule.atDaysOfMonth([1, 31, 32]))
+
+        // weekOfMonth (1-5)
+        XCTAssertThrowsError(try reccurrenceRule.atWeeksOfMonth([1, 5, 0]))
+        XCTAssertNoThrow(try reccurrenceRule.atWeeksOfMonth([1, 5]))
+        XCTAssertThrowsError(try reccurrenceRule.atWeeksOfMonth([1, 5, 6]))
+
+        // weekOfYear (1-52)
+        XCTAssertThrowsError(try reccurrenceRule.atWeeksOfYear([1, 52, 0]))
+        XCTAssertNoThrow(try reccurrenceRule.atWeeksOfYear([1, 52]))
+        XCTAssertThrowsError(try reccurrenceRule.atWeeksOfYear([1, 52, 53]))
+
+        // month (1-12) ex: 1 is January, 12 is December
+        XCTAssertThrowsError(try reccurrenceRule.atMonths([1, 12, 0]))
+        XCTAssertNoThrow(try reccurrenceRule.atMonths([1, 12]))
+        XCTAssertThrowsError(try reccurrenceRule.atMonths([1, 12, 13]))
+
+        // quarter (1-4)
+        XCTAssertThrowsError(try reccurrenceRule.atQuarters([1, 4, 0]))
+        XCTAssertNoThrow(try reccurrenceRule.atQuarters([1, 4]))
+        XCTAssertThrowsError(try reccurrenceRule.atQuarters([1, 4, 5]))
+
+        // year (1970-3000)
+        //        XCTAssertThrowsError(try reccurrenceRule.atYear(1969))
+        XCTAssertNoThrow(try reccurrenceRule.atYears([1970, 2019, 3000]))
+        //        XCTAssertThrowsError(try reccurrenceRule.atYear(3001))
+    }
+
     func testRecurrenceRuleCreationStep() throws {
         let reccurrenceRule = try RecurrenceRule()
 
         // second (0-59)
-        XCTAssertThrowsError(try reccurrenceRule.atSecond(-1))
-        XCTAssertNoThrow(try reccurrenceRule.atSecond(0))
-        XCTAssertNoThrow(try reccurrenceRule.atSecond(59))
-        XCTAssertThrowsError(try reccurrenceRule.atSecond(60))
+        XCTAssertThrowsError(try reccurrenceRule.every(.seconds(-1)))
+        XCTAssertNoThrow(try reccurrenceRule.every(.seconds(0)))
+        XCTAssertNoThrow(try reccurrenceRule.every(.seconds(59)))
+        XCTAssertThrowsError(try reccurrenceRule.every(.seconds(60)))
 
         // minute (0-59)
-        XCTAssertThrowsError(try reccurrenceRule.atMinute(-1))
-        XCTAssertNoThrow(try reccurrenceRule.atMinute(0))
-        XCTAssertNoThrow(try reccurrenceRule.atMinute(59))
-        XCTAssertThrowsError(try reccurrenceRule.atMinute(60))
+        XCTAssertThrowsError(try reccurrenceRule.every(.minutes(-1)))
+        XCTAssertNoThrow(try reccurrenceRule.every(.minutes(0)))
+        XCTAssertNoThrow(try reccurrenceRule.every(.minutes(59)))
+        XCTAssertThrowsError(try reccurrenceRule.every(.minutes(60)))
 
         // hour (0-23)
-        XCTAssertThrowsError(try reccurrenceRule.atHour(-1))
-        XCTAssertNoThrow(try reccurrenceRule.atHour(0))
-        XCTAssertNoThrow(try reccurrenceRule.atHour(23))
-        XCTAssertThrowsError(try reccurrenceRule.atHour(24))
+        XCTAssertThrowsError(try reccurrenceRule.every(.hours(-1)))
+        XCTAssertNoThrow(try reccurrenceRule.every(.hours(0)))
+        XCTAssertNoThrow(try reccurrenceRule.every(.hours(23)))
+        XCTAssertThrowsError(try reccurrenceRule.every(.hours(24)))
 
         // dayOfWeek (1-7) ex: 1 sunday, 7 saturday
-        XCTAssertThrowsError(try reccurrenceRule.atDayOfWeek(0))
-        XCTAssertNoThrow(try reccurrenceRule.atDayOfWeek(1))
-        XCTAssertNoThrow(try reccurrenceRule.atDayOfWeek(7))
-        XCTAssertThrowsError(try reccurrenceRule.atDayOfWeek(8))
+        XCTAssertThrowsError(try reccurrenceRule.every(.minutes(-1)))
+        XCTAssertNoThrow(try reccurrenceRule.every(.minutes(-1)))
+        XCTAssertNoThrow(try reccurrenceRule.every(.minutes(-1)))
+        XCTAssertThrowsError(try reccurrenceRule.every(.minutes(-1)))
 
         // dayOfMonth (1-31) ex: 1 is the 1st of month, 31 is the 31st of month
-        XCTAssertThrowsError(try reccurrenceRule.atDayOfMonth(0))
-        XCTAssertNoThrow(try reccurrenceRule.atDayOfMonth(1))
-        XCTAssertNoThrow(try reccurrenceRule.atDayOfMonth(31))
-        XCTAssertThrowsError(try reccurrenceRule.atDayOfMonth(32))
+        XCTAssertThrowsError(try reccurrenceRule.every(.days(0)))
+        XCTAssertNoThrow(try reccurrenceRule.every(.days(1)))
+        XCTAssertNoThrow(try reccurrenceRule.every(.days(31)))
+        XCTAssertThrowsError(try reccurrenceRule.every(.days(32)))
 
         // weekOfMonth (1-5)
-        XCTAssertThrowsError(try reccurrenceRule.atWeekOfMonth(0))
-        XCTAssertNoThrow(try reccurrenceRule.atWeekOfMonth(1))
-        XCTAssertNoThrow(try reccurrenceRule.atWeekOfMonth(5))
-        XCTAssertThrowsError(try reccurrenceRule.atWeekOfMonth(6))
+        XCTAssertThrowsError(try reccurrenceRule.every(.weeks(0)))
+        XCTAssertNoThrow(try reccurrenceRule.every(.weeks(1)))
+        XCTAssertNoThrow(try reccurrenceRule.every(.weeks(5)))
+        XCTAssertThrowsError(try reccurrenceRule.every(.weeks(6)))
 
         // weekOfYear (1-52)
-        XCTAssertThrowsError(try reccurrenceRule.atWeekOfYear(0))
-        XCTAssertNoThrow(try reccurrenceRule.atWeekOfYear(1))
-        XCTAssertNoThrow(try reccurrenceRule.atWeekOfYear(52))
-        XCTAssertThrowsError(try reccurrenceRule.atWeekOfYear(53))
+//        XCTAssertThrowsError(try reccurrenceRule.every(.weeks(-1)))
+//        XCTAssertNoThrow(try reccurrenceRule.every(.weeks(-1)))
+//        XCTAssertNoThrow(try reccurrenceRule.every(.weeks(-1)))
+//        XCTAssertThrowsError(try reccurrenceRule.every(.weeks(-1)))
 
         // month (1-12) ex: 1 is January, 12 is December
-        XCTAssertThrowsError(try reccurrenceRule.atMonth(0))
-        XCTAssertNoThrow(try reccurrenceRule.atMonth(1))
-        XCTAssertNoThrow(try reccurrenceRule.atMonth(12))
-        XCTAssertThrowsError(try reccurrenceRule.atMonth(13))
+        XCTAssertThrowsError(try reccurrenceRule.every(.months(-1)))
+        XCTAssertNoThrow(try reccurrenceRule.every(.months(-1)))
+        XCTAssertNoThrow(try reccurrenceRule.every(.months(-1)))
+        XCTAssertThrowsError(try reccurrenceRule.every(.months(-1)))
 
         // quarter (1-4)
-        XCTAssertThrowsError(try reccurrenceRule.atQuarter(0))
-        XCTAssertNoThrow(try reccurrenceRule.atQuarter(1))
-        XCTAssertNoThrow(try reccurrenceRule.atQuarter(4))
-        XCTAssertThrowsError(try reccurrenceRule.atQuarter(5))
+//        XCTAssertThrowsError(try reccurrenceRule.every(.quarters(0)))
+//        XCTAssertNoThrow(try reccurrenceRule.every(.quarters(-1)))
+//        XCTAssertNoThrow(try reccurrenceRule.every(.quarters(-1)))
+//        XCTAssertThrowsError(try reccurrenceRule.every(.quarters(-1)))
 
         // year (1970-3000)
         //        XCTAssertThrowsError(try reccurrenceRule.atYear(1969))
-        XCTAssertNoThrow(try reccurrenceRule.atYear(1970))
-        XCTAssertNoThrow(try reccurrenceRule.atYear(3000))
+        XCTAssertNoThrow(try reccurrenceRule.every(.years(2)))
+        XCTAssertNoThrow(try reccurrenceRule.every(.years(1000)))
         //        XCTAssertThrowsError(try reccurrenceRule.atYear(3001))
     }
-
-
 
     func testReccurrenceRuleEvaluationSimple() throws {
         let dateFormatter = DateFormatter()

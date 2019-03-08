@@ -4,9 +4,11 @@ public enum ScheduleTimeUnit: CaseIterable {
     case second
     case minute
     case hour
+    case dayOfWeek
     case day
     case week
     case month
+    case quarter
     case year
 }
 
