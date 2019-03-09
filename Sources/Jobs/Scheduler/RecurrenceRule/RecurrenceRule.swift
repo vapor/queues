@@ -15,7 +15,7 @@ enum RecurrenceRuleError: Error {
 /// - warning: RecurrenceRule only supports the Gregorian calendar (i.e. Calendar.identifier.gregorian or Calendar.identifier.iso8601)
 ///
 /// - Note: RecurrenceRule uses the local TimeZone as default
-public class RecurrenceRule {
+public struct RecurrenceRule {
     // year (1970-3000)
     // quarter (1-4)
     // month (1-12) ex: 1 is January, 12 is December
@@ -36,7 +36,7 @@ public class RecurrenceRule {
     let dayOfWeekConstraint: RecurrenceRuleConstraint
     let hourConstraint: RecurrenceRuleConstraint
     let minuteConstraint: RecurrenceRuleConstraint
-    let secondConstraint: RecurrenceRuleConstraint
+    var secondConstraint: RecurrenceRuleConstraint
 
     private let recurrenceRuleTimeUnits: [RecurrenceRuleTimeUnit] = [
         .year,
@@ -51,35 +51,65 @@ public class RecurrenceRule {
         .second
     ]
 
-    init() throws {
-        yearConstraint = RecurrenceRuleConstraint.init(validLowerBound: try Calendar.current.lowerBound(for: .year),
+    init(timeZone: TimeZone = TimeZone.current) throws {
+        self.timeZone = timeZone
+        yearConstraint = RecurrenceRuleSetConstraint.init(validLowerBound: try Calendar.current.lowerBound(for: .year),
                                                        validUpperBound: try Calendar.current.upperBound(for: .year))
-        quarterConstraint = RecurrenceRuleConstraint.init(validLowerBound: try Calendar.current.lowerBound(for: .quarter),
+        quarterConstraint = RecurrenceRuleSetConstraint.init(validLowerBound: try Calendar.current.lowerBound(for: .quarter),
                                                        validUpperBound: try Calendar.current.upperBound(for: .quarter))
-        monthConstraint = RecurrenceRuleConstraint.init(validLowerBound: try Calendar.current.lowerBound(for: .month),
+        monthConstraint = RecurrenceRuleSetConstraint.init(validLowerBound: try Calendar.current.lowerBound(for: .month),
                                                           validUpperBound: try Calendar.current.upperBound(for: .month))
-        weekOfYearConstraint = RecurrenceRuleConstraint.init(validLowerBound: try Calendar.current.lowerBound(for: .weekOfYear),
+        weekOfYearConstraint = RecurrenceRuleSetConstraint.init(validLowerBound: try Calendar.current.lowerBound(for: .weekOfYear),
                                                           validUpperBound: try Calendar.current.upperBound(for: .weekOfYear))
-        weekOfMonthConstraint = RecurrenceRuleConstraint.init(validLowerBound: try Calendar.current.lowerBound(for: .weekOfMonth),
+        weekOfMonthConstraint = RecurrenceRuleSetConstraint.init(validLowerBound: try Calendar.current.lowerBound(for: .weekOfMonth),
                                                           validUpperBound: try Calendar.current.upperBound(for: .weekOfMonth))
-        dayOfMonthConstraint = RecurrenceRuleConstraint.init(validLowerBound: try Calendar.current.lowerBound(for: .dayOfMonth),
+        dayOfMonthConstraint = RecurrenceRuleSetConstraint.init(validLowerBound: try Calendar.current.lowerBound(for: .dayOfMonth),
                                                           validUpperBound: try Calendar.current.upperBound(for: .dayOfMonth))
-        dayOfWeekConstraint = RecurrenceRuleConstraint.init(validLowerBound: try Calendar.current.lowerBound(for: .dayOfWeek),
+        dayOfWeekConstraint = RecurrenceRuleSetConstraint.init(validLowerBound: try Calendar.current.lowerBound(for: .dayOfWeek),
                                                           validUpperBound: try Calendar.current.upperBound(for: .dayOfWeek))
-        hourConstraint = RecurrenceRuleConstraint.init(validLowerBound: try Calendar.current.lowerBound(for: .hour),
+        hourConstraint = RecurrenceRuleSetConstraint.init(validLowerBound: try Calendar.current.lowerBound(for: .hour),
                                                             validUpperBound: try Calendar.current.upperBound(for: .hour))
-        minuteConstraint = RecurrenceRuleConstraint.init(validLowerBound: try Calendar.current.lowerBound(for: .minute),
+        minuteConstraint = RecurrenceRuleSetConstraint.init(validLowerBound: try Calendar.current.lowerBound(for: .minute),
                                                             validUpperBound: try Calendar.current.upperBound(for: .minute))
-        secondConstraint = RecurrenceRuleConstraint.init(validLowerBound: try Calendar.current.lowerBound(for: .second),
+        secondConstraint = RecurrenceRuleSetConstraint.init(validLowerBound: try Calendar.current.lowerBound(for: .second),
                                                             validUpperBound: try Calendar.current.upperBound(for: .second))
     }
 
-    ///  Sets timeZone to constraints are based off of
+    private init(from ruleToCopy: RecurrenceRule, updatingConstraint ruleTimeUnit: RecurrenceRuleTimeUnit, with newConstraint: RecurrenceRuleConstraint) {
+        self.timeZone = ruleToCopy.timeZone
+
+        ruleTimeUnit == .year ? (self.yearConstraint = newConstraint) : (self.yearConstraint = ruleToCopy.yearConstraint)
+        ruleTimeUnit == .quarter ? (self.quarterConstraint = newConstraint) : (self.quarterConstraint = ruleToCopy.quarterConstraint)
+        ruleTimeUnit == .month ? (self.monthConstraint = newConstraint) : (self.monthConstraint = ruleToCopy.monthConstraint)
+        ruleTimeUnit == .weekOfYear ? (self.weekOfYearConstraint = newConstraint) : (self.weekOfYearConstraint = ruleToCopy.weekOfYearConstraint)
+        ruleTimeUnit == .weekOfMonth ? (self.weekOfMonthConstraint = newConstraint) : (self.weekOfMonthConstraint = ruleToCopy.weekOfMonthConstraint)
+        ruleTimeUnit == .dayOfMonth ? (self.dayOfMonthConstraint = newConstraint) : (self.dayOfMonthConstraint = ruleToCopy.dayOfMonthConstraint)
+        ruleTimeUnit == .dayOfWeek ? (self.dayOfWeekConstraint = newConstraint) : (self.dayOfWeekConstraint = ruleToCopy.dayOfWeekConstraint)
+        ruleTimeUnit == .hour ? (self.hourConstraint = newConstraint) : (self.hourConstraint = ruleToCopy.hourConstraint)
+        ruleTimeUnit == .minute ? (self.minuteConstraint = newConstraint) : (self.minuteConstraint = ruleToCopy.minuteConstraint)
+        ruleTimeUnit == .second ? (self.secondConstraint = newConstraint) : (self.secondConstraint = ruleToCopy.secondConstraint)
+    }
+
+    private init(from ruleToCopy: RecurrenceRule, updatingTimeZone timeZone: TimeZone) {
+        self.timeZone = timeZone
+
+        yearConstraint = ruleToCopy.yearConstraint
+        quarterConstraint = ruleToCopy.quarterConstraint
+        monthConstraint = ruleToCopy.monthConstraint
+        weekOfYearConstraint = ruleToCopy.weekOfYearConstraint
+        weekOfMonthConstraint = ruleToCopy.weekOfMonthConstraint
+        dayOfMonthConstraint = ruleToCopy.dayOfMonthConstraint
+        dayOfWeekConstraint = ruleToCopy.dayOfWeekConstraint
+        hourConstraint = ruleToCopy.hourConstraint
+        minuteConstraint = ruleToCopy.minuteConstraint
+        secondConstraint = ruleToCopy.secondConstraint
+    }
+
+    ///  Sets the timeZone that the constraints are based off of
     ///
     /// - Parameter timeZone: The TimeZone constraints reference against
-    public func usingTimeZone(_ timeZone: TimeZone) -> Self {
-        self.timeZone = timeZone
-        return self
+    public func usingTimeZone(_ timeZone: TimeZone) throws -> RecurrenceRule {
+        return RecurrenceRule.init(from: self, updatingTimeZone: timeZone)
     }
 
     // step
@@ -89,345 +119,266 @@ public class RecurrenceRule {
     ///         be satisfied at: 04:00, 04:22, 04:44, 05:00, 05:22, and 05:44
     ///
     /// - Parameter timeAmount: timeAmount to be scheduled
-    public func every(_ timeAmount: ScheduleTimeAmount) throws -> Self {
-        switch timeAmount.timeUnit {
-        case .second:
-            try secondConstraint.setStep(timeAmount.amount)
-        case .minute:
-            try minuteConstraint.setStep(timeAmount.amount)
-        case .hour:
-            try hourConstraint.setStep(timeAmount.amount)
-        case .dayOfWeek:
-            try dayOfWeekConstraint.setStep(timeAmount.amount)
-        case .day:
-            try dayOfWeekConstraint.setStep(timeAmount.amount)
-        case .week:
-            try weekOfMonthConstraint.setStep(timeAmount.amount)
-        case .month:
-            try monthConstraint.setStep(timeAmount.amount)
-        case .quarter:
-            try quarterConstraint.setStep(timeAmount.amount)
-        case .year:
-            try yearConstraint.setStep(timeAmount.amount)
-        }
-
-        return self
+    public func every(_ timeAmount: ScheduleTimeAmount) throws -> RecurrenceRule {
+        let ruleTimeUnit = resolveRuleTimeUnit(from: timeAmount.timeUnit)
+        let constraintToCopy = resolveConstraint(ruleTimeUnit)
+        let newConstraint = try RecurrenceRuleStepConstraint.init(from: constraintToCopy, stepConstraint: timeAmount.amount)
+        return RecurrenceRule.init(from: self, updatingConstraint: ruleTimeUnit, with: newConstraint)
     }
 
     // step convenience
     // second
-    public func everySecond() throws -> Self {
+    public func everySecond() throws -> RecurrenceRule {
         return try every(.seconds(1))
     }
 
-    public func everyFiveSeconds() throws -> Self {
+    public func everyFiveSeconds() throws -> RecurrenceRule {
         return try every(.seconds(5))
     }
 
-    public func everyTenSeconds() throws -> Self {
+    public func everyTenSeconds() throws -> RecurrenceRule {
         return try every(.seconds(10))
     }
 
-    public func everyFifteenSeconds() throws -> Self {
+    public func everyFifteenSeconds() throws -> RecurrenceRule {
         return try every(.seconds(15))
     }
 
-    public func every30Seconds() throws -> Self {
+    public func every30Seconds() throws -> RecurrenceRule {
         return try every(.seconds(30))
     }
 
     // minute
-    public func everyMinute() throws -> Self {
+    public func everyMinute() throws -> RecurrenceRule {
         return try every(.minutes(1))
     }
 
-    public func everyFiveMinutes() throws -> Self {
+    public func everyFiveMinutes() throws -> RecurrenceRule {
         return try every(.minutes(5))
     }
 
-    public func everyTenMinutes() throws -> Self {
+    public func everyTenMinutes() throws -> RecurrenceRule {
         return try every(.minutes(10))
     }
 
-    public func everyFifteenMinutes() throws -> Self {
+    public func everyFifteenMinutes() throws -> RecurrenceRule {
         return try every(.minutes(15))
     }
 
-    public func every30Minutes() throws -> Self {
+    public func every30Minutes() throws -> RecurrenceRule {
         return try every(.minutes(30))
     }
 
     // hour
-    public func hourly() throws -> Self {
+    public func hourly() throws -> RecurrenceRule {
         return try every(.hours(1))
     }
 
     // dayOfWeek
-    public func weekly() throws -> Self {
+    public func weekly() throws -> RecurrenceRule {
         return try every(.daysOfWeek(1))
     }
 
-    public func weekly(onDayOfWeek dayOfWeek: Int) throws -> Self {
+    public func weekly(onDayOfWeek dayOfWeek: Int) throws -> RecurrenceRule {
          return try every(.daysOfWeek(dayOfWeek))
     }
 
     // dayOfMonth
-    public func daily() throws -> Self {
+    public func daily() throws -> RecurrenceRule {
         return try every(.days(1))
     }
 
     // quarter
-    public func quarterly() throws -> Self {
+    public func quarterly() throws -> RecurrenceRule {
         return try every(.quarters(1))
     }
 
     // year
-    public func yearly() throws -> Self {
+    public func yearly() throws -> RecurrenceRule {
         return try every(.days(1))
     }
 
     /// The second that will satisfy the rule pending all other constraints are met
     ///
     /// - Parameter second: Lower bound: 0, Upper bound: 59
-    public func atSecond(_ second: Int) throws -> Self {
-        try secondConstraint.addToSet(second)
-        return self
+    public func atSecond(_ second: Int) throws -> RecurrenceRule {
+        return try recurrenceRule(updating: .second, withValue: second)
     }
 
     /// The minute that will satisfy the rule pending all other constraints are met
     ///
     /// - Parameter minute: Lower bound: 0, Upper bound: 59
-    public func atMinute(_ minute: Int) throws -> Self {
-        try minuteConstraint.addToSet(minute)
-        return self
+    public func atMinute(_ minute: Int) throws -> RecurrenceRule {
+        return try recurrenceRule(updating: .minute, withValue: minute)
     }
 
     /// The hour that will satisfy the rule pending all other constraints are met
     ///
     /// - Parameter hour: Lower bound: 0, Upper bound: 23
-    public func atHour(_ hour: Int) throws -> Self {
-        try hourConstraint.addToSet(hour)
-        return self
+    public func atHour(_ hour: Int) throws -> RecurrenceRule {
+        return try recurrenceRule(updating: .hour, withValue: hour)
     }
 
     /// The dayOfWeek that will satisfy the rule pending all other constraints are met
     ///
     /// - Note: 1 is Sunday, 7 is Saturday
     /// - Parameter dayOfWeek: Lower bound: 1, Upper bound: 7
-    public func atDayOfWeek(_ dayOfWeek: Int) throws -> Self {
-        try dayOfWeekConstraint.addToSet(dayOfWeek)
-        return self
+    public func atDayOfWeek(_ dayOfWeek: Int) throws -> RecurrenceRule {
+        return try recurrenceRule(updating: .dayOfWeek, withValue: dayOfWeek)
     }
 
     /// The dayOfMonth that will satisfy the rule pending all other constraints are met
     ///
     /// - Parameter dayOfMonth: Lower bound: 1, Upper bound: 31
-    public func atDayOfMonth(_ dayOfMonth: Int) throws -> Self {
-        try dayOfMonthConstraint.addToSet(dayOfMonth)
-        return self
+    public func atDayOfMonth(_ dayOfMonth: Int) throws -> RecurrenceRule {
+        return try recurrenceRule(updating: .dayOfMonth, withValue: dayOfMonth)
     }
 
     /// The weekOfMonth that will satisfy the rule pending all other constraints are met
     ///
     /// - Parameter dayOfMonth: Lower bound: 1, Upper bound: 5
-    public func atWeekOfMonth(_ weekOfMonth: Int) throws -> Self {
-        try weekOfMonthConstraint.addToSet(weekOfMonth)
-        return self
+    public func atWeekOfMonth(_ weekOfMonth: Int) throws -> RecurrenceRule {
+        return try recurrenceRule(updating: .weekOfMonth, withValue: weekOfMonth)
     }
 
     /// The weekOfYear that will satisfy the rule pending all other constraints are met
     ///
     /// - Parameter weekOfYear: Lower bound: 1, Upper bound: 52
-    public func atWeekOfYear(_ weekOfYear: Int) throws -> Self {
-        try weekOfYearConstraint.addToSet(weekOfYear)
-        return self
+    public func atWeekOfYear(_ weekOfYear: Int) throws -> RecurrenceRule {
+        return try recurrenceRule(updating: .weekOfYear, withValue: weekOfYear)
     }
 
     /// The month that will satisfy the rule pending all other constraints are met
     ///
     /// - Note: 1 is January, 12 is December
     /// - Parameter month: Lower bound: 1, Upper bound: 12
-    public func atMonth(_ month: Int) throws -> Self {
-        try monthConstraint.addToSet(month)
-        return self
+    public func atMonth(_ month: Int) throws -> RecurrenceRule {
+        return try recurrenceRule(updating: .month, withValue: month)
     }
 
     /// The quarter that will satisfy the rule pending all other constraints are met
     ///
     /// - Parameter year: Lower bound: 1, Upper bound: 4
-    public func atQuarter(_ quarter: Int) throws -> Self {
-        try quarterConstraint.addToSet(quarter)
-        return self
+    public func atQuarter(_ quarter: Int) throws -> RecurrenceRule {
+        return try recurrenceRule(updating: .quarter, withValue: quarter)
     }
 
     /// The year that will satisfy the rule pending all other constraints are met
     ///
     /// - Parameter year: Lower bound: 1970, Upper bound: 3000
-    public func atYear(_ year: Int) throws -> Self {
-        try yearConstraint.addToSet(year)
-        return self
+    public func atYear(_ year: Int) throws -> RecurrenceRule {
+        return try recurrenceRule(updating: .year, withValue: year)
     }
 
     // conveniene methods for set
-    public func sundays() throws -> Self {
+    public func sundays() throws -> RecurrenceRule {
         return try atDayOfWeek(1)
     }
 
-    public func mondays() throws -> Self {
+    public func mondays() throws -> RecurrenceRule {
         return try atDayOfWeek(2)
     }
 
-    public func tuesdays() throws -> Self {
+    public func tuesdays() throws -> RecurrenceRule {
         return try atDayOfWeek(3)
     }
 
-    public func wednesdays() throws -> Self {
+    public func wednesdays() throws -> RecurrenceRule {
         return try atDayOfWeek(4)
     }
 
-    public func thursdays() throws -> Self {
+    public func thursdays() throws -> RecurrenceRule {
         return try atDayOfWeek(5)
     }
 
-    public func fridays() throws -> Self {
+    public func fridays() throws -> RecurrenceRule {
         return try atDayOfWeek(6)
     }
 
-    public func saturdays() throws -> Self {
+    public func saturdays() throws -> RecurrenceRule {
         return try atDayOfWeek(7)
     }
 
-    public func weekdays() throws -> Self {
+    public func weekdays() throws -> RecurrenceRule {
         return try atDaysOfWeek([2, 3, 4, 5, 6])
     }
 
-    public func weekends() throws -> Self {
+    public func weekends() throws -> RecurrenceRule {
         return try atDaysOfWeek([1, 7])
     }
 
     // add array to set
-    public func atSeconds(_ seconds: [Int]) throws -> Self {
-        try secondConstraint.addToSet(seconds)
-        return self
+    public func atSeconds(_ seconds: Set<Int>) throws -> RecurrenceRule {
+        return try recurrenceRule(updating: .second, withValues: seconds)
     }
 
-    public func atMinutes(_ minutes: [Int]) throws -> Self {
-        try minuteConstraint.addToSet(minutes)
-        return self
+    public func atMinutes(_ minutes: Set<Int>) throws -> RecurrenceRule {
+        return try recurrenceRule(updating: .minute, withValues: minutes)
     }
 
-    public func atHours(_ hours: [Int]) throws -> Self {
-        try hourConstraint.addToSet(hours)
-        return self
+    public func atHours(_ hours: Set<Int>) throws -> RecurrenceRule {
+        return try recurrenceRule(updating: .hour, withValues: hours)
     }
 
-    public func atDaysOfWeek(_ daysOfWeek: [Int]) throws -> Self {
-        try dayOfWeekConstraint.addToSet(daysOfWeek)
-        return self
+    public func atDaysOfWeek(_ daysOfWeek: Set<Int>) throws -> RecurrenceRule {
+        return try recurrenceRule(updating: .dayOfWeek, withValues: daysOfWeek)
     }
 
-    public func atDaysOfMonth(_ daysOfMonth: [Int]) throws -> Self {
-        try dayOfMonthConstraint.addToSet(daysOfMonth)
-        return self
+    public func atDaysOfMonth(_ daysOfMonth: Set<Int>) throws -> RecurrenceRule {
+        return try recurrenceRule(updating: .dayOfMonth, withValues: daysOfMonth)
     }
 
-    public func atWeeksOfMonth(_ weeksOfMonth: [Int]) throws -> Self {
-        try weekOfMonthConstraint.addToSet(weeksOfMonth)
-        return self
+    public func atWeeksOfMonth(_ weeksOfMonth: Set<Int>) throws -> RecurrenceRule {
+        return try recurrenceRule(updating: .weekOfMonth, withValues: weeksOfMonth)
     }
 
-    public func atWeeksOfYear(_ weeksOfYear: [Int]) throws -> Self {
-        try weekOfYearConstraint.addToSet(weeksOfYear)
-        return self
+    public func atWeeksOfYear(_ weeksOfYear: Set<Int>) throws -> RecurrenceRule {
+        return try recurrenceRule(updating: .weekOfYear, withValues: weeksOfYear)
     }
 
-    public func atMonths(_ months: [Int]) throws -> Self {
-        try monthConstraint.addToSet(months)
-        return self
+    public func atMonths(_ months: Set<Int>) throws -> RecurrenceRule {
+        return try recurrenceRule(updating: .month, withValues: months)
     }
 
-    public func atQuarters(_ quarters: [Int]) throws -> Self {
-        try quarterConstraint.addToSet(quarters)
-        return self
+    public func atQuarters(_ quarters: Set<Int>) throws -> RecurrenceRule {
+        return try recurrenceRule(updating: .quarter, withValues: quarters)
     }
 
-    public func atYears(_ years: [Int]) throws -> Self {
-        try yearConstraint.addToSet(years)
-        return self
+    public func atYears(_ years: Set<Int>) throws -> RecurrenceRule {
+        return try recurrenceRule(updating: .year, withValues: years)
     }
 
     // ranges
-    public func whenSecondInRange(lowerBound: Int, upperBound: Int) throws -> Self {
-        try secondConstraint.createRange(lowerBound: lowerBound, upperBound: upperBound)
-        return self
+    public func whenSecondInRange(lowerBound: Int, upperBound: Int) throws -> RecurrenceRule {
+        return try recurrenceRule(updating: .second, withRange: lowerBound...upperBound)
     }
 
-    public func whenMinuteInRange(lowerBound: Int, upperBound: Int) throws -> Self {
-        try minuteConstraint.createRange(lowerBound: lowerBound, upperBound: upperBound)
-        return self
+    public func whenMinuteInRange(lowerBound: Int, upperBound: Int) throws -> RecurrenceRule {
+        return try recurrenceRule(updating: .minute, withRange: lowerBound...upperBound)
     }
 
-    public func whenHourInRange(lowerBound: Int, upperBound: Int) throws -> Self {
-        try hourConstraint.createRange(lowerBound: lowerBound, upperBound: upperBound)
-        return self
+    public func whenHourInRange(lowerBound: Int, upperBound: Int) throws -> RecurrenceRule {
+        return try recurrenceRule(updating: .hour, withRange: lowerBound...upperBound)
     }
 
-    public func whenDayOfWeekInRange(lowerBound: Int, upperBound: Int) throws -> Self {
-        try dayOfWeekConstraint.createRange(lowerBound: lowerBound, upperBound: upperBound)
-        return self
+    public func whenDayOfWeekInRange(lowerBound: Int, upperBound: Int) throws -> RecurrenceRule {
+        return try recurrenceRule(updating: .dayOfWeek, withRange: lowerBound...upperBound)
     }
 
-    public func whenDayOfMonthInRange(lowerBound: Int, upperBound: Int) throws -> Self {
-        try dayOfMonthConstraint.createRange(lowerBound: lowerBound, upperBound: upperBound)
-        return self
+    public func whenDayOfMonthInRange(lowerBound: Int, upperBound: Int) throws -> RecurrenceRule {
+        return try recurrenceRule(updating: .dayOfMonth, withRange: lowerBound...upperBound)
     }
 
-    public func whenMonthInRange(lowerBound: Int, upperBound: Int) throws -> Self {
-        try monthConstraint.createRange(lowerBound: lowerBound, upperBound: upperBound)
-        return self
+    public func whenMonthInRange(lowerBound: Int, upperBound: Int) throws -> RecurrenceRule {
+        return try recurrenceRule(updating: .month, withRange: lowerBound...upperBound)
     }
 
-    public func whenQuarterInRange(lowerBound: Int, upperBound: Int) throws -> Self {
-        try quarterConstraint.createRange(lowerBound: lowerBound, upperBound: upperBound)
-        return self
+    public func whenQuarterInRange(lowerBound: Int, upperBound: Int) throws -> RecurrenceRule {
+        return try recurrenceRule(updating: .quarter, withRange: lowerBound...upperBound)
     }
 
-    public func whenYearInRange(lowerBound: Int, upperBound: Int) throws -> Self {
-        try yearConstraint.createRange(lowerBound: lowerBound, upperBound: upperBound)
-        return self
-    }
-
-    private func resolveLowestCadence() -> RecurrenceRuleTimeUnit {
-        if secondConstraint.isConstraintActive {
-            return .second
-        } else if minuteConstraint.isConstraintActive {
-            return .minute
-        } else if hourConstraint.isConstraintActive {
-            return .hour
-        } else if dayOfMonthConstraint.isConstraintActive {
-            return .dayOfMonth
-        } else if monthConstraint.isConstraintActive {
-            return .month
-        } else {
-            return .year
-        }
-    }
-
-    private func resolveCadenceLevel(_ ruleTimeUnit: RecurrenceRuleTimeUnit) -> Int {
-        switch ruleTimeUnit {
-        case .second:
-            return 0
-        case .minute:
-            return 1
-        case .hour:
-            return 2
-        case .dayOfMonth:
-            return 3
-        case .month:
-            return 4
-        default:
-            return 6
-        }
+    public func whenYearInRange(lowerBound: Int, upperBound: Int) throws -> RecurrenceRule {
+        return try recurrenceRule(updating: .year, withRange: lowerBound...upperBound)
     }
 
     public func evaluate(date: Date) throws -> Bool {
@@ -483,34 +434,6 @@ public class RecurrenceRule {
             return (isValid: true, ruleTimeUnitFailedOn)
         } else {
             return (isValid: false, ruleTimeUnitFailedOn)
-        }
-    }
-
-    private func isYearConstraintPossible(date: Date) throws -> Bool {
-        guard let currentYear = date.year() else {
-            throw RecurrenceRuleError.couldNotResolveYearConstraitFromDate
-        }
-
-        if yearConstraint.isConstraintActive {
-            for year in yearConstraint.setConstraint {
-                if year >= currentYear {
-                    return true
-                }
-            }
-
-            if let rangeConstraint = yearConstraint.rangeConstraint {
-                if rangeConstraint.contains(currentYear) {
-                    return true
-                }
-            }
-
-            if yearConstraint.stepConstraint != nil {
-                return true
-            }
-
-            return false
-        } else {
-            return true
         }
     }
 
@@ -601,6 +524,100 @@ public class RecurrenceRule {
             return self.quarterConstraint
         case .year:
             return self.yearConstraint
+        }
+    }
+
+    private func resolveRuleTimeUnit(from scheduleTimeUnit: ScheduleTimeUnit) -> RecurrenceRuleTimeUnit {
+        switch scheduleTimeUnit {
+        case .second:
+            return RecurrenceRuleTimeUnit.second
+        case .minute:
+            return RecurrenceRuleTimeUnit.minute
+        case .hour:
+            return RecurrenceRuleTimeUnit.hour
+        case .dayOfWeek:
+            return RecurrenceRuleTimeUnit.dayOfWeek
+        case .day:
+            return RecurrenceRuleTimeUnit.dayOfMonth
+        case .week:
+            return RecurrenceRuleTimeUnit.weekOfYear
+        case .month:
+            return RecurrenceRuleTimeUnit.month
+        case .quarter:
+            return RecurrenceRuleTimeUnit.quarter
+        case .year:
+            return RecurrenceRuleTimeUnit.year
+        }
+    }
+
+    private func recurrenceRule(updating ruleTimeUnit: RecurrenceRuleTimeUnit, withValue value: Int) throws -> RecurrenceRule {
+        let constraintToCopy = resolveConstraint(ruleTimeUnit)
+        let newConstraint = try RecurrenceRuleSetConstraint.init(from: constraintToCopy, setConstraint: [value])
+        return RecurrenceRule.init(from: self, updatingConstraint: ruleTimeUnit, with: newConstraint)
+    }
+
+    private func recurrenceRule(updating ruleTimeUnit: RecurrenceRuleTimeUnit, withValues values: Set<Int>) throws -> RecurrenceRule {
+        let constraintToCopy = resolveConstraint(ruleTimeUnit)
+        let newConstraint = try RecurrenceRuleSetConstraint.init(from: constraintToCopy, setConstraint: values)
+        return RecurrenceRule.init(from: self, updatingConstraint: ruleTimeUnit, with: newConstraint)
+    }
+
+    private func recurrenceRule(updating ruleTimeUnit: RecurrenceRuleTimeUnit, withRange range: ClosedRange<Int>) throws -> RecurrenceRule {
+        let constraintToCopy = resolveConstraint(ruleTimeUnit)
+        let newConstraint = try RecurrenceRuleRangeConstraint.init(from: constraintToCopy, rangeConstraint: range)
+        return RecurrenceRule.init(from: self, updatingConstraint: ruleTimeUnit, with: newConstraint)
+    }
+
+    private func resolveLowestCadence() -> RecurrenceRuleTimeUnit {
+        if secondConstraint.isConstraintActive {
+            return .second
+        } else if minuteConstraint.isConstraintActive {
+            return .minute
+        } else if hourConstraint.isConstraintActive {
+            return .hour
+        } else if dayOfMonthConstraint.isConstraintActive {
+            return .dayOfMonth
+        } else if monthConstraint.isConstraintActive {
+            return .month
+        } else {
+            return .year
+        }
+    }
+
+    private func resolveCadenceLevel(_ ruleTimeUnit: RecurrenceRuleTimeUnit) -> Int {
+        switch ruleTimeUnit {
+        case .second:
+            return 0
+        case .minute:
+            return 1
+        case .hour:
+            return 2
+        case .dayOfMonth:
+            return 3
+        case .month:
+            return 4
+        default:
+            return 6
+        }
+    }
+
+    private func isYearConstraintPossible(date: Date) throws -> Bool {
+        guard let currentYear = date.year() else {
+            throw RecurrenceRuleError.couldNotResolveYearConstraitFromDate
+        }
+
+        if yearConstraint.isConstraintActive {
+            if let higestPossibleYearValue = yearConstraint.highestPossibleValue {
+                if currentYear < higestPossibleYearValue {
+                    return true
+                }
+            } else {
+                return true
+            }
+
+            return false
+        } else {
+            return true
         }
     }
 

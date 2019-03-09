@@ -1,165 +1,212 @@
 import Foundation
 
 enum RecurrenceRuleConstraintError: Error {
-    case amountToInsertLessThanLowerBound
-    case amountToInsertGreaterThanUpperBound
+    case constraintAmountLessThanLowerBound
+    case constraintAmountGreaterThanUpperBound
 }
 
-final class RecurrenceRuleConstraint {
-    private(set) var setConstraint = Set<Int>()
-    private(set) var rangeConstraint: ClosedRange<Int>?
-    private(set) var stepConstraint: Int?
-
-    private let validLowerBound: Int?
-    private let validUpperBound: Int?
-
-    private var lowestPossibleValue: Int?
-
-    init(validLowerBound: Int?, validUpperBound: Int?) {
-        self.validLowerBound = validLowerBound
-        self.validUpperBound = validUpperBound
-    }
-
-    public var isConstraintActive: Bool {
-        if setConstraint.isEmpty && rangeConstraint == nil && stepConstraint == nil {
-            return false
-        }
-
-        return true
-    }
-
-    // validate
-    private func validate(_ amount: Int) throws {
+struct ConstraintValueValidator {
+    func validate(value: Int, validLowerBound: Int?, validUpperBound: Int?) throws {
         if let lowerBound = validLowerBound {
-            if amount < lowerBound {
-                throw RecurrenceRuleConstraintError.amountToInsertLessThanLowerBound
+            if value < lowerBound {
+                throw RecurrenceRuleConstraintError.constraintAmountLessThanLowerBound
             }
         }
 
         if let upperBound = validUpperBound {
-            if amount > upperBound {
-                throw RecurrenceRuleConstraintError.amountToInsertGreaterThanUpperBound
+            if value > upperBound {
+                throw RecurrenceRuleConstraintError.constraintAmountGreaterThanUpperBound
             }
         }
     }
+}
 
-    private func challengeLowestPossibleValue(_ challenger: Int) {
-        if let low = lowestPossibleValue {
-            if challenger < low {
-                lowestPossibleValue = challenger
+protocol RecurrenceRuleConstraint {
+    var validLowerBound: Int? { get }
+    var validUpperBound: Int? { get }
+    var lowestPossibleValue: Int? { get }
+    var highestPossibleValue: Int? { get }
+    var isConstraintActive: Bool { get }
+
+    func evaluate(_ evaluationAmount: Int) -> EvaluationState
+    func nextValidValue(currentValue: Int) -> Int?
+}
+
+struct RecurrenceRuleSetConstraint: RecurrenceRuleConstraint {
+    let validLowerBound: Int?
+    let validUpperBound: Int?
+    let setConstraint: Set<Int>
+
+    var lowestPossibleValue: Int? {
+        if var lowest = setConstraint.first {
+            for value in setConstraint {
+                if value < lowest {
+                    lowest = value
+                }
             }
+            return lowest
         } else {
-            lowestPossibleValue = challenger
+            return nil
         }
     }
 
-    // set
-    public func addToSet(_ amount: Int) throws {
-        try validate(amount)
-
-        challengeLowestPossibleValue(amount)
-        setConstraint.insert(amount)
-    }
-
-    public func addToSet(_ amounts: [Int]) throws {
-        // validate all amounts
-        for amount in amounts {
-            try validate(amount)
-        }
-
-        // insert all amounts
-        for amount in amounts {
-            challengeLowestPossibleValue(amount)
-            setConstraint.insert(amount)
+    var highestPossibleValue: Int? {
+        if var highest = setConstraint.first {
+            for value in setConstraint {
+                if value > highest {
+                    highest = value
+                }
+            }
+            return highest
+        } else {
+            return nil
         }
     }
 
-    // range
-    internal func createRange(lowerBound: Int, upperBound: Int) throws {
-        if lowerBound > upperBound {
-            throw RecurrenceRuleError.lowerBoundGreaterThanUpperBound
+    var isConstraintActive: Bool {
+        if setConstraint.isEmpty {
+            return false
+        } else {
+            return true
         }
-        try validate(lowerBound)
-        try validate(upperBound)
-
-        challengeLowestPossibleValue(lowerBound)
-        self.rangeConstraint = lowerBound...upperBound
     }
 
-    // step
-    public func setStep(_ amount: Int) throws {
-        try validate(amount)
-
-        challengeLowestPossibleValue(0)
-        stepConstraint = amount
+    init(validLowerBound: Int?, validUpperBound: Int?) {
+        self.validLowerBound = validLowerBound
+        self.validUpperBound = validUpperBound
+        self.setConstraint = Set<Int>()
     }
 
-    public func evaluate(_ evaluationAmount: Int) -> EvaluationState {
+    init(validLowerBound: Int?, validUpperBound: Int?, setConstraint: Set<Int> = Set<Int>()) throws {
+        self.validLowerBound = validLowerBound
+        self.validUpperBound = validUpperBound
+
+        let validator = ConstraintValueValidator()
+        for amount in setConstraint {
+            try validator.validate(value: amount, validLowerBound: validLowerBound, validUpperBound: validUpperBound)
+        }
+        self.setConstraint = setConstraint
+    }
+
+    init(from constraintToCopy: RecurrenceRuleConstraint, setConstraint: Set<Int> = Set<Int>()) throws {
+        self.validLowerBound = constraintToCopy.validLowerBound
+        self.validUpperBound = constraintToCopy.validUpperBound
+
+        let validator = ConstraintValueValidator()
+        for amount in setConstraint {
+            try validator.validate(value: amount, validLowerBound: validLowerBound, validUpperBound: validUpperBound)
+        }
+        self.setConstraint = setConstraint
+    }
+
+    func evaluate(_ evaluationAmount: Int) -> EvaluationState {
         if isConstraintActive == false {
             return EvaluationState.noComparisonAttempted
         }
 
-        let setAndRangeEvaluationState = evaluateSetAndRangeConstraints(evaluationAmount)
-        let stepEvaluationState = evaluateStepConstraint(evaluationAmount)
-
-        if setAndRangeEvaluationState == .failed || stepEvaluationState == .failed {
-            return EvaluationState.failed
-        } else if setAndRangeEvaluationState == .passing || stepEvaluationState == .passing {
-            return EvaluationState.passing
-        } else {
-            return EvaluationState.noComparisonAttempted
-        }
-    }
-
-    private func evaluateSetAndRangeConstraints(_ evaluationAmount: Int) -> EvaluationState {
-        if setConstraint.count > 0 {
-            if setConstraint.contains(evaluationAmount) {
-                return EvaluationState.passing
-            } else {
-                return EvaluationState.failed
-            }
-        }
-
-        if let rangeConstraint = rangeConstraint {
-            if rangeConstraint.contains(evaluationAmount) {
-                return EvaluationState.passing
-            } else {
-                return EvaluationState.failed
-            }
-        }
-
-        return EvaluationState.noComparisonAttempted
-    }
-
-    private func evaluateStepConstraint(_ evaluationAmount: Int) -> EvaluationState {
-        guard let stepAmount = stepConstraint else {
-            return EvaluationState.noComparisonAttempted
-        }
-
-        // pass if evaluationAmount is divisiable of stepConstriant
-        if evaluationAmount % stepAmount == 0 {
+        if setConstraint.contains(evaluationAmount) {
             return EvaluationState.passing
         } else {
             return EvaluationState.failed
         }
     }
 
-    public func nextValidValue(currentValue: Int) -> Int? {
+    func nextValidValue(currentValue: Int) -> Int? {
         var lowestValueGreaterThanCurrentValue: Int?
 
-        if setConstraint.count > 0 {
-            for value in setConstraint {
-                if value >= currentValue {
-                    if let low = lowestValueGreaterThanCurrentValue {
-                        if value < low {
-                            lowestValueGreaterThanCurrentValue = value
-                        }
-                    } else {
+        for value in setConstraint {
+            if value >= currentValue {
+                if let low = lowestValueGreaterThanCurrentValue {
+                    if value < low {
                         lowestValueGreaterThanCurrentValue = value
                     }
+                } else {
+                    lowestValueGreaterThanCurrentValue = value
                 }
             }
         }
+
+        if lowestValueGreaterThanCurrentValue != nil {
+            return lowestValueGreaterThanCurrentValue
+        } else {
+            return lowestPossibleValue
+        }
+    }
+}
+
+struct RecurrenceRuleRangeConstraint: RecurrenceRuleConstraint {
+    let validLowerBound: Int?
+    let validUpperBound: Int?
+    let rangeConstraint: ClosedRange<Int>?
+
+    var lowestPossibleValue: Int? {
+        if let range = rangeConstraint {
+            return range.lowerBound
+        } else {
+            return nil
+        }
+    }
+
+    var highestPossibleValue: Int? {
+        if let range = rangeConstraint {
+            return range.upperBound
+        } else {
+            return nil
+        }
+    }
+
+    var isConstraintActive: Bool {
+        if rangeConstraint == nil {
+            return false
+        } else {
+            return true
+        }
+    }
+
+    init(validLowerBound: Int?, validUpperBound: Int?) {
+        self.validLowerBound = validLowerBound
+        self.validUpperBound = validUpperBound
+        self.rangeConstraint = nil
+    }
+
+    init(validLowerBound: Int?, validUpperBound: Int?, rangeConstraint: ClosedRange<Int>? = nil) throws {
+        self.validLowerBound = validLowerBound
+        self.validUpperBound = validUpperBound
+
+        if let range = rangeConstraint {
+            let validator = ConstraintValueValidator()
+            try validator.validate(value: range.lowerBound, validLowerBound: validLowerBound, validUpperBound: validUpperBound)
+            try validator.validate(value: range.upperBound, validLowerBound: validLowerBound, validUpperBound: validUpperBound)
+        }
+        self.rangeConstraint = rangeConstraint
+    }
+
+    init(from constraintToCopy: RecurrenceRuleConstraint, rangeConstraint: ClosedRange<Int>? = nil) throws {
+        self.validLowerBound = constraintToCopy.validLowerBound
+        self.validUpperBound = constraintToCopy.validUpperBound
+
+        if let range = rangeConstraint {
+            let validator = ConstraintValueValidator()
+            try validator.validate(value: range.lowerBound, validLowerBound: validLowerBound, validUpperBound: validUpperBound)
+            try validator.validate(value: range.upperBound, validLowerBound: validLowerBound, validUpperBound: validUpperBound)
+        }
+        self.rangeConstraint = rangeConstraint
+    }
+
+    func evaluate(_ evaluationAmount: Int) -> EvaluationState {
+        if let range = rangeConstraint {
+            if range.contains(evaluationAmount) {
+                return EvaluationState.passing
+            } else {
+                return EvaluationState.failed
+            }
+        } else {
+            return EvaluationState.noComparisonAttempted
+        }
+    }
+
+    func nextValidValue(currentValue: Int) -> Int? {
+        var lowestValueGreaterThanCurrentValue: Int?
 
         if let rangeConstraint = rangeConstraint {
             if (currentValue + 1) <= rangeConstraint.upperBound {
@@ -172,6 +219,79 @@ final class RecurrenceRuleConstraint {
                 }
             }
         }
+
+        if lowestValueGreaterThanCurrentValue != nil {
+            return lowestValueGreaterThanCurrentValue
+        } else {
+            return lowestPossibleValue
+        }
+    }
+
+}
+
+struct RecurrenceRuleStepConstraint: RecurrenceRuleConstraint {
+    let validLowerBound: Int?
+    let validUpperBound: Int?
+    let stepConstraint: Int?
+
+    var lowestPossibleValue: Int? {
+        if stepConstraint != nil {
+            return 0
+        } else {
+            return nil
+        }
+    }
+
+    var highestPossibleValue: Int? {
+        return nil
+    }
+
+    var isConstraintActive: Bool {
+        if stepConstraint == nil {
+            return false
+        } else {
+            return true
+        }
+    }
+
+    init(validLowerBound: Int?, validUpperBound: Int?) {
+        self.validLowerBound = validLowerBound
+        self.validUpperBound = validUpperBound
+        self.stepConstraint = nil
+    }
+
+    init(from constraintToCopy: RecurrenceRuleConstraint, stepConstraint: Int? = nil) throws {
+        self.validLowerBound = constraintToCopy.validLowerBound
+        self.validUpperBound = constraintToCopy.validUpperBound
+
+        if let amount = stepConstraint {
+            if let validUpperBound = validUpperBound {
+                if amount < 1 {
+                    throw RecurrenceRuleConstraintError.constraintAmountLessThanLowerBound
+                }
+                if amount > validUpperBound {
+                    throw RecurrenceRuleConstraintError.constraintAmountGreaterThanUpperBound
+                }
+            }
+        }
+        self.stepConstraint = stepConstraint
+    }
+
+    func evaluate(_ evaluationAmount: Int) -> EvaluationState {
+        guard let stepAmount = stepConstraint else {
+            return EvaluationState.noComparisonAttempted
+        }
+
+        // pass if evaluationAmount is divisiable of stepConstriant
+        if evaluationAmount % stepAmount == 0 {
+            return EvaluationState.passing
+        } else {
+            return EvaluationState.failed
+        }
+    }
+
+    func nextValidValue(currentValue: Int) -> Int? {
+        var lowestValueGreaterThanCurrentValue: Int?
 
         // step
         if let stepValue = stepConstraint {
@@ -219,5 +339,4 @@ final class RecurrenceRuleConstraint {
             return lowestPossibleValue
         }
     }
-
 }
