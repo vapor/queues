@@ -121,9 +121,9 @@ public class JobsCommand: Command {
                 let jobRunPromise = eventLoop.newPromise(Void.self)
                 
                 let futureJob = job.anyDequeue(jobContext, jobStorage)
-                self.firstFutureToSucceed(future: futureJob, tries: jobStorage.maxRetryCount, on: eventLoop).catch { error in
+                self.firstFutureToSucceed(future: futureJob, tries: jobStorage.maxRetryCount, on: eventLoop).catchFlatMap { error in
                     console.error("Error: \(error) job_id=[\(jobStorage.id)]", newLine: true)
-                    job.error(jobContext, error, jobStorage).cascadeFailure(promise: jobRunPromise)
+                    return job.error(jobContext, error, jobStorage)
                 }.always {
                     queueService.persistenceLayer.completed(key: key, jobStorage: jobStorage).cascade(promise: jobRunPromise)
                 }
