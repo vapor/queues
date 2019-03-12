@@ -102,14 +102,14 @@ public class JobsCommand: Command {
         let config = try container.make(JobsConfig.self)
         
         _ = eventLoop.scheduleRepeatedTask(initialDelay: .seconds(0), delay: queueService.refreshInterval) { task -> EventLoopFuture<Void> in
+            //Check if shutting down
+            
+            if self.isShuttingDown {
+                task.cancel()
+                promise.succeed()
+            }
+            
             return queueService.persistenceLayer.get(key: key).flatMap { jobStorage in
-                //Check if shutting down
-                
-                if self.isShuttingDown {
-                    task.cancel()
-                    promise.succeed()
-                }
-                
                 //No job found, go to the next iteration
                 guard let jobStorage = jobStorage else { return eventLoop.future() }
                 guard let job = config.make(for: jobStorage.jobName) else {
@@ -118,19 +118,17 @@ public class JobsCommand: Command {
                 
                 console.info("Dequeing Job job_id=[\(jobStorage.id)]", newLine: true)
                 
+                let jobRunPromise = eventLoop.newPromise(Void.self)
+                
                 let futureJob = job.anyDequeue(jobContext, jobStorage)
-                return self.firstFutureToSucceed(future: futureJob, tries: jobStorage.maxRetryCount, on: eventLoop).flatMap { _ in
-                    return queueService.persistenceLayer.completed(key: key, jobStorage: jobStorage)
-                }.catchFlatMap { error in
+                self.firstFutureToSucceed(future: futureJob, tries: jobStorage.maxRetryCount, on: eventLoop).catchFlatMap { error in
                     console.error("Error: \(error) job_id=[\(jobStorage.id)]", newLine: true)
-                    
-                    return queueService
-                        .persistenceLayer
-                        .completed(key: key, jobStorage: jobStorage)
-                        .flatMap { _ in
-                            return job.error(jobContext, error, jobStorage)
-                    }
+                    return job.error(jobContext, error, jobStorage)
+                }.always {
+                    queueService.persistenceLayer.completed(key: key, jobStorage: jobStorage).cascade(promise: jobRunPromise)
                 }
+                
+                return jobRunPromise.futureResult
             }
         }
     }
