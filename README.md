@@ -152,10 +152,12 @@ You can use the `error` method on `Job` to catch any errors thrown in the proces
 
 
 
-# RecurrenceRule 
-setting up a `RecurrenceRule` uses principles of cron
+# RecurrenceRules 
+Setting up a `RecurrenceRule` uses similar principles of cron job scheduling
+
 some good references: https://crontab-generator.org/, https://crontab-generator.org/
-you can set constraints on these date components (RecurrenceRuleTimeUnits):
+
+You can set constraints on these date components (RecurrenceRuleTimeUnits):
 * year (1970-)
 * quarter (1-4)
 * month (1-12) ex: 1 is January, 12 is December
