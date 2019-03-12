@@ -8,6 +8,7 @@ enum RecurrenceRuleError: Error {
     case coundNotResolveNextInstanceWithin1000Years
     case couldNotResolveYearConstraitFromDate
     case couldNotResloveNextValueFromConstraint
+    case ruleInsatiable
 }
 
 /// Defines the rule for when to run a job based on the given constraints
@@ -407,21 +408,21 @@ public struct RecurrenceRule {
     /// The range of seconds (inclusive) the job will run pending all other constraints are met
     /// - Parameter lowerBound: must be at least 0
     /// - Parameter upperBound: 59
-    public func whenSecondInRange(lowerBound: Int, upperBound: Int) throws -> RecurrenceRule {
+    public func atSecondsInRange(lowerBound: Int, upperBound: Int) throws -> RecurrenceRule {
         return try recurrenceRule(updating: .second, withRange: lowerBound...upperBound)
     }
 
     /// The range of minutes (inclusive) the job will run pending all other constraints are met
     /// - Parameter lowerBound: must be at least 0
     /// - Parameter upperBound: must not greater than 59
-    public func whenMinuteInRange(lowerBound: Int, upperBound: Int) throws -> RecurrenceRule {
+    public func atMinutesInRange(lowerBound: Int, upperBound: Int) throws -> RecurrenceRule {
         return try recurrenceRule(updating: .minute, withRange: lowerBound...upperBound)
     }
 
     /// The range of hours (inclusive) the job will run pending all other constraints are met
     /// - Parameter lowerBound: must be at least 0
     /// - Parameter upperBound: must not greater than 23
-    public func whenHourInRange(lowerBound: Int, upperBound: Int) throws -> RecurrenceRule {
+    public func atHoursInRange(lowerBound: Int, upperBound: Int) throws -> RecurrenceRule {
         return try recurrenceRule(updating: .hour, withRange: lowerBound...upperBound)
     }
 
@@ -429,28 +430,28 @@ public struct RecurrenceRule {
     /// - Note: 1 is Sunday, 7 is Saturday
     /// - Parameter lowerBound: must be at least 1
     /// - Parameter upperBound: must not greater than 7
-    public func whenDayOfWeekInRange(lowerBound: Int, upperBound: Int) throws -> RecurrenceRule {
+    public func atDaysOfWeekInRange(lowerBound: Int, upperBound: Int) throws -> RecurrenceRule {
         return try recurrenceRule(updating: .dayOfWeek, withRange: lowerBound...upperBound)
     }
 
     /// The range of the days of the month (inclusive) the job will run pending all other constraints are met
     /// - Parameter lowerBound: must be at least 1
     /// - Parameter upperBound: must not greater than 31
-    public func whenDayOfMonthInRange(lowerBound: Int, upperBound: Int) throws -> RecurrenceRule {
+    public func atDaysOfMonthInRange(lowerBound: Int, upperBound: Int) throws -> RecurrenceRule {
         return try recurrenceRule(updating: .dayOfMonth, withRange: lowerBound...upperBound)
     }
 
     /// The range of the weeks of the month (inclusive) the job will run pending all other constraints are met
     /// - Parameter lowerBound: must be at least 1
     /// - Parameter upperBound: must not greater than 5
-    public func whenWeeksOfMonthInRange(lowerBound: Int, upperBound: Int) throws -> RecurrenceRule {
+    public func atWeeksOfMonthInRange(lowerBound: Int, upperBound: Int) throws -> RecurrenceRule {
         return try recurrenceRule(updating: .weekOfMonth, withRange: lowerBound...upperBound)
     }
 
     /// The range of the weeks of the year (inclusive) the job will run pending all other constraints are met
     /// - Parameter lowerBound: must be at least 1
     /// - Parameter upperBound: must not greater than 52
-    public func whenWeeksOfYearInRange(lowerBound: Int, upperBound: Int) throws -> RecurrenceRule {
+    public func atWeeksOfYearInRange(lowerBound: Int, upperBound: Int) throws -> RecurrenceRule {
         return try recurrenceRule(updating: .weekOfYear, withRange: lowerBound...upperBound)
     }
 
@@ -458,21 +459,21 @@ public struct RecurrenceRule {
     /// - Note: 1 is January, 12 is December
     /// - Parameter lowerBound: must be at least 1
     /// - Parameter upperBound: must not greater than 12
-    public func whenMonthInRange(lowerBound: Int, upperBound: Int) throws -> RecurrenceRule {
+    public func atMonthsInRange(lowerBound: Int, upperBound: Int) throws -> RecurrenceRule {
         return try recurrenceRule(updating: .month, withRange: lowerBound...upperBound)
     }
 
     /// The range of the quarters (inclusive) the job will run pending all other constraints are met
     /// - Parameter lowerBound: must be at least  1
     /// - Parameter upperBound: must not greater than 4
-    public func whenQuarterInRange(lowerBound: Int, upperBound: Int) throws -> RecurrenceRule {
+    public func atQuartersInRange(lowerBound: Int, upperBound: Int) throws -> RecurrenceRule {
         return try recurrenceRule(updating: .quarter, withRange: lowerBound...upperBound)
     }
 
     /// The range of the years (inclusive) the job will run pending all other constraints are met
     /// - Parameter lowerBound: must be at least 1
     /// - Parameter upperBound: must not greater than 3000
-    public func whenYearInRange(lowerBound: Int, upperBound: Int) throws -> RecurrenceRule {
+    public func atYearsInRange(lowerBound: Int, upperBound: Int) throws -> RecurrenceRule {
         return try recurrenceRule(updating: .year, withRange: lowerBound...upperBound)
     }
 
@@ -538,6 +539,8 @@ public struct RecurrenceRule {
 
     /// Finds the next date from the starting date that satisfies the rule
     ///
+    /// - Warning: The search is exhausted after the year 3000
+    ///
     /// - Parameter date: The starting date
     /// - Returns: The next date that satisfies the rule
     public func resolveNextDateThatSatisfiesRule(date: Date) throws -> Date {
@@ -545,10 +548,15 @@ public struct RecurrenceRule {
             throw RecurrenceRuleError.noConstraintsSetForRecurrenceRule
         }
 
+        // throws error if rule contains constraints that can never be satisfiedss
+        try checkForInsatiableConstraints()
+
         var dateToTest = date.dateByIncrementing(timeUnitOfLowestActiveConstraint)
 
         var nextInstanceFound = false
-        while nextInstanceFound == false {
+        var isSearchExhausted = false
+        var numOfChecksMade = 0
+        while nextInstanceFound == false && isSearchExhausted == false {
             guard let currentDateToTest = dateToTest else {
                 throw RecurrenceRuleError.coundNotResolveNextInstanceWithin1000Years
             }
@@ -559,6 +567,14 @@ public struct RecurrenceRule {
             if let ruleTimeUnitFailedOn = try self.evaluate(date: currentDateToTest).ruleTimeUnitFailedOn {
                 let nextValidValue = try resolveNextValidValue(for: ruleTimeUnitFailedOn, date: currentDateToTest)
                 dateToTest = try currentDateToTest.nextDate(where: ruleTimeUnitFailedOn, is: nextValidValue, atTimeZone: timeZone)
+
+                // check if year of dateToTest is greater than the limit
+                if let year = dateToTest?.year() {
+                    if year > 3000 {
+                        isSearchExhausted = true
+                    }
+                }
+                numOfChecksMade += 1
             } else {
                 nextInstanceFound = true
             }
@@ -572,6 +588,49 @@ public struct RecurrenceRule {
             }
         } else {
             throw RecurrenceRuleError.coundNotResolveNextInstanceWithin1000Years
+        }
+    }
+
+    /// throws error if rule contains constraints that can never be satisfiedss
+    private func checkForInsatiableConstraints() throws {
+        // January, March, May, July, August, October, December
+        let monthsWithExactly31Days = [1, 3, 5, 7, 8, 10, 12]
+        // April, June, September, November
+        let monthsWithExactly30Days = [4, 6, 9, 11]
+        // februrary has 28 or 29 days
+
+        guard let dayOfMonthLowestPossibleValue = dayOfMonthConstraint.lowestPossibleValue else {
+            return
+        }
+
+        if dayOfMonthLowestPossibleValue > 30 {
+            var hasAtLeastOneMonthWith31Days = false
+            for month in monthsWithExactly31Days {
+                if monthConstraint.evaluate(month) == .passing {
+                    hasAtLeastOneMonthWith31Days = true
+                }
+            }
+
+            if hasAtLeastOneMonthWith31Days == false {
+                throw RecurrenceRuleError.ruleInsatiable
+            }
+        } else if dayOfMonthLowestPossibleValue > 29 {
+            var hasOneMonthWithAtLeast30Days = false
+
+            for month in monthsWithExactly31Days {
+                if monthConstraint.evaluate(month) == .passing {
+                    hasOneMonthWithAtLeast30Days = true
+                }
+            }
+            for month in monthsWithExactly30Days {
+                if monthConstraint.evaluate(month) == .passing {
+                    hasOneMonthWithAtLeast30Days = true
+                }
+            }
+
+            if hasOneMonthWithAtLeast30Days == false {
+                throw RecurrenceRuleError.ruleInsatiable
+            }
         }
     }
 

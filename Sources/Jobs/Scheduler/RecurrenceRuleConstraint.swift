@@ -369,4 +369,5 @@ struct RecurrenceRuleStepConstraint: RecurrenceRuleConstraint {
             return lowestPossibleValue
         }
     }
+
 }

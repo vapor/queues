@@ -28,7 +28,6 @@ extension Calendar {
         return true
     }
 
-
     /// Finds the range amount (validUpperBound - validLowerBound) given a RecurrenceRuleTimeUnit
     ///
     /// - Parameter ruleTimeUnit: The RecurrenceRuleTimeUnit to reference

@@ -117,9 +117,61 @@ final class JobSchedulerTests: XCTestCase {
         XCTAssertThrowsError(try reccurrenceRule.atQuarters([1, 4, 5]))
 
         // year (1970-3000)
-        //        XCTAssertThrowsError(try reccurrenceRule.atYear(1969))
         XCTAssertNoThrow(try reccurrenceRule.atYears([1970, 2019, 3000]))
-        //        XCTAssertThrowsError(try reccurrenceRule.atYear(3001))
+    }
+
+    func testRecurrenceRuleCreationRange() throws {
+        let reccurrenceRule = try RecurrenceRule()
+
+        // second (0-59)
+        XCTAssertThrowsError(try reccurrenceRule.atSecondsInRange(lowerBound: -1, upperBound: 59))
+        XCTAssertNoThrow(try reccurrenceRule.atSecondsInRange(lowerBound: 0, upperBound: 59))
+        XCTAssertThrowsError(try reccurrenceRule.atSecondsInRange(lowerBound: 0, upperBound: 60))
+
+        // minute (0-59)
+        XCTAssertThrowsError(try reccurrenceRule.atMinutesInRange(lowerBound: -1, upperBound: 59))
+        XCTAssertNoThrow(try reccurrenceRule.atMinutesInRange(lowerBound: 0, upperBound: 59))
+        XCTAssertThrowsError(try reccurrenceRule.atMinutesInRange(lowerBound: 0, upperBound: 60))
+
+        // hour (0-23)
+        XCTAssertThrowsError(try reccurrenceRule.atHoursInRange(lowerBound: -1, upperBound: 23))
+        XCTAssertNoThrow(try reccurrenceRule.atHoursInRange(lowerBound: 0, upperBound: 23))
+        XCTAssertThrowsError(try reccurrenceRule.atHoursInRange(lowerBound: 0, upperBound: 24))
+
+        // dayOfWeek (1-7) ex: 1 sunday, 7 saturday
+        XCTAssertThrowsError(try reccurrenceRule.atDaysOfWeekInRange(lowerBound: 0, upperBound: 7))
+        XCTAssertNoThrow(try reccurrenceRule.atDaysOfWeekInRange(lowerBound: 1, upperBound: 7))
+        XCTAssertThrowsError(try reccurrenceRule.atDaysOfWeekInRange(lowerBound: 1, upperBound: 8))
+
+        // dayOfMonth (1-31) ex: 1 is the 1st of month, 31 is the 31st of month
+        XCTAssertThrowsError(try reccurrenceRule.atDaysOfMonthInRange(lowerBound: 0, upperBound: 31))
+        XCTAssertNoThrow(try reccurrenceRule.atDaysOfMonthInRange(lowerBound: 1, upperBound: 31))
+        XCTAssertThrowsError(try reccurrenceRule.atDaysOfMonthInRange(lowerBound: 1, upperBound: 32))
+
+        // weekOfMonth (1-5)
+        XCTAssertThrowsError(try reccurrenceRule.atWeeksOfMonthInRange(lowerBound: 0, upperBound: 5))
+        XCTAssertNoThrow(try reccurrenceRule.atWeeksOfMonthInRange(lowerBound: 1, upperBound: 5))
+        XCTAssertThrowsError(try reccurrenceRule.atWeeksOfMonthInRange(lowerBound: 1, upperBound: 6))
+
+        // weekOfYear (1-52)
+        XCTAssertThrowsError(try reccurrenceRule.atWeeksOfYearInRange(lowerBound: 0, upperBound: 52))
+        XCTAssertNoThrow(try reccurrenceRule.atWeeksOfYearInRange(lowerBound: 1, upperBound: 52))
+        XCTAssertThrowsError(try reccurrenceRule.atWeeksOfYearInRange(lowerBound: 1, upperBound: 53))
+
+        // month (1-12) ex: 1 is January, 12 is December
+        XCTAssertThrowsError(try reccurrenceRule.atMonthsInRange(lowerBound: 0, upperBound: 12))
+        XCTAssertNoThrow(try reccurrenceRule.atMonthsInRange(lowerBound: 1, upperBound: 12))
+        XCTAssertThrowsError(try reccurrenceRule.atMonthsInRange(lowerBound: 1, upperBound: 13))
+
+        // quarter (1-4)
+        XCTAssertThrowsError(try reccurrenceRule.atQuartersInRange(lowerBound: 0, upperBound: 4))
+        XCTAssertNoThrow(try reccurrenceRule.atQuartersInRange(lowerBound: 1, upperBound: 4))
+        XCTAssertThrowsError(try reccurrenceRule.atQuartersInRange(lowerBound: 1, upperBound: 5))
+
+        // year (1970-3000)
+        XCTAssertThrowsError(try reccurrenceRule.atYearsInRange(lowerBound: 1969, upperBound: 3000))
+        XCTAssertNoThrow(try reccurrenceRule.atYearsInRange(lowerBound: 1970, upperBound: 3000))
+        //XCTAssertThrowsError(try reccurrenceRule.atYearsInRange(lowerBound: 1970, upperBound: 3001))
     }
 
     func testRecurrenceRuleCreationStep() throws {
@@ -180,10 +232,10 @@ final class JobSchedulerTests: XCTestCase {
         XCTAssertThrowsError(try reccurrenceRule.every(.quarters(5)))
 
         // year (1970-3000)
-        //        XCTAssertThrowsError(try reccurrenceRule.atYear(1969))
+        XCTAssertThrowsError(try reccurrenceRule.atYear(0))
         XCTAssertNoThrow(try reccurrenceRule.every(.years(2)))
         XCTAssertNoThrow(try reccurrenceRule.every(.years(1000)))
-        //        XCTAssertThrowsError(try reccurrenceRule.atYear(3001))
+//        XCTAssertThrowsError(try reccurrenceRule.atYear(3001))
     }
 
     func testReccurrenceRuleEvaluationSimple() throws {
@@ -352,12 +404,31 @@ final class JobSchedulerTests: XCTestCase {
         XCTAssertEqual(dateFormatter.date(from: "2020-02-29T00:25:01")!, date2)
     }
 
+    func testResolveNextDateThatSatisfiesRuleImpossible() throws {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+
+        // impossible as april never has 31 days
+        let reccurrenceRule = try RecurrenceRule().atMonth(4).atDayOfMonth(31).atMinute(25).atSecond(1)
+
+        // Fri, Jan 1, 2019 00:00:00
+        let date1 = dateFormatter.date(from: "2019-01-01T00:00:00")!
+
+        XCTAssertThrowsError(try reccurrenceRule.resolveNextDateThatSatisfiesRule(date: date1))
+    }
+
     static var allTests = [
-        ("testReccurrenceRuleEvaluationSimple", testReccurrenceRuleEvaluationSimple),
+        ("testRecurrenceRuleCreation", testRecurrenceRuleCreation),
+        ("testRecurrenceRuleCreationSet", testRecurrenceRuleCreationSet),
+        ("testRecurrenceRuleCreationRange", testRecurrenceRuleCreationRange),
+        ("testRecurrenceRuleCreationStep", testRecurrenceRuleCreationStep),
         ("testReccurrenceRuleEvaluationStepSimple", testReccurrenceRuleEvaluationStepSimple),
         ("testReccurrenceRuleStepEvaluationNotDivisible", testReccurrenceRuleEvaluationStepNotDivisible),
+        ("testReccurrenceRuleEvaluationTimezone", testReccurrenceRuleEvaluationTimezone),
+        ("testNextDateWhereSimple", testNextDateWhereSimple),
         ("testNextDateWhere", testNextDateWhere),
         ("testResolveNextDateThatSatisfiesRule", testResolveNextDateThatSatisfiesRule),
-        ("testResolveNextDateThatSatisfiesRuleLeapYear", testResolveNextDateThatSatisfiesRuleLeapYear)
+        ("testResolveNextDateThatSatisfiesRuleLeapYear", testResolveNextDateThatSatisfiesRuleLeapYear),
+        ("testResolveNextDateThatSatisfiesRuleImpossible", testResolveNextDateThatSatisfiesRuleLeapYear),
     ]
 }

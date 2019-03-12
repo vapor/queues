@@ -170,11 +170,13 @@ final class DateComponentRetrievalTests: XCTestCase {
     }
 
     static var allTests = [
+        ("testCalendarIdentifier", testCalendarIdentifier),
         ("testDateComponentRetrival", testDateComponentRetrival),
         ("testDayOfWeek", testDayOfWeek),
         ("testWeekOfMonth", testWeekOfMonth),
         ("testWeekOfYear", testWeekOfYear),
         ("testWeeksInYear", testWeeksInYear),
-        ("testQuarters", testQuarters)
+        ("testQuarters", testQuarters),
+        ("testTimeZone", testTimeZone)
     ]
 }
