@@ -170,8 +170,8 @@ you can set constraints on these date components (RecurrenceRuleTimeUnits):
 ## Setting up RecurrenceRule Constraints
 
 ### single values
-* will run at 5:30:19
 `RecurrenceRule().atHour(5).atMinute(30).atSecond(19)`
+* will run at 5:30:19
 
 ### multiple values
 * will run at 5:19, 5:36, 6:19, 6:36
