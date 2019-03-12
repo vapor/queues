@@ -102,14 +102,14 @@ public class JobsCommand: Command {
         let config = try container.make(JobsConfig.self)
         
         _ = eventLoop.scheduleRepeatedTask(initialDelay: .seconds(0), delay: queueService.refreshInterval) { task -> EventLoopFuture<Void> in
+            //Check if shutting down
+            
+            if self.isShuttingDown {
+                task.cancel()
+                promise.succeed()
+            }
+            
             return queueService.persistenceLayer.get(key: key).flatMap { jobStorage in
-                //Check if shutting down
-                
-                if self.isShuttingDown {
-                    task.cancel()
-                    promise.succeed()
-                }
-                
                 //No job found, go to the next iteration
                 guard let jobStorage = jobStorage else { return eventLoop.future() }
                 guard let job = config.make(for: jobStorage.jobName) else {
