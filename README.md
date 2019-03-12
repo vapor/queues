@@ -172,42 +172,61 @@ You can set constraints on these date components (RecurrenceRuleTimeUnits):
 ## Setting up RecurrenceRule Constraints
 
 ### Single Value Constraints
+will run at 5:30:19
+
 `RecurrenceRule().atHour(5).atMinute(30).atSecond(19)`
-* will run at 5:30:19
+
 
 ### Multiple Value Constraints
+will run at 5:19, 5:36, 6:19, 6:36
+
 `RecurrenceRule().atHours([5, 6]).atMinutes([19, 36])`
-* will run at 5:19, 5:36, 6:19, 6:36
+
 
 ### Range Constraints
+will run at 7:19, 8:19, 9:19, 10:19, 11:19
+
 `RecurrenceRule().atHoursInRange(lowerBound: 7, upperBound: 11).atMinute(19)`
-* will run at 7:19, 8:19, 9:19, 10:19, 11:19
+
 
 ### Step Value Constraints (.every())
+will run at 5:00, 5:15, 5:30, 5:45, 6:00, 6:15, 6:30, 6:45, 7:00
 `RecurrenceRule().atHours([5, 6]).every(.minutes(15))`
-* will run at 5:00, 5:15, 5:30, 5:45, 6:00, 6:15, 6:30, 6:45, 7:00
 
 *WARNING* step value repeat at the start of higher Date Components
+
+will run at 5:00, 5:22, 5:44, 6:00, 6:22, 6:44
 `RecurrenceRule().atHours([5, 6]).every(.minutes(22))`
-* will run at 5:00, 5:22, 5:44, 6:00, 6:22, 6:44
+
 
 ### Convenience Functions
 convenience methods also exist, examples include
 
+
+equivalent to RecurrenceRule().every(.minutes(22))
+
 `RecurrenceRule().every15Minues()`
-* equivalent to RecurrenceRule().every(.minutes(22))
+
+
+equivalent to RecurrenceRule().every(.hour(1))
 
 `RecurrenceRule().hourly()`
-* equivalent to RecurrenceRule().every(.hour(1))
+
+
+equivalent to RecurrenceRule().atDayOfWeek(4)
 
 `RecurrenceRule().wednesdays()`
-* equivalent to RecurrenceRule().atDayOfWeek(4)
+
+
+equivalent to RecurrenceRule().atDaysOfWeek([1, 7]) 
 
 `RecurrenceRule().weekends()`
-* equivalent to RecurrenceRule().atDaysOfWeek([1, 7]) 
+
+
+equivalent to RecurrenceRule().atDayOfMonth(1)
 
 `RecurrenceRule().monthly()`
-* equivalent to RecurrenceRule().atDayOfMonth(1)
+
 
 ### Evaluating Recurrence Rules
 You can find if a certain Date satisfies a `RecurrenceRule` with: `evaluate(date: Date) throws -> Bool`
