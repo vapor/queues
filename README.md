@@ -152,7 +152,7 @@ You can use the `error` method on `Job` to catch any errors thrown in the proces
 
 
 
-## RecurrenceRule 
+# RecurrenceRule 
 setting up a `RecurrenceRule` uses principles of cron
 some good references: https://crontab-generator.org/, https://crontab-generator.org/
 you can set constraints on these date components (RecurrenceRuleTimeUnits):
@@ -167,29 +167,29 @@ you can set constraints on these date components (RecurrenceRuleTimeUnits):
 * minute (0-59)
 * second (0-59)
 
-### Setting up RecurrenceRule Constraints
+## Setting up RecurrenceRule Constraints
 
-#### single values
+### single values
 * will run at 5:30:19
 `RecurrenceRule().atHour(5).atMinute(30).atSecond(19)`
 
-#### multiple values
+### multiple values
 * will run at 5:19, 5:36, 6:19, 6:36
 `RecurrenceRule().atHours([5, 6]).atMinutes([19, 36])`
 
-#### range values
+### range values
 * will run at 7:19, 8:19, 9:19, 10:19, 11:19
 `RecurrenceRule().atHoursInRange(lowerBound: 7, upperBound: 11).atMinute(19)`
 
-#### step values (.every())
+### step values (.every())
 * will run at 5:00, 5:15, 5:30, 5:45, 6:00, 6:15, 6:30, 6:45, 7:00
 `RecurrenceRule().atHours([5, 6]).every(.minutes(15))`
 
 *WARNING* step value repeat at the start of higher Date Components
 * will run at 5:00, 5:22, 5:44, 6:00, 6:22, 6:44
-`RecurrenceRule().atHours([5, 6]).every(.minutes(22))`
+ `RecurrenceRule().atHours([5, 6]).every(.minutes(22))`
 
-#### convenience functions
+### convenience functions
 convenience methods also exist, examples include
 
 * equivalent to RecurrenceRule().every(.minutes(22))
