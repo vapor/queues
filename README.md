@@ -171,19 +171,19 @@ You can set constraints on these date components (RecurrenceRuleTimeUnits):
 
 ## Setting up RecurrenceRule Constraints
 
-### single values
+### Single Value Constraints
 `RecurrenceRule().atHour(5).atMinute(30).atSecond(19)`
 * will run at 5:30:19
 
-### multiple values
+### Multiple Value Constraints
 `RecurrenceRule().atHours([5, 6]).atMinutes([19, 36])`
 * will run at 5:19, 5:36, 6:19, 6:36
 
-### range values
+### Range Constraints
 `RecurrenceRule().atHoursInRange(lowerBound: 7, upperBound: 11).atMinute(19)`
 * will run at 7:19, 8:19, 9:19, 10:19, 11:19
 
-### step values (.every())
+### Step Value Constraints (.every())
 `RecurrenceRule().atHours([5, 6]).every(.minutes(15))`
 * will run at 5:00, 5:15, 5:30, 5:45, 6:00, 6:15, 6:30, 6:45, 7:00
 
@@ -191,7 +191,7 @@ You can set constraints on these date components (RecurrenceRuleTimeUnits):
 `RecurrenceRule().atHours([5, 6]).every(.minutes(22))`
 * will run at 5:00, 5:22, 5:44, 6:00, 6:22, 6:44
 
-### convenience functions
+### Convenience Functions
 convenience methods also exist, examples include
 
 `RecurrenceRule().every15Minues()`
