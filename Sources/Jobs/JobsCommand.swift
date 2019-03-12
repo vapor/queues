@@ -118,22 +118,17 @@ public class JobsCommand: Command {
                 
                 console.info("Dequeing Job job_id=[\(jobStorage.id)]", newLine: true)
                 
+                let jobRunPromise = eventLoop.newPromise(Void.self)
+                
                 let futureJob = job.anyDequeue(jobContext, jobStorage)
-                let runFuture: LazyFuture<Void> = {
-                    self.firstFutureToSucceed(future: futureJob,
-                                              tries: jobStorage.maxRetryCount,
-                                              on: eventLoop)
-                        .catchFlatMap { error in
-                            console.error("Error: \(error) job_id=[\(jobStorage.id)]", newLine: true)
-                            return job.error(jobContext, error, jobStorage)
-                        }.transform(to: ())
+                self.firstFutureToSucceed(future: futureJob, tries: jobStorage.maxRetryCount, on: eventLoop).catch { error in
+                    console.error("Error: \(error) job_id=[\(jobStorage.id)]", newLine: true)
+                    job.error(jobContext, error, jobStorage).cascadeFailure(promise: jobRunPromise)
+                }.always {
+                    queueService.persistenceLayer.completed(key: key, jobStorage: jobStorage).cascade(promise: jobRunPromise)
                 }
                 
-                let completedFuture: LazyFuture<Void> = {
-                    queueService.persistenceLayer.completed(key: key, jobStorage: jobStorage)
-                }
-                
-                return [runFuture, completedFuture].syncFlatten(on: eventLoop).transform(to: ())
+                return jobRunPromise.futureResult
             }
         }
     }
