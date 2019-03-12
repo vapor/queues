@@ -150,22 +150,22 @@ final class JobSchedulerTests: XCTestCase {
         XCTAssertThrowsError(try reccurrenceRule.every(.daysOfWeek(8)))
 
         // dayOfMonth (1-31) ex: 1 is the 1st of month, 31 is the 31st of month
-        XCTAssertThrowsError(try reccurrenceRule.every(.days(0)))
-        XCTAssertNoThrow(try reccurrenceRule.every(.days(1)))
-        XCTAssertNoThrow(try reccurrenceRule.every(.days(31)))
-        XCTAssertThrowsError(try reccurrenceRule.every(.days(32)))
+        XCTAssertThrowsError(try reccurrenceRule.every(.daysOfMonth(0)))
+        XCTAssertNoThrow(try reccurrenceRule.every(.daysOfMonth(1)))
+        XCTAssertNoThrow(try reccurrenceRule.every(.daysOfMonth(31)))
+        XCTAssertThrowsError(try reccurrenceRule.every(.daysOfMonth(32)))
 
         // weekOfMonth (1-5)
-//        XCTAssertThrowsError(try reccurrenceRule.every(.weeks(0)))
-//        XCTAssertNoThrow(try reccurrenceRule.every(.weeks(1)))
-//        XCTAssertNoThrow(try reccurrenceRule.every(.weeks(5)))
-//        XCTAssertThrowsError(try reccurrenceRule.every(.weeks(6)))
+        XCTAssertThrowsError(try reccurrenceRule.every(.weeksOfMonth(0)))
+        XCTAssertNoThrow(try reccurrenceRule.every(.weeksOfMonth(1)))
+        XCTAssertNoThrow(try reccurrenceRule.every(.weeksOfMonth(5)))
+        XCTAssertThrowsError(try reccurrenceRule.every(.weeksOfMonth(6)))
 
         // weekOfYear (1-52)
-        XCTAssertThrowsError(try reccurrenceRule.every(.weeks(0)))
-        XCTAssertNoThrow(try reccurrenceRule.every(.weeks(1)))
-        XCTAssertNoThrow(try reccurrenceRule.every(.weeks(52)))
-        XCTAssertThrowsError(try reccurrenceRule.every(.weeks(53)))
+        XCTAssertThrowsError(try reccurrenceRule.every(.weeksOfYear(0)))
+        XCTAssertNoThrow(try reccurrenceRule.every(.weeksOfYear(1)))
+        XCTAssertNoThrow(try reccurrenceRule.every(.weeksOfYear(52)))
+        XCTAssertThrowsError(try reccurrenceRule.every(.weeksOfYear(53)))
 
         // month (1-12) ex: 1 is January, 12 is December
         XCTAssertThrowsError(try reccurrenceRule.every(.months(0)))

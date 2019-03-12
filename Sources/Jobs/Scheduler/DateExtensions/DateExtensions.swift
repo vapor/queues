@@ -9,9 +9,9 @@ extension Calendar {
     /// validates a value is within the bounds
     ///
     /// - Parameters:
-    ///   - ruleTimeUnit: <#ruleTimeUnit description#>
-    ///   - value: <#value description#>
-    /// - Returns: <#return value description#>
+    ///   - ruleTimeUnit: The TimeUnit to check value against
+    ///   - value: the value to check
+    /// - Returns:  true if value is valid, false if value is invalid
     public func validate(ruleTimeUnit: RecurrenceRuleTimeUnit, value: Int) throws -> Bool {
         if let validLowerBound = try self.lowerBound(for: ruleTimeUnit) {
             if value < validLowerBound {
@@ -28,12 +28,22 @@ extension Calendar {
         return true
     }
 
+
+    /// Finds the range amount (validUpperBound - validLowerBound) given a RecurrenceRuleTimeUnit
+    ///
+    /// - Parameter ruleTimeUnit: The RecurrenceRuleTimeUnit to reference
+    /// - Returns: The range (validUpperBound - validLowerBound)
+    /// - Throws: will throw if no lowerBound or upperBound is available for a given RecurrenceRuleTimeUnit
     public func rangeOfValidBounds(_ ruleTimeUnit: RecurrenceRuleTimeUnit) throws -> Int? {
-        if let validLowerBound = try lowerBound(for: ruleTimeUnit), let validUpperBound = try upperBound(for: ruleTimeUnit) {
-            return validUpperBound - validLowerBound
-        } else {
+        guard let validLowerBound = try lowerBound(for: ruleTimeUnit) else {
             return nil
         }
+
+        guard let validUpperBound = try upperBound(for: ruleTimeUnit) else {
+            return nil
+        }
+
+        return (validUpperBound - validLowerBound)
     }
 
     ///  Resolves The lower bound (inclusive) of a given RecurrenceRuleTimeUnit
@@ -121,47 +131,74 @@ extension Date {
         case couldNotSetDateComponentToDefaultValue
     }
 
-    private func calendar(atTimeZone timeZone: TimeZone? = nil) -> Calendar {
-        var calendar = Calendar.current
-        if let timeZone = timeZone {
-            calendar.timeZone = timeZone
-        }
-
-        return calendar
-    }
-
+    /// returns the second component (Calendar.Component.second) of the date
+    ///
+    /// - Parameter timeZone: The TimeZone to base the date off of (defaults to current timeZone)
+    /// - Returns: The second component of the date (0-59)
     public func second(atTimeZone timeZone: TimeZone? = nil) -> Int? {
         return calendar(atTimeZone: timeZone).dateComponents([.second], from: self).second
     }
 
+    /// returns the minute component (Calendar.Component.minute) of the date
+    ///
+    /// - Parameter timeZone: The TimeZone to base the date off of (defaults to current timeZone)
+    /// - Returns: The minute component of the date (0-59)
     public func minute(atTimeZone timeZone: TimeZone? = nil) -> Int? {
         return calendar(atTimeZone: timeZone).dateComponents([.minute], from: self).minute
     }
 
+    /// returns the hour component (Calendar.Component.hour) of the date
+    ///
+    /// - Parameter timeZone: The TimeZone to base the date off of (defaults to current timeZone)
+    /// - Returns: The hour component of the date (0-23)
     public func hour(atTimeZone timeZone: TimeZone? = nil) -> Int? {
         return calendar(atTimeZone: timeZone).dateComponents([.hour], from: self).hour
     }
 
+    /// returns the dayOfWeek (Calendar.Component.weekday) component of the date
+    ///
+    /// - Parameter timeZone: The TimeZone to base the date off of (defaults to current timeZone)
+    /// - Returns: The dayOfWeek of the date (1 Sunday, 7 Saturday)
     public func dayOfWeek(atTimeZone timeZone: TimeZone? = nil) -> Int? {
         return calendar(atTimeZone: timeZone).dateComponents([.weekday], from: self).weekday
     }
 
+    /// returns the dayOfMonth (Calendar.Component.day) component of the date
+    ///
+    /// - Parameter timeZone: The TimeZone to base the date off of (defaults to current timeZone)
+    /// - Returns: The dayOfMonth of the date (1-31)
     public func dayOfMonth(atTimeZone timeZone: TimeZone? = nil) -> Int? {
         return calendar(atTimeZone: timeZone).dateComponents([.day], from: self).day
     }
 
+    /// returns the weekOfMonth (Calendar.Component.weekOfMonth) component of the date
+    ///
+    /// - Parameter timeZone: The TimeZone to base the date off of (defaults to current timeZone)
+    /// - Returns: The weekOfMonth of the date (1-31)
     public func weekOfMonth(atTimeZone timeZone: TimeZone? = nil) -> Int? {
         return calendar(atTimeZone: timeZone).dateComponents([.weekOfMonth], from: self).weekOfMonth
     }
 
+    /// returns the weekOfYear (Calendar.Component.weekOfYear) component of the date
+    ///
+    /// - Parameter timeZone: The TimeZone to base the date off of (defaults to current timeZone)
+    /// - Returns: The weekOfYear of the date (1-52)
     public func weekOfYear(atTimeZone timeZone: TimeZone? = nil) -> Int? {
         return calendar(atTimeZone: timeZone).dateComponents([.weekOfYear], from: self).weekOfYear
     }
 
+    /// returns the month (Calendar.Component.month) component of the date
+    ///
+    /// - Parameter timeZone: The TimeZone to base the date off of (defaults to current timeZone)
+    /// - Returns: The month of the date (1 (january) - 12 (December))
     public func month(atTimeZone timeZone: TimeZone? = nil) -> Int? {
         return calendar(atTimeZone: timeZone).dateComponents([.month], from: self).month
     }
 
+    /// returns the quarter (Calendar.Component.quarter) component of the date
+    ///
+    /// - Parameter timeZone: The TimeZone to base the date off of (defaults to current timeZone)
+    /// - Returns: The quarter of the date (1-4)
     public func quarter(atTimeZone timeZone: TimeZone? = nil) -> Int? {
         // Bug: doesn't work in ios 12 and macOS Mojave 10.14
         // return Calendar.current.dateComponents([.quarter], from: self).quarter
@@ -181,15 +218,23 @@ extension Date {
         return quarter
     }
 
+    /// returns the year (Calendar.Component.year) component of the date
+    ///
+    /// - Parameter timeZone: The TimeZone to base the date off of (defaults to current timeZone)
+    /// - Returns: The year of the date
     public func year(atTimeZone timeZone: TimeZone? = nil) -> Int? {
         return calendar(atTimeZone: timeZone).dateComponents([.year], from: self).year
     }
 
+    /// returns the yearForWeekOfYear (Calendar.Component.yearForWeekOfYear) component of the date
+    ///
+    /// - Parameter timeZone: The TimeZone to base the date off of (defaults to current timeZone)
+    /// - Returns: The yearForWeekOfYear of the datesss
     public func yearForWeekOfYear(atTimeZone timeZone: TimeZone? = nil) -> Int? {
         return calendar(atTimeZone: timeZone).dateComponents([.yearForWeekOfYear], from: self).yearForWeekOfYear
     }
 
-    /// finds the number of weeks in a given year
+    /// finds the number of weeks the year (52 or 53)
     public func weeksInYear() -> Int? {
         // return NSCalendar.current.range(of: .weekOfYear, in: .yearForWeekOfYear, for: self)?.count
         func weeksInYearFormula(_ year: Int) -> Int {
@@ -265,34 +310,8 @@ extension Date {
         }
     }
 
-    /// resolve the Date Component value for a given RecurrenceRuleTimeUnit
-    ///
-    /// - Parameter ruleTimeUnit: The referenced RecurrenceRuleTimeUnits
-    /// - Returns: The associated Date Component Value
-    public func dateComponentValue(for scheduleTimeUnit: ScheduleTimeUnit, atTimeZone timeZone: TimeZone? = nil) -> Int? {
-        switch scheduleTimeUnit {
-        case .second:
-            return self.second(atTimeZone: timeZone)
-        case .minute:
-            return self.minute(atTimeZone: timeZone)
-        case .hour:
-            return self.hour(atTimeZone: timeZone)
-        case .dayOfWeek:
-            return self.dayOfWeek(atTimeZone: timeZone)
-        case .day:
-            return self.dayOfMonth(atTimeZone: timeZone)
-        case .week:
-            return self.dayOfWeek(atTimeZone: timeZone)
-        case .month:
-            return self.month(atTimeZone: timeZone)
-        case .quarter:
-            return self.quarter(atTimeZone: timeZone)
-        case .year:
-            return self.year(atTimeZone: timeZone)
-        }
-    }
-
-    func componentsToString() -> String {
+    /// A string describing the year
+    public func componentsToString() -> String {
         var componentString = ""
 
         componentString += "year: \(String(describing: self.year()))\n"
@@ -353,17 +372,21 @@ extension Date {
         return Calendar.current.dateComponents([.second], from: date, to: self).second
     }
 
+    /// Produces a date by incrementing a date components
+    ///
+    /// - Parameter calendarComponent: The compoent of the date to increment
+    /// - Returns: a date with the specified component incremented
     public func dateByIncrementing(calendarComponent: Calendar.Component) -> Date? {
         return Calendar.current.date(byAdding: calendarComponent, value: 1, to: self)
     }
 
+    /// Produces a date by incrementing the date component associated with the RecurrenceRuleTimeUnit
+    ///
+    /// - Parameter ruleTimeUnit: The time unit to increment
+    /// - Returns: a date the referenced component incrementeds
     public func dateByIncrementing(_ ruleTimeUnit: RecurrenceRuleTimeUnit) -> Date? {
         let calendarComponent = resolveCalendarComponent(for: ruleTimeUnit)
         return dateByIncrementing(calendarComponent: calendarComponent)
-    }
-
-    public func dateOfNextQuarter() -> Date? {
-        return Calendar.current.date(byAdding: .quarter, value: 1, to: self)
     }
 
     public func nextDate(where ruleTimeUnit: RecurrenceRuleTimeUnit, is nextValue: Int, atTimeZone timeZone: TimeZone? = nil) throws -> Date? {
@@ -439,4 +462,14 @@ extension Date {
 
         return unitsToAdd
     }
+
+    private func calendar(atTimeZone timeZone: TimeZone? = nil) -> Calendar {
+        var calendar = Calendar.current
+        if let timeZone = timeZone {
+            calendar.timeZone = timeZone
+        }
+
+        return calendar
+    }
+
 }

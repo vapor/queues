@@ -5,6 +5,12 @@ enum RecurrenceRuleConstraintError: Error {
     case constraintAmountGreaterThanUpperBound
 }
 
+public enum EvaluationState {
+    case noComparisonAttempted
+    case failed
+    case passing
+}
+
 struct ConstraintValueValidator {
     func validate(value: Int, validLowerBound: Int?, validUpperBound: Int?) throws {
         if let lowerBound = validLowerBound {
@@ -99,7 +105,11 @@ struct RecurrenceRuleSetConstraint: RecurrenceRuleConstraint {
         self.setConstraint = setConstraint
     }
 
-    func evaluate(_ evaluationAmount: Int) -> EvaluationState {
+    /// Evaluates if a given amount satisfies the constraint
+    ///
+    /// - Parameter evaluationAmount: The amount to test
+    /// - Returns: passing, failed, or noComparisonAttempted
+    public func evaluate(_ evaluationAmount: Int) -> EvaluationState {
         if isConstraintActive == false {
             return EvaluationState.noComparisonAttempted
         }
@@ -111,7 +121,11 @@ struct RecurrenceRuleSetConstraint: RecurrenceRuleConstraint {
         }
     }
 
-    func nextValidValue(currentValue: Int) -> Int? {
+    /// Finds the the next value that satisfies the constraint
+    ///
+    /// - Parameter currentValue: The current value the date component
+    /// - Returns: The next value that satisfies the constraint
+    public func nextValidValue(currentValue: Int) -> Int? {
         var lowestValueGreaterThanCurrentValue: Int?
 
         for value in setConstraint {
@@ -193,7 +207,11 @@ struct RecurrenceRuleRangeConstraint: RecurrenceRuleConstraint {
         self.rangeConstraint = rangeConstraint
     }
 
-    func evaluate(_ evaluationAmount: Int) -> EvaluationState {
+    /// Evaluates if a given amount satisfies the constraint
+    ///
+    /// - Parameter evaluationAmount: The amount to test
+    /// - Returns: passing, failed, or noComparisonAttempted
+    public func evaluate(_ evaluationAmount: Int) -> EvaluationState {
         if let range = rangeConstraint {
             if range.contains(evaluationAmount) {
                 return EvaluationState.passing
@@ -205,7 +223,11 @@ struct RecurrenceRuleRangeConstraint: RecurrenceRuleConstraint {
         }
     }
 
-    func nextValidValue(currentValue: Int) -> Int? {
+    /// Finds the the next value that satisfies the constraint
+    ///
+    /// - Parameter currentValue: The current value the date component
+    /// - Returns: The next value that satisfies the constraint
+    public func nextValidValue(currentValue: Int) -> Int? {
         var lowestValueGreaterThanCurrentValue: Int?
 
         if let rangeConstraint = rangeConstraint {
@@ -277,7 +299,11 @@ struct RecurrenceRuleStepConstraint: RecurrenceRuleConstraint {
         self.stepConstraint = stepConstraint
     }
 
-    func evaluate(_ evaluationAmount: Int) -> EvaluationState {
+    /// Evaluates if a given amount satisfies the constraint
+    ///
+    /// - Parameter evaluationAmount: The amount to test
+    /// - Returns: passing, failed, or noComparisonAttempted
+    public func evaluate(_ evaluationAmount: Int) -> EvaluationState {
         guard let stepAmount = stepConstraint else {
             return EvaluationState.noComparisonAttempted
         }
@@ -290,7 +316,11 @@ struct RecurrenceRuleStepConstraint: RecurrenceRuleConstraint {
         }
     }
 
-    func nextValidValue(currentValue: Int) -> Int? {
+    /// Finds the the next value that satisfies the constraint
+    ///
+    /// - Parameter currentValue: The current value the date component
+    /// - Returns: The next value that satisfies the constraint
+    public func nextValidValue(currentValue: Int) -> Int? {
         var lowestValueGreaterThanCurrentValue: Int?
 
         // step
