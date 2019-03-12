@@ -211,7 +211,9 @@ convenience methods also exist, examples include
 
 ### Evaluating Recurrence Rules
 You can find if a certain Date satisfies a RecurrenceRule
+
 `evaluate(date: Date) throws -> Bool`
 
 You can find the next Date that will satisfy a RecurrenceRule with 
+
 `resolveNextDateThatSatisfiesRule(date: Date) throws -> Date`
