@@ -48,7 +48,7 @@ public extension Job {
     }
     
     /// See `AnyJob.anyDequeue`
-    public func anyDequeue(_ context: JobContext, _ storage: JobStorage) -> EventLoopFuture<Void> {
+    func anyDequeue(_ context: JobContext, _ storage: JobStorage) -> EventLoopFuture<Void> {
         do {
             let data = try JSONDecoder().decode(Data.self, from: storage.data)
             return self.dequeue(context, data)
