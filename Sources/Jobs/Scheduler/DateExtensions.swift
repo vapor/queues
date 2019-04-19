@@ -52,7 +52,7 @@ extension Calendar {
     public func lowerBound(for ruleTimeUnit: RecurrenceRuleTimeUnit) throws -> Int? {
         switch self.identifier {
         case .gregorian, .iso8601:
-            return gregorianLowerBound(for: ruleTimeUnit)
+            return Calendar.gregorianLowerBound(for: ruleTimeUnit)
         default:
             throw CalendarExtensionError.counldNotFindLowerBoundForRecurrenceRuleTimeUnit
         }
@@ -65,13 +65,13 @@ extension Calendar {
     public func upperBound(for ruleTimeUnit: RecurrenceRuleTimeUnit) throws -> Int? {
         switch self.identifier {
         case .gregorian, .iso8601:
-            return gregorianUpperBound(for: ruleTimeUnit)
+            return Calendar.gregorianUpperBound(for: ruleTimeUnit)
         default:
             throw CalendarExtensionError.counldNotFindUpperBoundForRecurrenceRuleTimeUnit
         }
     }
 
-    private func gregorianLowerBound(for ruleTimeUnit: RecurrenceRuleTimeUnit) -> Int? {
+    static func gregorianLowerBound(for ruleTimeUnit: RecurrenceRuleTimeUnit) -> Int? {
         switch ruleTimeUnit {
         case .second:
             return 0
@@ -96,7 +96,7 @@ extension Calendar {
         }
     }
 
-    private func gregorianUpperBound(for ruleTimeUnit: RecurrenceRuleTimeUnit) -> Int? {
+    static func gregorianUpperBound(for ruleTimeUnit: RecurrenceRuleTimeUnit) -> Int? {
         switch ruleTimeUnit {
         case .second:
             return 59

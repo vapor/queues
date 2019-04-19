@@ -11,6 +11,7 @@ public enum EvaluationState {
     case passing
 }
 
+
 struct ConstraintValueValidator {
     func validate(value: Int, validLowerBound: Int?, validUpperBound: Int?) throws {
         if let lowerBound = validLowerBound {
@@ -32,7 +33,6 @@ protocol RecurrenceRuleConstraint {
     var validUpperBound: Int? { get }
     var lowestPossibleValue: Int? { get }
     var highestPossibleValue: Int? { get }
-    var isConstraintActive: Bool { get }
 
     func evaluate(_ evaluationAmount: Int) -> EvaluationState
     func nextValidValue(currentValue: Int) -> Int?
@@ -69,12 +69,10 @@ struct RecurrenceRuleSetConstraint: RecurrenceRuleConstraint {
         }
     }
 
-    var isConstraintActive: Bool {
-        if setConstraint.isEmpty {
-            return false
-        } else {
-            return true
-        }
+    init (timeUnit: RecurrenceRuleTimeUnit, setConstraint: Set<Int> = Set<Int>()) throws {
+        let validLowerBound = Calendar.gregorianLowerBound(for: timeUnit)
+        let validUpperBound = Calendar.gregorianUpperBound(for: timeUnit)
+        try self.init(validLowerBound: validLowerBound, validUpperBound: validUpperBound, setConstraint: setConstraint)
     }
 
     init(validLowerBound: Int?, validUpperBound: Int?) {
@@ -110,10 +108,6 @@ struct RecurrenceRuleSetConstraint: RecurrenceRuleConstraint {
     /// - Parameter evaluationAmount: The amount to test
     /// - Returns: passing, failed, or noComparisonAttempted
     public func evaluate(_ evaluationAmount: Int) -> EvaluationState {
-        if isConstraintActive == false {
-            return EvaluationState.noComparisonAttempted
-        }
-
         if setConstraint.contains(evaluationAmount) {
             return EvaluationState.passing
         } else {
@@ -151,59 +145,29 @@ struct RecurrenceRuleSetConstraint: RecurrenceRuleConstraint {
 struct RecurrenceRuleRangeConstraint: RecurrenceRuleConstraint {
     let validLowerBound: Int?
     let validUpperBound: Int?
-    let rangeConstraint: ClosedRange<Int>?
+    let rangeConstraint: ClosedRange<Int>
 
     var lowestPossibleValue: Int? {
-        if let range = rangeConstraint {
-            return range.lowerBound
-        } else {
-            return nil
-        }
+        return rangeConstraint.lowerBound
     }
 
     var highestPossibleValue: Int? {
-        if let range = rangeConstraint {
-            return range.upperBound
-        } else {
-            return nil
-        }
+        return rangeConstraint.upperBound
     }
 
-    var isConstraintActive: Bool {
-        if rangeConstraint == nil {
-            return false
-        } else {
-            return true
-        }
+    init(timeUnit: RecurrenceRuleTimeUnit, rangeConstraint: ClosedRange<Int>) throws {
+        let validLowerBound = Calendar.gregorianLowerBound(for: timeUnit)
+        let validUpperBound = Calendar.gregorianUpperBound(for: timeUnit)
+        try self.init(validLowerBound: validLowerBound, validUpperBound: validUpperBound, rangeConstraint: rangeConstraint)
     }
 
-    init(validLowerBound: Int?, validUpperBound: Int?) {
-        self.validLowerBound = validLowerBound
-        self.validUpperBound = validUpperBound
-        self.rangeConstraint = nil
-    }
-
-    init(validLowerBound: Int?, validUpperBound: Int?, rangeConstraint: ClosedRange<Int>? = nil) throws {
+    init(validLowerBound: Int?, validUpperBound: Int?, rangeConstraint: ClosedRange<Int>) throws {
         self.validLowerBound = validLowerBound
         self.validUpperBound = validUpperBound
 
-        if let range = rangeConstraint {
-            let validator = ConstraintValueValidator()
-            try validator.validate(value: range.lowerBound, validLowerBound: validLowerBound, validUpperBound: validUpperBound)
-            try validator.validate(value: range.upperBound, validLowerBound: validLowerBound, validUpperBound: validUpperBound)
-        }
-        self.rangeConstraint = rangeConstraint
-    }
-
-    init(from constraintToCopy: RecurrenceRuleConstraint, rangeConstraint: ClosedRange<Int>? = nil) throws {
-        self.validLowerBound = constraintToCopy.validLowerBound
-        self.validUpperBound = constraintToCopy.validUpperBound
-
-        if let range = rangeConstraint {
-            let validator = ConstraintValueValidator()
-            try validator.validate(value: range.lowerBound, validLowerBound: validLowerBound, validUpperBound: validUpperBound)
-            try validator.validate(value: range.upperBound, validLowerBound: validLowerBound, validUpperBound: validUpperBound)
-        }
+        let validator = ConstraintValueValidator()
+        try validator.validate(value: rangeConstraint.lowerBound, validLowerBound: validLowerBound, validUpperBound: validUpperBound)
+        try validator.validate(value: rangeConstraint.upperBound, validLowerBound: validLowerBound, validUpperBound: validUpperBound)
         self.rangeConstraint = rangeConstraint
     }
 
@@ -212,14 +176,10 @@ struct RecurrenceRuleRangeConstraint: RecurrenceRuleConstraint {
     /// - Parameter evaluationAmount: The amount to test
     /// - Returns: passing, failed, or noComparisonAttempted
     public func evaluate(_ evaluationAmount: Int) -> EvaluationState {
-        if let range = rangeConstraint {
-            if range.contains(evaluationAmount) {
-                return EvaluationState.passing
-            } else {
-                return EvaluationState.failed
-            }
+        if rangeConstraint.contains(evaluationAmount) {
+            return EvaluationState.passing
         } else {
-            return EvaluationState.noComparisonAttempted
+            return EvaluationState.failed
         }
     }
 
@@ -230,15 +190,13 @@ struct RecurrenceRuleRangeConstraint: RecurrenceRuleConstraint {
     public func nextValidValue(currentValue: Int) -> Int? {
         var lowestValueGreaterThanCurrentValue: Int?
 
-        if let rangeConstraint = rangeConstraint {
-            if (currentValue + 1) <= rangeConstraint.upperBound {
-                if let low = lowestValueGreaterThanCurrentValue {
-                    if low >= (currentValue + 1) {
-                        lowestValueGreaterThanCurrentValue = (currentValue + 1)
-                    }
-                } else {
+        if (currentValue + 1) <= rangeConstraint.upperBound {
+            if let low = lowestValueGreaterThanCurrentValue {
+                if low >= (currentValue + 1) {
                     lowestValueGreaterThanCurrentValue = (currentValue + 1)
                 }
+            } else {
+                lowestValueGreaterThanCurrentValue = (currentValue + 1)
             }
         }
 
@@ -254,48 +212,37 @@ struct RecurrenceRuleRangeConstraint: RecurrenceRuleConstraint {
 struct RecurrenceRuleStepConstraint: RecurrenceRuleConstraint {
     let validLowerBound: Int?
     let validUpperBound: Int?
-    let stepConstraint: Int?
+    let stepConstraint: Int
 
     var lowestPossibleValue: Int? {
-        if stepConstraint != nil {
-            return 0
-        } else {
-            return nil
-        }
+        return 0
     }
 
     var highestPossibleValue: Int? {
         return nil
     }
 
-    var isConstraintActive: Bool {
-        if stepConstraint == nil {
-            return false
-        } else {
-            return true
-        }
+    init(timeUnit: RecurrenceRuleTimeUnit, stepConstraint: Int) throws {
+        let validLowerBound = Calendar.gregorianLowerBound(for: timeUnit)
+        let validUpperBound = Calendar.gregorianUpperBound(for: timeUnit)
+        try self.init(validLowerBound: validLowerBound, validUpperBound: validUpperBound, stepConstraint: stepConstraint)
     }
 
-    init(validLowerBound: Int?, validUpperBound: Int?) {
+    init(validLowerBound: Int?, validUpperBound: Int?, stepConstraint: Int) throws  {
         self.validLowerBound = validLowerBound
         self.validUpperBound = validUpperBound
-        self.stepConstraint = nil
-    }
-
-    init(from constraintToCopy: RecurrenceRuleConstraint, stepConstraint: Int? = nil) throws {
-        self.validLowerBound = constraintToCopy.validLowerBound
-        self.validUpperBound = constraintToCopy.validUpperBound
-
-        if let amount = stepConstraint {
-            if let validUpperBound = validUpperBound {
-                if amount < 1 {
-                    throw RecurrenceRuleConstraintError.constraintAmountLessThanLowerBound
-                }
-                if amount > validUpperBound {
-                    throw RecurrenceRuleConstraintError.constraintAmountGreaterThanUpperBound
-                }
+        if stepConstraint < 1 {
+            throw RecurrenceRuleConstraintError.constraintAmountLessThanLowerBound
+        }
+        if let validUpperBound = validUpperBound {
+            if stepConstraint < 1 {
+                throw RecurrenceRuleConstraintError.constraintAmountLessThanLowerBound
+            }
+            if stepConstraint > validUpperBound {
+                throw RecurrenceRuleConstraintError.constraintAmountGreaterThanUpperBound
             }
         }
+
         self.stepConstraint = stepConstraint
     }
 
@@ -304,12 +251,8 @@ struct RecurrenceRuleStepConstraint: RecurrenceRuleConstraint {
     /// - Parameter evaluationAmount: The amount to test
     /// - Returns: passing, failed, or noComparisonAttempted
     public func evaluate(_ evaluationAmount: Int) -> EvaluationState {
-        guard let stepAmount = stepConstraint else {
-            return EvaluationState.noComparisonAttempted
-        }
-
         // pass if evaluationAmount is divisiable of stepConstriant
-        if evaluationAmount % stepAmount == 0 {
+        if evaluationAmount % stepConstraint == 0 {
             return EvaluationState.passing
         } else {
             return EvaluationState.failed
@@ -324,42 +267,40 @@ struct RecurrenceRuleStepConstraint: RecurrenceRuleConstraint {
         var lowestValueGreaterThanCurrentValue: Int?
 
         // step
-        if let stepValue = stepConstraint {
-            var multiple = 0
+        var multiple = 0
+        var shouldStopLooking = false
+
+        if let validUpperBound = validUpperBound {
+            // others
             var shouldStopLooking = false
-
-            if let validUpperBound = validUpperBound {
-                // others
-                var shouldStopLooking = false
-                while multiple <= validUpperBound && shouldStopLooking == false {
-                    if multiple >= currentValue {
-                        if let low = lowestValueGreaterThanCurrentValue {
-                            if multiple < low {
-                                lowestValueGreaterThanCurrentValue = multiple
-                            }
-                        } else {
+            while multiple <= validUpperBound && shouldStopLooking == false {
+                if multiple >= currentValue {
+                    if let low = lowestValueGreaterThanCurrentValue {
+                        if multiple < low {
                             lowestValueGreaterThanCurrentValue = multiple
                         }
-                        shouldStopLooking = true
+                    } else {
+                        lowestValueGreaterThanCurrentValue = multiple
                     }
-                    multiple = multiple + stepValue
+                    shouldStopLooking = true
                 }
-            } else {
-                // year
-                while shouldStopLooking == false {
-                    if multiple >= currentValue {
-                        if let low = lowestValueGreaterThanCurrentValue {
-                            if multiple < low {
-                                lowestValueGreaterThanCurrentValue = multiple
-                            }
-                        } else {
+                multiple = multiple + stepConstraint
+            }
+        } else {
+            // year
+            while shouldStopLooking == false {
+                if multiple >= currentValue {
+                    if let low = lowestValueGreaterThanCurrentValue {
+                        if multiple < low {
                             lowestValueGreaterThanCurrentValue = multiple
                         }
-                        shouldStopLooking = true
+                    } else {
+                        lowestValueGreaterThanCurrentValue = multiple
                     }
-
-                    multiple = multiple + stepValue
+                    shouldStopLooking = true
                 }
+
+                multiple = multiple + stepConstraint
             }
         }
 
