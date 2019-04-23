@@ -211,6 +211,19 @@ final class JobSchedulerTests: XCTestCase {
         XCTAssertThrowsError(try reccurrenceRule.resolveNextDateThatSatisfiesRule(date: date1))
     }
 
+    func testCustomConstriants() throws {
+        let yearConstraint = try YearRecurrenceRuleConstraint.atYear(2043)
+        let dayOfWeekConstraint = try DayOfWeekRecurrenceRuleConstraint.atDaysOfWeek([1, 4, 6])
+        let hourConstraint = try HourRecurrenceRuleConstraint.atHoursInRange(lowerBound: 3, upperBound: 8)
+        let secondConstraint = try SecondRecurrenceRuleConstraint.secondStep(11)
+
+        //let emailJob = EmailJob(to: "to@to.com", from: "from@from.com", message: "message")
+        Scheduler().whenConstraintsSatisfied(yearConstraint: yearConstraint,
+                                                    dayOfWeekConstraint: dayOfWeekConstraint,
+                                                    hourConstraint: hourConstraint,
+                                                    secondConstraint: secondConstraint)
+    }
+
     func testScheduler() throws {
         try Scheduler().weekly(on: .saturday).at(.midnight)
         try Scheduler().fridays().atHour(4).atMinute(2).atSecond(30)
@@ -225,11 +238,57 @@ final class JobSchedulerTests: XCTestCase {
         try Scheduler().everyMinute().atSecond(4)
         try Scheduler().yearly().atMonth(5).atDayOfMonth(30).at("11:20").atSecond(30)
         try Scheduler().weekly(on:.saturday).at(.midnight)
-        try Scheduler().yearly().on(.december, 30).at(.noon)
-        try Scheduler().weekly(on: .friday).at("12:20").atSecond(20)
 
 
-        //let emailJob = EmailJob(to: "to@to.com", from: "from@from.com", message: "message")
+        try Scheduler().yearly().on(.december, 24).at(.noon)
+        try Scheduler().daily().atHour(2).atMinute(2).atSecond(1)
+
+        try Scheduler().yearly().on(.april, 20).at(.noon)
+        try Scheduler().fridays().at("14:32").atSecond(0)
+
+//        let emailJob = EmailJob(to: "to@to.com", from: "from@from.com", message: "message")
+//        schedule(emailJob).yearly().on(.december, 24).at(.midnight)
+    }
+
+    func testInvalidCronStrings() throws {
+        // test not enough fields
+        XCTAssertThrowsError(try Scheduler().cron("* * * *"))
+
+        // test too many fields
+        XCTAssertThrowsError(try Scheduler().cron("*/5 * 4 * 1-3 1"))
+        XCTAssertThrowsError(try Scheduler().cron("*/5 * 4 * 1-3 abc"))
+
+        // test incorrect fields
+        XCTAssertThrowsError(try Scheduler().cron("-1 * * * 1"))
+        XCTAssertThrowsError(try Scheduler().cron("1-2-3 * * * 1"))
+        XCTAssertThrowsError(try Scheduler().cron("21* * * 1"))
+
+        // test fields out of range
+        XCTAssertThrowsError(try Scheduler().cron("-1 * * * *"))
+        XCTAssertThrowsError(try Scheduler().cron("* -1 * * *"))
+        XCTAssertThrowsError(try Scheduler().cron("* * 0 * *"))
+        XCTAssertThrowsError(try Scheduler().cron("* * * 0 *"))
+        XCTAssertThrowsError(try Scheduler().cron("* * * * -1"))
+        XCTAssertThrowsError(try Scheduler().cron("60 * * * *"))
+        XCTAssertThrowsError(try Scheduler().cron("* 24 * * *"))
+        XCTAssertThrowsError(try Scheduler().cron("* * 32 * *"))
+        XCTAssertThrowsError(try Scheduler().cron("* * * 13 *"))
+        XCTAssertThrowsError(try Scheduler().cron("* * * * 7"))
+    }
+
+    func testCronJobParser() throws {
+        // test good cron strings
+        XCTAssertNoThrow(try Scheduler().cron("*/5 * 4 * 1-3"))
+        XCTAssertNoThrow(try Scheduler().cron("1 2 3 4 5"))
+        XCTAssertNoThrow(try Scheduler().cron("*/1 */2 */3 */4 */5"))
+        XCTAssertNoThrow(try Scheduler().cron("1-5 1-5 1-5 1-5 1-5"))
+        XCTAssertNoThrow(try Scheduler().cron("1,3,5 1,3,5 1,3,5 1,3,5 1,3,5"))
+
+        // test all stars
+        XCTAssertNoThrow(try Scheduler().cron("* * * * *"))
+
+        // test spaces
+        XCTAssertNoThrow(try Scheduler().cron("*/5    *   4 * 1-3  "))
     }
 
     static var allTests = [

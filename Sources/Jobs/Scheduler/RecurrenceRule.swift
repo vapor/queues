@@ -13,7 +13,6 @@ enum RecurrenceRuleError: Error {
     case startHourAndMinuteGreaterThanEndHourAndMinute
 }
 
-
 /// Defines the rule for when to run a job based on the given constraints
 ///
 /// - warning: RecurrenceRule only supports the Gregorian calendar (i.e. Calendar.identifier.gregorian or Calendar.identifier.iso8601)
@@ -67,7 +66,6 @@ public struct RecurrenceRule {
         self.minuteConstraint = minuteConstraint?.constraint
         self.secondConstraint = secondConstraint?.constraint
     }
-
 
     public mutating func setYearConstraint(_ yearConstraint: YearRecurrenceRuleConstraint) {
         self.yearConstraint = yearConstraint.constraint
@@ -337,7 +335,7 @@ public struct RecurrenceRule {
             return .minute
         } else if hourConstraint != nil {
             return .hour
-        } else if dayOfMonthConstraint != nil{
+        } else if dayOfMonthConstraint != nil {
             return .dayOfMonth
         } else if monthConstraint != nil {
             return .month

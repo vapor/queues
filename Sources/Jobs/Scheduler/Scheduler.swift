@@ -1,6 +1,5 @@
 import Foundation
 
-
 //protocol YearCreator {
 //    func atYear(_ year: Int) -> Scheduler.Year
 //    func atYears(_ years: Set<Int>) -> Scheduler.Year
@@ -250,7 +249,7 @@ final class Scheduler {
         func atHour(_ hour: Int) throws -> Scheduler.ScheduledHour.Singular {
             return try .init(scheduler: self.scheduler, hour: hour)
         }
-        
+
         func at(_ hhmm: String) throws -> Scheduler.ScheduledMinute.Singular {
             return try .init(scheduler: self.scheduler, hhmm: hhmm)
         }
@@ -372,12 +371,10 @@ final class Scheduler {
         func weekdays() -> Scheduler.ScheduledDayOfWeek { return ScheduledDayOfWeek([2, 3, 4, 5, 6]) }
         func weekends() -> Scheduler.ScheduledDayOfWeek { return ScheduledDayOfWeek([1, 7]) }
 
-
         // Hour
         func atHour(_ hour: Int) -> Scheduler.ScheduledHour { return ScheduledHour(hour) }
         func atHours(_ hours: Set<Int>) -> Scheduler.ScheduledHour { return ScheduledHour(hours) }
         func atHoursInRange(lowerBound: Int, upperBound: Int) -> Scheduler.ScheduledHour { return ScheduledHour(lowerBound: lowerBound, upperBound: upperBound) }
-
 
         struct Singular: HourCreatorSingular {
             let scheduler: Scheduler
@@ -404,7 +401,6 @@ final class Scheduler {
             }
         }
     }
-
 
     struct ScheduledDayOfWeek: HourCreator, DayOfMonthCreator {
         init(_ dayOfWeek: Int) {
@@ -491,7 +487,7 @@ final class Scheduler {
         }
     }
 
-    struct ScheduledMinute: SecondCreator  {
+    struct ScheduledMinute: SecondCreator {
         init(_ minute: Int) {
 
         }
@@ -586,6 +582,15 @@ final class Scheduler {
         }
     }
 
+    struct CronSchedule {
+        let scheduler: Scheduler
+
+        init(_ cronString: String) throws {
+            let recurrenceRule = try CronParser.parse(cronString)
+            scheduler = Scheduler.init()
+            scheduler.recurrenceRule = recurrenceRule
+        }
+    }
 
     // yearly
     /// Schedules the job to run once a year. Further specification required.
@@ -642,10 +647,19 @@ final class Scheduler {
     /// Schedules the job to run every 30 minute. Further specification is required.
     func everyThirtyMinutes() throws -> EveryXMinutes { return try EveryXMinutes(30) }
 
-    // TODO cron string parser
-    func cron(_ cronString: String) {
-
-    }
+    /// Schedules a job given a cron string
+    ///
+    /// - Note: single, list, range, and step values accepted using standard cron rules
+    /// - Note: allowed values:
+    /// - minute: 0-59
+    /// - hour: 0-23
+    /// - day (of month): 1-31
+    /// - month: 1-12 (i.e 1 - January, 6 - December)
+    /// - day (of year): 0-6 (i.e 0 - Sunday, 6 - Saturday)
+    ///
+    /// - Parameter cronString: a standard cron string
+    /// - Throws: throws an error if the cron string is invalid
+    func cron(_ cronString: String) throws -> CronSchedule { return try CronSchedule(cronString) }
 
     /// Runs the job given the specific constraints.
     /// - Note: Use this method to finely tune schedules

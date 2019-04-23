@@ -11,6 +11,23 @@ public enum EvaluationState {
     case passing
 }
 
+public enum RecurrenceRuleConstraintType {
+    case set
+    case range
+    case step
+}
+
+public protocol RecurrenceRuleConstraint {
+    var timeUnit: RecurrenceRuleTimeUnit { get}
+    var type: RecurrenceRuleConstraintType { get }
+    var validLowerBound: Int? { get }
+    var validUpperBound: Int? { get }
+    var lowestPossibleValue: Int? { get }
+    var highestPossibleValue: Int? { get }
+
+    func evaluate(_ evaluationAmount: Int) -> EvaluationState
+    func nextValidValue(currentValue: Int) -> Int?
+}
 
 struct ConstraintValueValidator {
     func validate(value: Int, validLowerBound: Int?, validUpperBound: Int?) throws {
@@ -28,17 +45,9 @@ struct ConstraintValueValidator {
     }
 }
 
-protocol RecurrenceRuleConstraint {
-    var validLowerBound: Int? { get }
-    var validUpperBound: Int? { get }
-    var lowestPossibleValue: Int? { get }
-    var highestPossibleValue: Int? { get }
-
-    func evaluate(_ evaluationAmount: Int) -> EvaluationState
-    func nextValidValue(currentValue: Int) -> Int?
-}
-
 struct RecurrenceRuleSetConstraint: RecurrenceRuleConstraint {
+    let timeUnit: RecurrenceRuleTimeUnit
+    let type = RecurrenceRuleConstraintType.set
     let validLowerBound: Int?
     let validUpperBound: Int?
     let setConstraint: Set<Int>
@@ -70,31 +79,9 @@ struct RecurrenceRuleSetConstraint: RecurrenceRuleConstraint {
     }
 
     init (timeUnit: RecurrenceRuleTimeUnit, setConstraint: Set<Int> = Set<Int>()) throws {
-        let validLowerBound = Calendar.gregorianLowerBound(for: timeUnit)
-        let validUpperBound = Calendar.gregorianUpperBound(for: timeUnit)
-        try self.init(validLowerBound: validLowerBound, validUpperBound: validUpperBound, setConstraint: setConstraint)
-    }
-
-    init(validLowerBound: Int?, validUpperBound: Int?) {
-        self.validLowerBound = validLowerBound
-        self.validUpperBound = validUpperBound
-        self.setConstraint = Set<Int>()
-    }
-
-    init(validLowerBound: Int?, validUpperBound: Int?, setConstraint: Set<Int> = Set<Int>()) throws {
-        self.validLowerBound = validLowerBound
-        self.validUpperBound = validUpperBound
-
-        let validator = ConstraintValueValidator()
-        for amount in setConstraint {
-            try validator.validate(value: amount, validLowerBound: validLowerBound, validUpperBound: validUpperBound)
-        }
-        self.setConstraint = setConstraint
-    }
-
-    init(from constraintToCopy: RecurrenceRuleConstraint, setConstraint: Set<Int> = Set<Int>()) throws {
-        self.validLowerBound = constraintToCopy.validLowerBound
-        self.validUpperBound = constraintToCopy.validUpperBound
+        self.timeUnit = timeUnit
+        self.validLowerBound = Calendar.gregorianLowerBound(for: timeUnit)
+        self.validUpperBound  = Calendar.gregorianUpperBound(for: timeUnit)
 
         let validator = ConstraintValueValidator()
         for amount in setConstraint {
@@ -143,6 +130,8 @@ struct RecurrenceRuleSetConstraint: RecurrenceRuleConstraint {
 }
 
 struct RecurrenceRuleRangeConstraint: RecurrenceRuleConstraint {
+    let timeUnit: RecurrenceRuleTimeUnit
+    let type = RecurrenceRuleConstraintType.range
     let validLowerBound: Int?
     let validUpperBound: Int?
     let rangeConstraint: ClosedRange<Int>
@@ -156,14 +145,9 @@ struct RecurrenceRuleRangeConstraint: RecurrenceRuleConstraint {
     }
 
     init(timeUnit: RecurrenceRuleTimeUnit, rangeConstraint: ClosedRange<Int>) throws {
-        let validLowerBound = Calendar.gregorianLowerBound(for: timeUnit)
-        let validUpperBound = Calendar.gregorianUpperBound(for: timeUnit)
-        try self.init(validLowerBound: validLowerBound, validUpperBound: validUpperBound, rangeConstraint: rangeConstraint)
-    }
-
-    init(validLowerBound: Int?, validUpperBound: Int?, rangeConstraint: ClosedRange<Int>) throws {
-        self.validLowerBound = validLowerBound
-        self.validUpperBound = validUpperBound
+        self.timeUnit = timeUnit
+        self.validLowerBound = Calendar.gregorianLowerBound(for: timeUnit)
+        self.validUpperBound = Calendar.gregorianUpperBound(for: timeUnit)
 
         let validator = ConstraintValueValidator()
         try validator.validate(value: rangeConstraint.lowerBound, validLowerBound: validLowerBound, validUpperBound: validUpperBound)
@@ -177,9 +161,9 @@ struct RecurrenceRuleRangeConstraint: RecurrenceRuleConstraint {
     /// - Returns: passing, failed, or noComparisonAttempted
     public func evaluate(_ evaluationAmount: Int) -> EvaluationState {
         if rangeConstraint.contains(evaluationAmount) {
-            return EvaluationState.passing
+            return .passing
         } else {
-            return EvaluationState.failed
+            return .failed
         }
     }
 
@@ -210,6 +194,8 @@ struct RecurrenceRuleRangeConstraint: RecurrenceRuleConstraint {
 }
 
 struct RecurrenceRuleStepConstraint: RecurrenceRuleConstraint {
+    let timeUnit: RecurrenceRuleTimeUnit
+    let type = RecurrenceRuleConstraintType.step
     let validLowerBound: Int?
     let validUpperBound: Int?
     let stepConstraint: Int
@@ -223,14 +209,10 @@ struct RecurrenceRuleStepConstraint: RecurrenceRuleConstraint {
     }
 
     init(timeUnit: RecurrenceRuleTimeUnit, stepConstraint: Int) throws {
-        let validLowerBound = Calendar.gregorianLowerBound(for: timeUnit)
-        let validUpperBound = Calendar.gregorianUpperBound(for: timeUnit)
-        try self.init(validLowerBound: validLowerBound, validUpperBound: validUpperBound, stepConstraint: stepConstraint)
-    }
+        self.timeUnit = timeUnit
+        self.validLowerBound = Calendar.gregorianLowerBound(for: timeUnit)
+        self.validUpperBound = Calendar.gregorianUpperBound(for: timeUnit)
 
-    init(validLowerBound: Int?, validUpperBound: Int?, stepConstraint: Int) throws  {
-        self.validLowerBound = validLowerBound
-        self.validUpperBound = validUpperBound
         if stepConstraint < 1 {
             throw RecurrenceRuleConstraintError.constraintAmountLessThanLowerBound
         }
