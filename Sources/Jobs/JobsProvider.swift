@@ -27,7 +27,9 @@ public struct JobsProvider: Provider {
     
     /// See `Provider`.`register(_ services:)`
     public func register(_ services: inout Services) throws {
-        services.register(QueueService.self) { container -> QueueService in
+        services.register(
+            QueueService.self
+        ) { container -> QueueService in
             let persistenceLayer = try container.make(JobsPersistenceLayer.self)
             
             return QueueService(refreshInterval: self.refreshInterval,

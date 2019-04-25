@@ -60,7 +60,7 @@ public final class JobsCommand: Command {
     /// See `Command`.`run(using:)`
     public func run(using context: CommandContext<JobsCommand>) throws {
         context.console.info("Starting Jobs worker")
-        let queueName = try context.option(\Signature.queue) ?? QueueName.default.name
+        let queueName = try context.option(\.queue) ?? QueueName.default.name
         let elg = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
         let signalQueue = DispatchQueue(label: "vapor.jobs.command.SignalHandlingQueue")
         
@@ -105,11 +105,12 @@ public final class JobsCommand: Command {
         try EventLoopFuture.andAllComplete(shutdownPromises.map { $0.futureResult }, on: elg.next()).wait()
     }
     
-    private func setupTask(eventLoop: EventLoop,
-                           queueName: String,
-                           console: ConsoleKit.Console,
-                           promise: EventLoopPromise<Void>) throws
-    {
+    private func setupTask(
+        eventLoop: EventLoop,
+        queueName: String,
+        console: ConsoleKit.Console,
+		promise: EventLoopPromise<Void>
+    ) throws {
         let queue = QueueName(name: queueName)
         let key = queue.makeKey(with: queueService.persistenceKey)
         _ = eventLoop.scheduleRepeatedAsyncTask(initialDelay: .seconds(0), delay: queueService.refreshInterval) { task -> EventLoopFuture<Void> in
