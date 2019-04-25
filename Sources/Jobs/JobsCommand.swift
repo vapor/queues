@@ -1,7 +1,6 @@
 import Foundation
 import Vapor
 import NIO
-import Console
 
 /// The command to start the Queue job
 public final class JobsCommand: Command {
@@ -98,7 +97,7 @@ public final class JobsCommand: Command {
                                    queueName: queueName,
                                    console: console,
                                    promise: shutdownPromise)
-            }.catch {
+            }.whenFailure {
                 console.error("Could not boot EventLoop: \($0)")
             }
         }
@@ -118,14 +117,14 @@ public final class JobsCommand: Command {
 
             if self.isShuttingDown {
                 task.cancel()
-                promise.succeed()
+                promise.succeed(())
             }
 
             return self.queueService.persistenceLayer.get(key: key).flatMap { jobStorage in
                 //No job found, go to the next iteration
-                guard let jobStorage = jobStorage else { return eventLoop.future() }
+                guard let jobStorage = jobStorage else { return eventLoop.makeSucceededFuture(()) }
                 guard let job = self.config.make(for: jobStorage.jobName) else {
-                    return eventLoop.future(error: Abort(.internalServerError, reason: "Please register \(jobStorage.jobName)"))
+                    return eventLoop.makeFailedFuture(Abort(.internalServerError, reason: "Please register \(jobStorage.jobName)"))
                 }
 
                 console.info("Dequeing Job job_id=[\(jobStorage.id)]", newLine: true)
@@ -133,10 +132,10 @@ public final class JobsCommand: Command {
                 let jobRunPromise = eventLoop.makePromise(of: Void.self)
 
                 let futureJob = job.anyDequeue(self.jobContext, jobStorage)
-                self.firstFutureToSucceed(future: futureJob, tries: jobStorage.maxRetryCount, on: eventLoop).catchFlatMap { error in
+                self.firstFutureToSucceed(future: futureJob, tries: jobStorage.maxRetryCount, on: eventLoop).flatMapError { error in
                     console.error("Error: \(error) job_id=[\(jobStorage.id)]", newLine: true)
                     return job.error(self.jobContext, error, jobStorage)
-                }.always {
+                }.whenComplete { _ in
                     self.queueService.persistenceLayer.completed(key: key, jobStorage: jobStorage).cascade(to: jobRunPromise)
                 }
 
@@ -155,9 +154,9 @@ public final class JobsCommand: Command {
     private func firstFutureToSucceed<T>(future: EventLoopFuture<T>, tries: Int, on worker: EventLoopGroup) -> EventLoopFuture<T> {
         return future.map { complete in
             return complete
-        }.catchFlatMap { error in
+        }.flatMapError { error in
             if tries == 0 {
-                return worker.eventLoop.makeFailedFuture(error)
+                return worker.next().makeFailedFuture(error)
             } else {
                 return self.firstFutureToSucceed(future: future, tries: tries - 1, on: worker)
             }
