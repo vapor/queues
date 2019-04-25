@@ -1,19 +1,30 @@
 import Foundation
 import Vapor
 import NIO
+import Console
 
 /// The command to start the Queue job
-public class JobsCommand: Command {
+public final class JobsCommand: Command {
     
-    /// See `Command`.`arguments`
-    public var arguments: [CommandArgument] = []
+    /// See `Command.signature`
+    public let signature = Signature()
     
-    /// See `Command`.`options`
-    public var options: [CommandOption] {
-        return [
-            CommandOption.value(name: "queue")
-        ]
+    /// See `Command.Signature`
+    public struct Signature: CommandSignature {
+        let queue = Option<String>(name: "queue", type: .value)
     }
+    
+    /// See `Command.help`
+    public var help: String? = "Runs queued worker jobs"
+
+    /// The registered `QueueService`
+    public let queueService: QueueService
+    
+    /// The registered `JobContext`
+    public let jobContext: JobContext
+    
+    /// The registered `JobsConfig`
+    public let config: JobsConfig
     
     private var isShuttingDown: Bool {
         get {
@@ -31,18 +42,26 @@ public class JobsCommand: Command {
     private var _isShuttingDown: Bool = false
     private var _lock: NSLock
     
-    /// See `Command`.`help`
-    public var help: [String] = ["Runs queued worker jobs"]
+    /// Creates a new `JobCommand`
     
     /// Creates a new `JobCommand`
-    public init() {
+    ///
+    /// - Parameters:
+    ///   - queueService: The registered `QueueService`
+    ///   - jobContext: The registered `JobContext` object
+    ///   - config: The registered `JobsConfig` object
+    public init(queueService: QueueService, jobContext: JobContext, config: JobsConfig) {
         _lock = NSLock()
+        
+        self.queueService = queueService
+        self.jobContext = jobContext
+        self.config = config
     }
     
     /// See `Command`.`run(using:)`
-    public func run(using context: CommandContext) throws -> EventLoopFuture<Void> {
+    public func run(using context: CommandContext<JobsCommand>) throws {
         context.console.info("Starting Jobs worker")
-
+        let queueName = try context.option(\Signature.queue) ?? QueueName.default.name
         let elg = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
         let signalQueue = DispatchQueue(label: "vapor.jobs.command.SignalHandlingQueue")
         
@@ -66,18 +85,16 @@ public class JobsCommand: Command {
         signal(SIGINT, SIG_IGN)
         intSignalSource.resume()
         
+        
         var shutdownPromises: [EventLoopPromise<Void>] = []
-        for eventLoop in elg.makeIterator()! {
-            let sub = context.container.subContainer(on: eventLoop)
+        for eventLoop in elg.makeIterator() {
             let console = context.console
-            let queueName = context.options["queue"] ?? QueueName.default.name
-            let shutdownPromise: EventLoopPromise<Void> = eventLoop.newPromise()
+            let shutdownPromise: EventLoopPromise<Void> = eventLoop.makePromise()
             
             shutdownPromises.append(shutdownPromise)
             
             eventLoop.submit {
                 try self.setupTask(eventLoop: eventLoop,
-                                   container: sub,
                                    queueName: queueName,
                                    console: console,
                                    promise: shutdownPromise)
@@ -86,48 +103,43 @@ public class JobsCommand: Command {
             }
         }
         
-        return .andAll(shutdownPromises.map { $0.futureResult }, eventLoop: elg.next())
+        try EventLoopFuture.andAllComplete(shutdownPromises.map { $0.futureResult }, on: elg.next()).wait()
     }
     
     private func setupTask(eventLoop: EventLoop,
-                           container: SubContainer,
                            queueName: String,
-                           console: Console,
+                           console: ConsoleKit.Console,
                            promise: EventLoopPromise<Void>) throws
     {
         let queue = QueueName(name: queueName)
-        let queueService = try container.make(QueueService.self)
-        let jobContext = try container.make(JobContext.self)
         let key = queue.makeKey(with: queueService.persistenceKey)
-        let config = try container.make(JobsConfig.self)
-        
-        _ = eventLoop.scheduleRepeatedTask(initialDelay: .seconds(0), delay: queueService.refreshInterval) { task -> EventLoopFuture<Void> in
+        _ = eventLoop.scheduleRepeatedAsyncTask(initialDelay: .seconds(0), delay: queueService.refreshInterval) { task -> EventLoopFuture<Void> in
             //Check if shutting down
-            
+
             if self.isShuttingDown {
                 task.cancel()
                 promise.succeed()
             }
-            
-            return queueService.persistenceLayer.get(key: key).flatMap { jobStorage in
+
+            return self.queueService.persistenceLayer.get(key: key).flatMap { jobStorage in
                 //No job found, go to the next iteration
                 guard let jobStorage = jobStorage else { return eventLoop.future() }
-                guard let job = config.make(for: jobStorage.jobName) else {
+                guard let job = self.config.make(for: jobStorage.jobName) else {
                     return eventLoop.future(error: Abort(.internalServerError, reason: "Please register \(jobStorage.jobName)"))
                 }
-                
+
                 console.info("Dequeing Job job_id=[\(jobStorage.id)]", newLine: true)
-                
-                let jobRunPromise = eventLoop.newPromise(Void.self)
-                
-                let futureJob = job.anyDequeue(jobContext, jobStorage)
+
+                let jobRunPromise = eventLoop.makePromise(of: Void.self)
+
+                let futureJob = job.anyDequeue(self.jobContext, jobStorage)
                 self.firstFutureToSucceed(future: futureJob, tries: jobStorage.maxRetryCount, on: eventLoop).catchFlatMap { error in
                     console.error("Error: \(error) job_id=[\(jobStorage.id)]", newLine: true)
-                    return job.error(jobContext, error, jobStorage)
+                    return job.error(self.jobContext, error, jobStorage)
                 }.always {
-                    queueService.persistenceLayer.completed(key: key, jobStorage: jobStorage).cascade(promise: jobRunPromise)
+                    self.queueService.persistenceLayer.completed(key: key, jobStorage: jobStorage).cascade(to: jobRunPromise)
                 }
-                
+
                 return jobRunPromise.futureResult
             }
         }
@@ -140,12 +152,12 @@ public class JobsCommand: Command {
     ///   - tries: The number of tries to execute this future before returning a failure
     ///   - worker: An `EventLoopGroup` that can be used to generate future values
     /// - Returns: The completed future, with or without an error
-    private func firstFutureToSucceed<T>(future: Future<T>, tries: Int, on worker: EventLoopGroup) -> Future<T> {
+    private func firstFutureToSucceed<T>(future: EventLoopFuture<T>, tries: Int, on worker: EventLoopGroup) -> EventLoopFuture<T> {
         return future.map { complete in
             return complete
         }.catchFlatMap { error in
             if tries == 0 {
-                return worker.future(error: error)
+                return worker.eventLoop.makeFailedFuture(error)
             } else {
                 return self.firstFutureToSucceed(future: future, tries: tries - 1, on: worker)
             }

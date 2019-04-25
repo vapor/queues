@@ -1,8 +1,9 @@
 import Foundation
 import Vapor
+import NIO
 
 /// A `Service` used to dispatch `Jobs`
-public struct QueueService: Service {
+public struct QueueService {
     
     /// See `JobsProvider`.`refreshInterval`
     let refreshInterval: TimeAmount
