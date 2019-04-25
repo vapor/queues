@@ -29,6 +29,6 @@ public struct QueueService {
                                     id: UUID().uuidString,
                                     jobName: J.jobName)
         
-        return persistenceLayer.set(key: queue.makeKey(with: persistenceKey), jobStorage: jobStorage).transform(to: ())
+        return persistenceLayer.set(key: queue.makeKey(with: persistenceKey), jobStorage: jobStorage).map({})
     }
 }
