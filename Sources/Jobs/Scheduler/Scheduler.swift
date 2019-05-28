@@ -1,48 +1,30 @@
 import Foundation
 
-//protocol YearCreator {
-//    func atYear(_ year: Int) -> Scheduler.Year
-//    func atYears(_ years: Set<Int>) -> Scheduler.Year
-//    func atYearsInRange(lowerBound: Int, upperBound: Int) -> Scheduler.Year
-//}
-
-protocol QuarterCreator {
+protocol QuarterBuilder {
     func atQuarter(_ quarter: Int) -> Scheduler.ScheduledQuarter
     func atQuarters(_ quarters: Set<Int>) -> Scheduler.ScheduledQuarter
     func atQuartersInRange(lowerBound: Int, upperBound: Int) -> Scheduler.ScheduledQuarter
 }
 
-protocol MonthCreator {
+protocol MonthBuilder {
     func atMonth(_ month: Int) -> Scheduler.ScheduledMonth
     func atMonths(_ months: Set<Int>) -> Scheduler.ScheduledMonth
     func atMonthsInRange(lowerBound: Int, upperBound: Int) -> Scheduler.ScheduledMonth
 }
 
-//protocol WeekOfYearCreator {
-//    func atWeekOfYear(_ weekOfYear: Int) -> Scheduler.WeekOfYear
-//    func atWeeksOfYear(_ weeksOfYear: Set<Int>) -> Scheduler.WeekOfYear
-//    func atWeeksOfYearInRange(lowerBound: Int, upperBound: Int) -> Scheduler.WeekOfYear
-//}
-//
-//protocol WeekOfMonthCreator  {
-//    func atWeekOfMonth(_ weekOfMonth: Int) ->Scheduler.WeekOfMonth
-//    func atWeeksOfMonth(_ weeksOfMonth: Set<Int>) -> Scheduler.WeekOfMonth
-//    func atWeeksOfMonthInRange(lowerBound: Int, upperBound: Int) -> Scheduler.WeekOfMonth
-//}
-
-protocol DayOfMonthAndWeekCreator {
+protocol DayOfMonthAndWeekBuilder {
     func at(DayOfWeek: Int, AndDayOfMonth: Int) -> Scheduler.ScheduledDayOfMonth
     func atDaysOfMonth(_ daysOfMonth: Set<Int>) -> Scheduler.ScheduledDayOfMonth
     func atDaysOfMonthInRange(lowerBound: Int, upperBound: Int) -> Scheduler.ScheduledDayOfMonth
 }
 
-protocol DayOfMonthCreator {
+protocol DayOfMonthBuilder {
     func atDayOfMonth(_ dayOfMonth: Int) -> Scheduler.ScheduledDayOfMonth
     func atDaysOfMonth(_ daysOfMonth: Set<Int>) -> Scheduler.ScheduledDayOfMonth
     func atDaysOfMonthInRange(lowerBound: Int, upperBound: Int) -> Scheduler.ScheduledDayOfMonth
 }
 
-protocol DayOfWeekCreator {
+protocol DayOfWeekBuilder {
     func atDayOfWeek(_ dayOfWeek: Int) -> Scheduler.ScheduledDayOfWeek
     func atDaysOfWeek(_ daysOfWeek: Set<Int>) -> Scheduler.ScheduledDayOfWeek
     func atDaysOfWeekInRange(lowerBound: Int, upperBound: Int) -> Scheduler.ScheduledDayOfWeek
@@ -51,29 +33,29 @@ protocol DayOfWeekCreator {
     func weekends() -> Scheduler.ScheduledDayOfWeek
 }
 
-protocol HourCreator {
+protocol HourBuilder {
     func atHour(_ hour: Int) -> Scheduler.ScheduledHour
     func atHours(_ hours: Set<Int>) -> Scheduler.ScheduledHour
     func atHoursInRange(lowerBound: Int, upperBound: Int) -> Scheduler.ScheduledHour
 }
 
-protocol MinuteCreator {
+protocol MinuteBuilder {
     func atMinute(_ minute: Int) -> Scheduler.ScheduledMinute
     func atMinutes(_ minutes: Set<Int>) -> Scheduler.ScheduledMinute
     func atMinutesInRange(lowerBound: Int, upperBound: Int) -> Scheduler.ScheduledMinute
 }
 
-protocol SecondCreator {
+protocol SecondBuilder {
     func atSecond(_ second: Int) -> Scheduler.ScheduledSecond
     func atSeconds(_ seconds: Set<Int>) -> Scheduler.ScheduledSecond
     func atSecondsInRange(lowerBound: Int, upperBound: Int) -> Scheduler.ScheduledSecond
 }
 
-protocol SingularCreator {
+protocol SingularBuilder {
     var scheduler: Scheduler {get}
 }
 
-protocol MonthCreatorSingular: SingularCreator {
+protocol MonthBuilderSingular: SingularBuilder {
     /// Specifies the month of the year to run the job
     ///
     /// - Note: 1 is January, 12 is December
@@ -87,14 +69,14 @@ protocol MonthCreatorSingular: SingularCreator {
     func on(_ month: Scheduler.MonthOfYear, _ day: Int) throws -> Scheduler.ScheduledDayOfMonth.Singular
 }
 
-protocol DayOfMonthCreatorSingular: SingularCreator {
+protocol DayOfMonthBuilderSingular: SingularBuilder {
     /// Specifies the day of the month to run the job
     ///
     /// - Parameter dayOfMonth: Day of the month to run the job on. Lower bound: 1, Upper bound: 31
     func atDayOfMonth(_ dayOfMonth: Int) throws -> Scheduler.ScheduledDayOfMonth.Singular
 }
 
-protocol DayOfWeekCreatorSingular: SingularCreator {
+protocol DayOfWeekBuilderSingular: SingularBuilder {
     /// Specifies the day of the week to run the job
     ///
     /// - Note: 1 is Sunday, 7 is Saturday
@@ -102,7 +84,7 @@ protocol DayOfWeekCreatorSingular: SingularCreator {
     func atDayOfWeek(_ dayOfWeek: Int) throws -> Scheduler.ScheduledDayOfWeek.Singular
 }
 
-protocol HourCreatorSingular: SingularCreator {
+protocol HourBuilderSingular: SingularBuilder {
     /// Specifies the hour to run the job
     ///
     /// - Note: Uses the 24 hour clock
@@ -122,26 +104,26 @@ protocol HourCreatorSingular: SingularCreator {
     func at(_ timeOfDay: Scheduler.TimeOfDay) throws -> Scheduler.ScheduledSecond.Singular
 }
 
-protocol MinuteCreatorSingular: SingularCreator {
+protocol MinuteBuilderSingular: SingularBuilder {
     /// Specifies the minute to run the job
     ///
     /// - Parameter minute: Lower bound: 0, Upper bound: 59
     func atMinute(_ minute: Int) throws -> Scheduler.ScheduledMinute.Singular
 }
 
-protocol SecondCreatorSingular: SingularCreator {
+protocol SecondBuilderSingular: SingularBuilder {
     /// Specifies the second to run the job
     ///
     /// - Parameter second: Lower bound: 0, Upper bound: 59
     func atSecond(_ second: Int) throws -> Scheduler.ScheduledSecond.Singular
 }
 
-func schedule(_ job: ScheduledJob) -> Scheduler {
+func schedule(_ job: Job) -> Scheduler {
     return Scheduler()
 }
 
 final class Scheduler {
-    var recurrenceRule = RecurrenceRule()
+    private(set) var recurrenceRule = RecurrenceRule()
 
     enum MonthOfYear: Int {
         case january = 1
@@ -173,7 +155,7 @@ final class Scheduler {
         case noon
     }
 
-    struct Yearly: MonthCreatorSingular {
+    struct Yearly: MonthBuilderSingular {
         let scheduler: Scheduler
         init() throws {
             scheduler = Scheduler.init()
@@ -189,7 +171,7 @@ final class Scheduler {
 
     }
 
-    struct Monthly: DayOfMonthCreatorSingular {
+    struct Monthly: DayOfMonthBuilderSingular {
         let scheduler: Scheduler
 
         init() throws {
@@ -202,7 +184,7 @@ final class Scheduler {
         }
     }
 
-    struct Weekly: HourCreatorSingular {
+    struct Weekly: HourBuilderSingular {
         let scheduler: Scheduler
 
         init(onDayOfWeek dayOfWeek: Int) throws {
@@ -228,7 +210,7 @@ final class Scheduler {
         }
     }
 
-    struct Daily: HourCreatorSingular {
+    struct Daily: HourBuilderSingular {
         let scheduler: Scheduler
 
         init() throws {
@@ -259,7 +241,7 @@ final class Scheduler {
         }
     }
 
-    struct Hourly: MinuteCreatorSingular {
+    struct Hourly: MinuteBuilderSingular {
         let scheduler: Scheduler
 
         init() throws {
@@ -272,7 +254,7 @@ final class Scheduler {
         }
     }
 
-    struct EveryXMinutes: SecondCreatorSingular {
+    struct EveryXMinutes: SecondBuilderSingular {
         let scheduler: Scheduler
 
         init(_ minutes: Int) throws {
@@ -285,7 +267,7 @@ final class Scheduler {
         }
     }
 
-    struct ScheduledQuarter: MonthCreator {
+    struct ScheduledQuarter: MonthBuilder {
         init(_ quarter: Int) {
 
         }
@@ -305,7 +287,7 @@ final class Scheduler {
 
     }
 
-    struct ScheduledMonth: DayOfMonthCreator, DayOfWeekCreator {
+    struct ScheduledMonth: DayOfMonthBuilder, DayOfWeekBuilder {
         //let scheduler: Scheduler
 
         init(_ month: Int) {
@@ -337,7 +319,7 @@ final class Scheduler {
         func weekdays() -> Scheduler.ScheduledDayOfWeek { return ScheduledDayOfWeek([2, 3, 4, 5, 6]) }
         func weekends() -> Scheduler.ScheduledDayOfWeek { return ScheduledDayOfWeek([1, 7]) }
 
-        struct Singular: DayOfMonthCreatorSingular {
+        struct Singular: DayOfMonthBuilderSingular {
             let scheduler: Scheduler
 
             init(scheduler: Scheduler, month: Int) throws {
@@ -351,7 +333,7 @@ final class Scheduler {
         }
     }
 
-    struct ScheduledDayOfMonth: HourCreator, DayOfWeekCreator {
+    struct ScheduledDayOfMonth: HourBuilder, DayOfWeekBuilder {
         init(_ dayOfMonth: Int) {
 
         }
@@ -376,7 +358,7 @@ final class Scheduler {
         func atHours(_ hours: Set<Int>) -> Scheduler.ScheduledHour { return ScheduledHour(hours) }
         func atHoursInRange(lowerBound: Int, upperBound: Int) -> Scheduler.ScheduledHour { return ScheduledHour(lowerBound: lowerBound, upperBound: upperBound) }
 
-        struct Singular: HourCreatorSingular {
+        struct Singular: HourBuilderSingular {
             let scheduler: Scheduler
 
             init(scheduler: Scheduler, dayOfMonth: Int) throws {
@@ -402,7 +384,7 @@ final class Scheduler {
         }
     }
 
-    struct ScheduledDayOfWeek: HourCreator, DayOfMonthCreator {
+    struct ScheduledDayOfWeek: HourBuilder, DayOfMonthBuilder {
         init(_ dayOfWeek: Int) {
 
         }
@@ -429,7 +411,7 @@ final class Scheduler {
         func atHours(_ hours: Set<Int>) -> Scheduler.ScheduledHour { return ScheduledHour(hours) }
         func atHoursInRange(lowerBound: Int, upperBound: Int) -> Scheduler.ScheduledHour { return ScheduledHour(lowerBound: lowerBound, upperBound: upperBound) }
 
-        struct Singular: HourCreatorSingular {
+        struct Singular: HourBuilderSingular {
             let scheduler: Scheduler
 
             init(scheduler: Scheduler, dayOfWeek: Int) throws {
@@ -451,7 +433,7 @@ final class Scheduler {
         }
     }
 
-    struct ScheduledHour: MinuteCreator {
+    struct ScheduledHour: MinuteBuilder {
         init(_ dayOfWeek: Int) {
 
         }
@@ -473,7 +455,7 @@ final class Scheduler {
         func atMinutes(_ minutes: Set<Int>) -> Scheduler.ScheduledMinute { return ScheduledMinute(minutes) }
         func atMinutesInRange(lowerBound: Int, upperBound: Int) -> Scheduler.ScheduledMinute { return ScheduledMinute(lowerBound: lowerBound, upperBound: upperBound) }
 
-        struct Singular: MinuteCreatorSingular {
+        struct Singular: MinuteBuilderSingular {
             let scheduler: Scheduler
 
             init(scheduler: Scheduler, hour: Int) throws {
@@ -487,7 +469,7 @@ final class Scheduler {
         }
     }
 
-    struct ScheduledMinute: SecondCreator {
+    struct ScheduledMinute: SecondBuilder {
         init(_ minute: Int) {
 
         }
@@ -505,7 +487,7 @@ final class Scheduler {
         func atSeconds(_ seconds: Set<Int>) -> Scheduler.ScheduledSecond { return ScheduledSecond(seconds) }
         func atSecondsInRange(lowerBound: Int, upperBound: Int) -> Scheduler.ScheduledSecond { return ScheduledSecond(lowerBound: lowerBound, upperBound: upperBound) }
 
-        struct Singular: SecondCreatorSingular {
+        struct Singular: SecondBuilderSingular {
             let scheduler: Scheduler
 
             init(scheduler: Scheduler, minute: Int) throws {
@@ -611,6 +593,7 @@ final class Scheduler {
     // daily
     /// Schedules the job to run once a day. Further specification is required.
     func daily() throws -> Daily { return try Daily() }
+
     // daily - convenience
     /// Schedules the job to run every Monday, Tuesday, Wednesday, Thursday, and Friday. Further specification is required.
     func weekdays() throws -> Daily { return try Daily(onDaysOfWeek: [2, 3, 4, 5, 6]) }
@@ -662,7 +645,7 @@ final class Scheduler {
     func cron(_ cronString: String) throws -> CronSchedule { return try CronSchedule(cronString) }
 
     /// Runs the job given the specific constraints.
-    /// - Note: Use this method to finely tune schedules
+    /// - Note: Use this method for advanced scheduling
     /// - Parameter minute: Lower bound: 0, Upper bound: 59
     func whenConstraintsSatisfied(yearConstraint: YearRecurrenceRuleConstraint? = nil,
                                   monthConstraint: MonthRecurrenceRuleConstraint? = nil,
