@@ -89,7 +89,6 @@ struct CronParser {
         return recurrenceRule
     }
 
-
     private static func parseCronField(field: String, timeUnit: RecurrenceRuleTimeUnit) throws -> RecurrenceRuleConstraint? {
         // star (any value)
         if field == "*" {
@@ -146,7 +145,7 @@ struct CronParser {
 
         if timeUnit == .dayOfWeek {
             // subract by 1
-            intsInMatch = intsInMatch.map{$0 + 1}
+            intsInMatch = intsInMatch.map {$0 + 1}
         }
 
         // array to set
@@ -234,7 +233,6 @@ private struct RegexHelper {
         return matchRanges
     }
 
-
     static func matches(for regexPattern: String, inString inputString: String) -> [String] {
         let matchRanges = self.matchRanges(for: regexPattern, inString: inputString)
 
@@ -263,7 +261,6 @@ private struct RegexHelper {
             return nil
         }
     }
-
 
     func replaceFirstMatch(for regexPattern: String, inString inputString: String, withString replacementString: String) -> String {
         let firstMatchRange = self.firstMatchRange(for: regexPattern, inString: inputString)
@@ -326,9 +323,8 @@ private struct RegexHelper {
             return false
         }
     }
-    
-}
 
+}
 
 private extension String {
     enum RegexError: Error {

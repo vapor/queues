@@ -49,5 +49,5 @@ final class CronTests: XCTestCase {
         ("testInvalidCronStrings", testInvalidCronStrings),
         ("testCronJobParser", testCronJobParser)
     ]
-    
+
 }

@@ -3,6 +3,9 @@ import Vapor
 
 /// A `Service` to configure `Job`s
 public struct JobsConfig: Service {
+
+    // Allows job to be scheduled
+    internal var scheduler = Scheduler()
     
     /// Type storage
     internal var storage: [String: AnyJob]

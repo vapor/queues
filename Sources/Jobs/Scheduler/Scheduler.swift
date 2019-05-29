@@ -49,7 +49,6 @@ protocol SingularBuilder {
     var scheduler: Scheduler {get}
 }
 
-
 /// 'Singular Builders' are structs that can only be scheduled at one point in time
 /// ex MonthBuilderSingular is schedules a single point in time in one day at a single month
 
@@ -116,11 +115,14 @@ protocol SecondBuilderSingular: SingularBuilder {
     func atSecond(_ second: Int) throws -> Scheduler.ScheduledSecond.Singular
 }
 
-//func schedule(_ job: Job) -> Scheduler {
-//    return Scheduler()
-//}
+extension JobsConfig {
+    mutating public func schedule<J: Job>(_ job: J) -> Scheduler {
+        self.add(job)
+        return scheduler
+    }
+}
 
-final class Scheduler {
+public final class Scheduler {
     private(set) var recurrenceRule = RecurrenceRule()
 
     enum MonthOfYear: Int {
@@ -156,8 +158,10 @@ final class Scheduler {
 
     struct Yearly: MonthBuilderSingular {
         let scheduler: Scheduler
-        init() throws {
-            scheduler = Scheduler.init()
+
+        init(_ scheduler: Scheduler) throws {
+            self.scheduler = scheduler
+            scheduler.recurrenceRule = RecurrenceRule()
             scheduler.recurrenceRule.setYearConstraint(try YearRecurrenceRuleConstraint.yearStep(1))
         }
 
@@ -173,8 +177,9 @@ final class Scheduler {
     struct Monthly: DayOfMonthBuilderSingular {
         let scheduler: Scheduler
 
-        init() throws {
-            self.scheduler = Scheduler()
+        init(_ scheduler: Scheduler) throws {
+            self.scheduler = scheduler
+            scheduler.recurrenceRule = RecurrenceRule()
             scheduler.recurrenceRule.setMonthConstraint(try MonthRecurrenceRuleConstraint.monthStep(1))
         }
 
@@ -186,13 +191,15 @@ final class Scheduler {
     struct Weekly: HourBuilderSingular {
         let scheduler: Scheduler
 
-        init(onDayOfWeek dayOfWeek: Int) throws {
-            self.scheduler = Scheduler()
+        init(_ scheduler: Scheduler, onDayOfWeek dayOfWeek: Int) throws {
+            self.scheduler = scheduler
+            scheduler.recurrenceRule = RecurrenceRule()
             scheduler.recurrenceRule.setDayOfWeekConstraint(try .atDayOfWeek(dayOfWeek))
         }
 
-        init(on dayOfWeek: Scheduler.DayOfWeek) throws {
-            self.scheduler = Scheduler()
+        init(_ scheduler: Scheduler, on dayOfWeek: Scheduler.DayOfWeek) throws {
+            self.scheduler = scheduler
+            scheduler.recurrenceRule = RecurrenceRule()
             scheduler.recurrenceRule.setDayOfWeekConstraint(try .atDayOfWeek(dayOfWeek.rawValue))
         }
 
@@ -212,18 +219,21 @@ final class Scheduler {
     struct Daily: HourBuilderSingular {
         let scheduler: Scheduler
 
-        init() throws {
-            self.scheduler = Scheduler()
+        init(_ scheduler: Scheduler) throws {
+            self.scheduler = scheduler
+            scheduler.recurrenceRule = RecurrenceRule()
             scheduler.recurrenceRule.setDayOfWeekConstraint(try .dayOfWeekStep(1))
         }
 
-        init(onDaysOfWeek daysOfWeek: Set<Int>) throws {
-            self.scheduler = Scheduler()
+        init(_ scheduler: Scheduler, onDaysOfWeek daysOfWeek: Set<Int>) throws {
+            self.scheduler = scheduler
+            scheduler.recurrenceRule = RecurrenceRule()
             scheduler.recurrenceRule.setDayOfWeekConstraint(try .atDaysOfWeek(daysOfWeek))
         }
 
-        init(onDayOfWeek dayOfWeek: Int) throws {
-            self.scheduler = Scheduler()
+        init(_ scheduler: Scheduler, onDayOfWeek dayOfWeek: Int) throws {
+            self.scheduler = scheduler
+            scheduler.recurrenceRule = RecurrenceRule()
             scheduler.recurrenceRule.setDayOfWeekConstraint(try .atDayOfWeek(dayOfWeek))
         }
 
@@ -243,8 +253,9 @@ final class Scheduler {
     struct Hourly: MinuteBuilderSingular {
         let scheduler: Scheduler
 
-        init() throws {
-            self.scheduler = Scheduler()
+        init(_ scheduler: Scheduler) throws {
+            self.scheduler = scheduler
+            scheduler.recurrenceRule = RecurrenceRule()
             scheduler.recurrenceRule.setHourConstraint(try .hourStep(1))
         }
 
@@ -256,8 +267,9 @@ final class Scheduler {
     struct EveryXMinutes: SecondBuilderSingular {
         let scheduler: Scheduler
 
-        init(_ minutes: Int) throws {
-            self.scheduler = Scheduler()
+        init(_ scheduler: Scheduler, minutes: Int) throws {
+            self.scheduler = scheduler
+            scheduler.recurrenceRule = RecurrenceRule()
             scheduler.recurrenceRule.setMinuteConstraint(try .minuteStep(minutes))
         }
 
@@ -281,7 +293,7 @@ final class Scheduler {
         }
     }
 
-    struct ScheduledDayOfMonth{
+    struct ScheduledDayOfMonth {
         struct Singular: HourBuilderSingular {
             let scheduler: Scheduler
 
@@ -416,87 +428,77 @@ final class Scheduler {
         }
     }
 
-    struct CronSchedule {
-        let scheduler: Scheduler
-
-        init(_ cronString: String) throws {
-            let recurrenceRule = try CronParser.parse(cronString)
-            scheduler = Scheduler.init()
-            scheduler.recurrenceRule = recurrenceRule
-        }
-    }
-
     // yearly
     /// Schedules the job to run once a year. Further specification required.
-    func yearly() throws -> Yearly { return try Yearly() }
+    func yearly() throws -> Yearly { return try Yearly(self) }
 
     // monthly
     /// Schedules the job to run once a Month. Further specification required.
-    func monthly() throws -> Monthly { return try Monthly() }
+    func monthly() throws -> Monthly { return try Monthly(self) }
 
     // weekly
     /// Schedules the job to run once a week on the specified day of the week. Further specification is required.
     /// - Parameter dayOfWeek: the day of the week to run
-    func weekly(on dayOfWeek: Scheduler.DayOfWeek) throws -> Weekly { return try Weekly(on: dayOfWeek) }
+    func weekly(on dayOfWeek: Scheduler.DayOfWeek) throws -> Weekly { return try Weekly(self, on: dayOfWeek) }
 
     /// Schedules the job to run once a week on the specified day of the week. Further specification is required.
     /// - Note: 1 is Sunday, 7 is Saturday
     /// - Parameter dayOfWeek: Lower bound: 1, Upper bound: 7
-    func weekly(onDayOfWeek dayOfWeek: Int) throws -> Weekly { return try Weekly(onDayOfWeek: dayOfWeek) }
+    func weekly(onDayOfWeek dayOfWeek: Int) throws -> Weekly { return try Weekly(self, onDayOfWeek: dayOfWeek) }
 
     // daily
     /// Schedules the job to run once a day. Further specification is required.
-    func daily() throws -> Daily { return try Daily() }
+    func daily() throws -> Daily { return try Daily(self) }
 
     // daily - convenience
     /// Schedules the job to run every Monday, Tuesday, Wednesday, Thursday, and Friday. Further specification is required.
-    func weekdays() throws -> Daily { return try Daily(onDaysOfWeek: [2, 3, 4, 5, 6]) }
+    func weekdays() throws -> Daily { return try Daily(self, onDaysOfWeek: [2, 3, 4, 5, 6]) }
     /// Schedules the job to run every Saturday and Sunday. Further specification is required.
-    func weekends() throws -> Daily { return try Daily(onDaysOfWeek: [1, 7]) }
+    func weekends() throws -> Daily { return try Daily(self, onDaysOfWeek: [1, 7]) }
     /// Schedules the job to run every Sunday. Further specification is required.
-    func sundays() throws -> Daily { return try Daily(onDayOfWeek: 1) }
+    func sundays() throws -> Daily { return try Daily(self, onDayOfWeek: 1) }
     /// Schedules the job to run every Monday. Further specification is required.
-    func mondays() throws -> Daily { return try Daily(onDayOfWeek: 2) }
+    func mondays() throws -> Daily { return try Daily(self, onDayOfWeek: 2) }
     /// Schedules the job to run every Tuesday. Further specification is required.
-    func tuesdays() throws -> Daily { return try Daily(onDayOfWeek: 3) }
+    func tuesdays() throws -> Daily { return try Daily(self, onDayOfWeek: 3) }
     /// Schedules the job to run every Wednesday. Further specification is required.
-    func wednesdays() throws -> Daily { return try Daily(onDayOfWeek: 4) }
+    func wednesdays() throws -> Daily { return try Daily(self, onDayOfWeek: 4) }
     /// Schedules the job to run every Thursday. Further specification is required.
-    func thursdays() throws -> Daily { return try Daily(onDayOfWeek: 5) }
+    func thursdays() throws -> Daily { return try Daily(self, onDayOfWeek: 5) }
     /// Schedules the job to run every Friday. Further specification is required.
-    func fridays() throws -> Daily { return try Daily(onDayOfWeek: 6) }
+    func fridays() throws -> Daily { return try Daily(self, onDayOfWeek: 6) }
     /// Schedules the job to run every Saturday. Further specification is required.
-    func saturdays() throws -> Daily { return try Daily(onDayOfWeek: 7) }
+    func saturdays() throws -> Daily { return try Daily(self, onDayOfWeek: 7) }
 
     // hourly
     /// Schedules the job to run every Hour. Further specification is required.
-    func hourly() throws -> Hourly { return try Hourly() }
+    func hourly() throws -> Hourly { return try Hourly(self) }
 
     // everyXMintues
     // a method for minutes divisible by 60
 
     /// Schedules the job to run every minute. Further specification is required.
-    func everyMinute() throws -> EveryXMinutes { return try EveryXMinutes(1) }
+    func everyMinute() throws -> EveryXMinutes { return try EveryXMinutes(self, minutes: 1) }
     /// Schedules the job to run every 2 minutes. Further specification is required.
-    func everyTwoMinutes() throws -> EveryXMinutes { return try EveryXMinutes(2) }
+    func everyTwoMinutes() throws -> EveryXMinutes { return try EveryXMinutes(self, minutes: 2) }
     /// Schedules the job to run every 3 minutes. Further specification is required.
-    func everyThreeMinutes() throws -> EveryXMinutes { return try EveryXMinutes(3) }
+    func everyThreeMinutes() throws -> EveryXMinutes { return try EveryXMinutes(self, minutes: 3) }
     /// Schedules the job to run every 4 minutes. Further specification is required.
-    func everyFourMinutes() throws -> EveryXMinutes { return try EveryXMinutes(4) }
+    func everyFourMinutes() throws -> EveryXMinutes { return try EveryXMinutes(self, minutes: 4) }
     /// Schedules the job to run every 5 minutew. Further specification is required.
-    func everyFiveMinutes() throws -> EveryXMinutes { return try EveryXMinutes(5) }
+    func everyFiveMinutes() throws -> EveryXMinutes { return try EveryXMinutes(self, minutes: 5) }
     /// Schedules the job to run every 6 minutes. Further specification is required.
-    func everySixMinutes() throws -> EveryXMinutes { return try EveryXMinutes(6) }
+    func everySixMinutes() throws -> EveryXMinutes { return try EveryXMinutes(self, minutes: 6) }
     /// Schedules the job to run every 10 minutes. Further specification is required.
-    func everyTenMinutes() throws -> EveryXMinutes { return try EveryXMinutes(10) }
+    func everyTenMinutes() throws -> EveryXMinutes { return try EveryXMinutes(self, minutes: 10) }
     /// Schedules the job to run every 12 minutes. Further specification is required.
-    func everyTwelveMinutes() throws -> EveryXMinutes { return try EveryXMinutes(12) }
+    func everyTwelveMinutes() throws -> EveryXMinutes { return try EveryXMinutes(self, minutes: 12) }
     /// Schedules the job to run every 20 minutes. Further specification is required.
-    func everyFifteenMinutes() throws -> EveryXMinutes { return try EveryXMinutes(15) }
+    func everyFifteenMinutes() throws -> EveryXMinutes { return try EveryXMinutes(self, minutes: 15) }
     /// Schedules the job to run every 20 minutes. Further specification is required.
-    func everyTwentyMinutes() throws -> EveryXMinutes { return try EveryXMinutes(20) }
+    func everyTwentyMinutes() throws -> EveryXMinutes { return try EveryXMinutes(self, minutes: 20) }
     /// Schedules the job to run every 30 minutes. Further specification is required.
-    func everyThirtyMinutes() throws -> EveryXMinutes { return try EveryXMinutes(30) }
+    func everyThirtyMinutes() throws -> EveryXMinutes { return try EveryXMinutes(self, minutes: 30) }
 
     /// Schedules a job given a cron string
     ///
@@ -510,7 +512,10 @@ final class Scheduler {
     ///
     /// - Parameter cronString: a standard cron string
     /// - Throws: throws an error if the cron string is invalid
-    func cron(_ cronString: String) throws -> CronSchedule { return try CronSchedule(cronString) }
+    func cron(_ cronString: String) throws {
+        let recurrenceRule = try CronParser.parse(cronString)
+        self.recurrenceRule = recurrenceRule
+    }
 
     /// Runs the job given the specific constraints.
     /// - Note: Use this method for advanced scheduling
@@ -521,14 +526,14 @@ final class Scheduler {
                                   dayOfWeekConstraint: DayOfWeekRecurrenceRuleConstraint? = nil,
                                   hourConstraint: HourRecurrenceRuleConstraint? = nil,
                                   minuteConstraint: MinuteRecurrenceRuleConstraint? = nil,
-                                  secondConstraint: SecondRecurrenceRuleConstraint? = nil) -> RecurrenceRule {
-        return RecurrenceRule.init(yearConstraint: yearConstraint,
-                                   monthConstraint: monthConstraint,
-                                   dayOfMonthConstraint: dayOfMonthConstraint,
-                                   dayOfWeekConstraint: dayOfWeekConstraint,
-                                   hourConstraint: hourConstraint,
-                                   minuteConstraint: minuteConstraint,
-                                   secondConstraint: secondConstraint)
+                                  secondConstraint: SecondRecurrenceRuleConstraint? = nil) {
+        self.recurrenceRule = RecurrenceRule.init(yearConstraint: yearConstraint,
+                             monthConstraint: monthConstraint,
+                             dayOfMonthConstraint: dayOfMonthConstraint,
+                             dayOfWeekConstraint: dayOfWeekConstraint,
+                             hourConstraint: hourConstraint,
+                             minuteConstraint: minuteConstraint,
+                             secondConstraint: secondConstraint)
     }
 
 }

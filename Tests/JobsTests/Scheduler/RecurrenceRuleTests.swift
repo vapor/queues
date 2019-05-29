@@ -33,7 +33,6 @@ final class RecurrenceRuleTests: XCTestCase {
         reccurrenceRule.setMonthConstraint(try .atMonth(2))
         reccurrenceRule.setMinuteConstraint(try .minuteStep(15))
 
-
         // Fri, Feb 1, 2019 03:00:00
         let date1 = dateFormatter.date(from: "2019-02-01T03:00:00")!
         XCTAssertEqual(true, try reccurrenceRule.evaluate(date: date1))
@@ -220,7 +219,7 @@ final class RecurrenceRuleTests: XCTestCase {
         ("testNextDateWhere", testNextDateWhere),
         ("testResolveNextDateThatSatisfiesRule", testResolveNextDateThatSatisfiesRule),
         ("testResolveNextDateThatSatisfiesRuleLeapYear", testResolveNextDateThatSatisfiesRuleLeapYear),
-        ("testResolveNextDateThatSatisfiesRuleImpossible", testResolveNextDateThatSatisfiesRuleLeapYear),
+        ("testResolveNextDateThatSatisfiesRuleImpossible", testResolveNextDateThatSatisfiesRuleLeapYear)
     ]
 
 }
