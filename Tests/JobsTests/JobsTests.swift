@@ -8,5 +8,5 @@ final class JobsTests: XCTestCase {
     
     static var allTests = [
         ("testStub", testStub),
-        ]
+    ]
 }

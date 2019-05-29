@@ -1,11 +1,5 @@
 import Foundation
 
-protocol QuarterBuilder {
-    func atQuarter(_ quarter: Int) -> Scheduler.ScheduledQuarter
-    func atQuarters(_ quarters: Set<Int>) -> Scheduler.ScheduledQuarter
-    func atQuartersInRange(lowerBound: Int, upperBound: Int) -> Scheduler.ScheduledQuarter
-}
-
 protocol MonthBuilder {
     func atMonth(_ month: Int) -> Scheduler.ScheduledMonth
     func atMonths(_ months: Set<Int>) -> Scheduler.ScheduledMonth
@@ -54,6 +48,10 @@ protocol SecondBuilder {
 protocol SingularBuilder {
     var scheduler: Scheduler {get}
 }
+
+
+/// 'Singular Builders' are structs that can only be scheduled at one point in time
+/// ex MonthBuilderSingular is schedules a single point in time in one day at a single month
 
 protocol MonthBuilderSingular: SingularBuilder {
     /// Specifies the month of the year to run the job
@@ -118,9 +116,9 @@ protocol SecondBuilderSingular: SingularBuilder {
     func atSecond(_ second: Int) throws -> Scheduler.ScheduledSecond.Singular
 }
 
-func schedule(_ job: Job) -> Scheduler {
-    return Scheduler()
-}
+//func schedule(_ job: Job) -> Scheduler {
+//    return Scheduler()
+//}
 
 final class Scheduler {
     private(set) var recurrenceRule = RecurrenceRule()
@@ -151,7 +149,8 @@ final class Scheduler {
     }
 
     enum TimeOfDay {
-        case midnight
+        case startOfDay
+        case endOfDay
         case noon
     }
 
@@ -267,58 +266,7 @@ final class Scheduler {
         }
     }
 
-    struct ScheduledQuarter: MonthBuilder {
-        init(_ quarter: Int) {
-
-        }
-
-        init(_ quarters: Set<Int>) {
-
-        }
-
-        init(lowerBound: Int, upperBound: Int) {
-
-        }
-
-        // month
-        func atMonth(_ month: Int) -> Scheduler.ScheduledMonth { return ScheduledMonth(month) }
-        func atMonths(_ months: Set<Int>) -> Scheduler.ScheduledMonth { return ScheduledMonth(months) }
-        func atMonthsInRange(lowerBound: Int, upperBound: Int) -> Scheduler.ScheduledMonth { return ScheduledMonth(lowerBound: lowerBound, upperBound: upperBound)}
-
-    }
-
-    struct ScheduledMonth: DayOfMonthBuilder, DayOfWeekBuilder {
-        //let scheduler: Scheduler
-
-        init(_ month: Int) {
-
-        }
-
-        init(_ months: Set<Int>) {
-
-        }
-
-        init(lowerBound: Int, upperBound: Int) {
-
-        }
-
-        init(scheduler: Scheduler, stepValue: Int) throws {
-            //self.scheduler = scheduler
-            //try scheduler.recurrenceRule.every(.months(stepValue))
-        }
-
-        // dayOfMonth
-        func atDayOfMonth(_ dayOfMonth: Int) -> Scheduler.ScheduledDayOfMonth { return ScheduledDayOfMonth(dayOfMonth) }
-        func atDaysOfMonth(_ daysOfMonth: Set<Int>) -> Scheduler.ScheduledDayOfMonth { return ScheduledDayOfMonth(daysOfMonth) }
-        func atDaysOfMonthInRange(lowerBound: Int, upperBound: Int) -> Scheduler.ScheduledDayOfMonth { return ScheduledDayOfMonth(lowerBound: lowerBound, upperBound: upperBound) }
-
-        // dayOfWeek
-        func atDayOfWeek(_ dayOfWeek: Int) -> Scheduler.ScheduledDayOfWeek {  return ScheduledDayOfWeek(dayOfWeek) }
-        func atDaysOfWeek(_ daysOfWeek: Set<Int>) -> Scheduler.ScheduledDayOfWeek { return ScheduledDayOfWeek(daysOfWeek) }
-        func atDaysOfWeekInRange(lowerBound: Int, upperBound: Int) -> Scheduler.ScheduledDayOfWeek { return ScheduledDayOfWeek(lowerBound: lowerBound, upperBound: upperBound) }
-        func weekdays() -> Scheduler.ScheduledDayOfWeek { return ScheduledDayOfWeek([2, 3, 4, 5, 6]) }
-        func weekends() -> Scheduler.ScheduledDayOfWeek { return ScheduledDayOfWeek([1, 7]) }
-
+    struct ScheduledMonth {
         struct Singular: DayOfMonthBuilderSingular {
             let scheduler: Scheduler
 
@@ -333,31 +281,7 @@ final class Scheduler {
         }
     }
 
-    struct ScheduledDayOfMonth: HourBuilder, DayOfWeekBuilder {
-        init(_ dayOfMonth: Int) {
-
-        }
-
-        init(_ dayOfMonths: Set<Int>) {
-
-        }
-
-        init(lowerBound: Int, upperBound: Int) {
-
-        }
-
-        // dayOfWeek
-        func atDayOfWeek(_ dayOfWeek: Int) -> Scheduler.ScheduledDayOfWeek {  return ScheduledDayOfWeek(dayOfWeek) }
-        func atDaysOfWeek(_ daysOfWeek: Set<Int>) -> Scheduler.ScheduledDayOfWeek { return ScheduledDayOfWeek(daysOfWeek) }
-        func atDaysOfWeekInRange(lowerBound: Int, upperBound: Int) -> Scheduler.ScheduledDayOfWeek { return ScheduledDayOfWeek(lowerBound: lowerBound, upperBound: upperBound) }
-        func weekdays() -> Scheduler.ScheduledDayOfWeek { return ScheduledDayOfWeek([2, 3, 4, 5, 6]) }
-        func weekends() -> Scheduler.ScheduledDayOfWeek { return ScheduledDayOfWeek([1, 7]) }
-
-        // Hour
-        func atHour(_ hour: Int) -> Scheduler.ScheduledHour { return ScheduledHour(hour) }
-        func atHours(_ hours: Set<Int>) -> Scheduler.ScheduledHour { return ScheduledHour(hours) }
-        func atHoursInRange(lowerBound: Int, upperBound: Int) -> Scheduler.ScheduledHour { return ScheduledHour(lowerBound: lowerBound, upperBound: upperBound) }
-
+    struct ScheduledDayOfMonth{
         struct Singular: HourBuilderSingular {
             let scheduler: Scheduler
 
@@ -384,33 +308,7 @@ final class Scheduler {
         }
     }
 
-    struct ScheduledDayOfWeek: HourBuilder, DayOfMonthBuilder {
-        init(_ dayOfWeek: Int) {
-
-        }
-
-        init(_ dayOfWeeks: Set<Int>) {
-
-        }
-
-        init(lowerBound: Int, upperBound: Int) {
-
-        }
-
-        init(dayOfWeekStep: Int) {
-
-        }
-
-        // Day Of Month
-        func atDayOfMonth(_ dayOfMonth: Int) -> Scheduler.ScheduledDayOfMonth { return ScheduledDayOfMonth(dayOfMonth) }
-        func atDaysOfMonth(_ daysOfMonth: Set<Int>) -> Scheduler.ScheduledDayOfMonth { return ScheduledDayOfMonth(daysOfMonth) }
-        func atDaysOfMonthInRange(lowerBound: Int, upperBound: Int) -> Scheduler.ScheduledDayOfMonth { return ScheduledDayOfMonth(lowerBound: lowerBound, upperBound: upperBound) }
-
-        // Hour
-        func atHour(_ hour: Int) -> Scheduler.ScheduledHour { return ScheduledHour(hour) }
-        func atHours(_ hours: Set<Int>) -> Scheduler.ScheduledHour { return ScheduledHour(hours) }
-        func atHoursInRange(lowerBound: Int, upperBound: Int) -> Scheduler.ScheduledHour { return ScheduledHour(lowerBound: lowerBound, upperBound: upperBound) }
-
+    struct ScheduledDayOfWeek {
         struct Singular: HourBuilderSingular {
             let scheduler: Scheduler
 
@@ -433,28 +331,7 @@ final class Scheduler {
         }
     }
 
-    struct ScheduledHour: MinuteBuilder {
-        init(_ dayOfWeek: Int) {
-
-        }
-
-        init(_ dayOfWeeks: Set<Int>) {
-
-        }
-
-        init(lowerBound: Int, upperBound: Int) {
-
-        }
-
-        init(hourStep: Int) {
-
-        }
-
-        // minute
-        func atMinute(_ minute: Int) -> Scheduler.ScheduledMinute { return ScheduledMinute(minute) }
-        func atMinutes(_ minutes: Set<Int>) -> Scheduler.ScheduledMinute { return ScheduledMinute(minutes) }
-        func atMinutesInRange(lowerBound: Int, upperBound: Int) -> Scheduler.ScheduledMinute { return ScheduledMinute(lowerBound: lowerBound, upperBound: upperBound) }
-
+    struct ScheduledHour {
         struct Singular: MinuteBuilderSingular {
             let scheduler: Scheduler
 
@@ -469,24 +346,7 @@ final class Scheduler {
         }
     }
 
-    struct ScheduledMinute: SecondBuilder {
-        init(_ minute: Int) {
-
-        }
-
-        init(_ minutes: Set<Int>) {
-
-        }
-
-        init(lowerBound: Int, upperBound: Int) {
-
-        }
-
-        // second
-        func atSecond(_ second: Int) -> Scheduler.ScheduledSecond { return ScheduledSecond(second) }
-        func atSeconds(_ seconds: Set<Int>) -> Scheduler.ScheduledSecond { return ScheduledSecond(seconds) }
-        func atSecondsInRange(lowerBound: Int, upperBound: Int) -> Scheduler.ScheduledSecond { return ScheduledSecond(lowerBound: lowerBound, upperBound: upperBound) }
-
+    struct ScheduledMinute {
         struct Singular: SecondBuilderSingular {
             let scheduler: Scheduler
 
@@ -526,18 +386,6 @@ final class Scheduler {
     }
 
     struct ScheduledSecond {
-        init(_ second: Int) {
-
-        }
-
-        init(_ seconds: Set<Int>) {
-
-        }
-
-        init(lowerBound: Int, upperBound: Int) {
-
-        }
-
         struct Singular {
             let scheduler: Scheduler
 
@@ -550,7 +398,11 @@ final class Scheduler {
                 self.scheduler = scheduler
 
                 switch timeOfDay {
-                case .midnight:
+                case .startOfDay:
+                    self.scheduler.recurrenceRule.setHourConstraint(try .atHour(0))
+                    self.scheduler.recurrenceRule.setMinuteConstraint(try .atMinute(0))
+                    self.scheduler.recurrenceRule.setSecondConstraint(try .atSecond(0))
+                case .endOfDay:
                     self.scheduler.recurrenceRule.setHourConstraint(try .atHour(23))
                     self.scheduler.recurrenceRule.setMinuteConstraint(try .atMinute(59))
                     self.scheduler.recurrenceRule.setSecondConstraint(try .atSecond(59))
@@ -586,7 +438,9 @@ final class Scheduler {
     /// Schedules the job to run once a week on the specified day of the week. Further specification is required.
     /// - Parameter dayOfWeek: the day of the week to run
     func weekly(on dayOfWeek: Scheduler.DayOfWeek) throws -> Weekly { return try Weekly(on: dayOfWeek) }
+
     /// Schedules the job to run once a week on the specified day of the week. Further specification is required.
+    /// - Note: 1 is Sunday, 7 is Saturday
     /// - Parameter dayOfWeek: Lower bound: 1, Upper bound: 7
     func weekly(onDayOfWeek dayOfWeek: Int) throws -> Weekly { return try Weekly(onDayOfWeek: dayOfWeek) }
 
@@ -619,15 +473,29 @@ final class Scheduler {
     func hourly() throws -> Hourly { return try Hourly() }
 
     // everyXMintues
+    // a method for minutes divisible by 60
+
     /// Schedules the job to run every minute. Further specification is required.
     func everyMinute() throws -> EveryXMinutes { return try EveryXMinutes(1) }
-    /// Schedules the job to run every 5 minute. Further specification is required.
+    /// Schedules the job to run every 2 minutes. Further specification is required.
+    func everyTwoMinutes() throws -> EveryXMinutes { return try EveryXMinutes(2) }
+    /// Schedules the job to run every 3 minutes. Further specification is required.
+    func everyThreeMinutes() throws -> EveryXMinutes { return try EveryXMinutes(3) }
+    /// Schedules the job to run every 4 minutes. Further specification is required.
+    func everyFourMinutes() throws -> EveryXMinutes { return try EveryXMinutes(4) }
+    /// Schedules the job to run every 5 minutew. Further specification is required.
     func everyFiveMinutes() throws -> EveryXMinutes { return try EveryXMinutes(5) }
-    /// Schedules the job to run every 10 minute. Further specification is required.
+    /// Schedules the job to run every 6 minutes. Further specification is required.
+    func everySixMinutes() throws -> EveryXMinutes { return try EveryXMinutes(6) }
+    /// Schedules the job to run every 10 minutes. Further specification is required.
     func everyTenMinutes() throws -> EveryXMinutes { return try EveryXMinutes(10) }
-    /// Schedules the job to run every 20 minute. Further specification is required.
+    /// Schedules the job to run every 12 minutes. Further specification is required.
+    func everyTwelveMinutes() throws -> EveryXMinutes { return try EveryXMinutes(12) }
+    /// Schedules the job to run every 20 minutes. Further specification is required.
     func everyFifteenMinutes() throws -> EveryXMinutes { return try EveryXMinutes(15) }
-    /// Schedules the job to run every 30 minute. Further specification is required.
+    /// Schedules the job to run every 20 minutes. Further specification is required.
+    func everyTwentyMinutes() throws -> EveryXMinutes { return try EveryXMinutes(20) }
+    /// Schedules the job to run every 30 minutes. Further specification is required.
     func everyThirtyMinutes() throws -> EveryXMinutes { return try EveryXMinutes(30) }
 
     /// Schedules a job given a cron string

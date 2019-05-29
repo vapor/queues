@@ -300,7 +300,7 @@ public struct HourRecurrenceRuleConstraint: SpecificRecurrenceRuleConstraint {
     /// Defines the step value of a constraint
     ///
     /// - Note: inputed values are step values. (ex a step value in cron could be: */22)
-    ///         For example: minuteStep(22) will be satisfied at every minute that is divisible by 22 (including 0):
+    ///         For example: minuteStep(22) will be satisfied at every minute that is divisible by 22 (including 0) in the hour:
     ///         ..., 3:44, 04:00, 04:22, 04:44, 05:00, 05:22, 05:44, 06:00 etc
     ///
     /// - Parameter hourStep: the step value to be scheduled

@@ -17,60 +17,52 @@ final class SchedulerTests: XCTestCase {
                                                     secondConstraint: secondConstraint)
     }
 
-    struct EmailJob: Job {
-        let to: String
-        let from: String
-        let message: String
-
-        func dequeue(context: JobContext, worker: EventLoopGroup) -> EventLoopFuture<Void> {
-            print(to)
-            print(from)
-            print(message)
-
-            return worker.future()
-        }
-
-        func error(context: JobContext, error: Error, worker: EventLoopGroup) -> EventLoopFuture<Void> {
-            print(error)
-            return worker.future()
-        }
-    }
-
     func testScheduler() throws {
-        let schedule = try Scheduler().weekly(on: .saturday).at(.midnight)
+        // yearly (single monthOfYear per year)
+        try Scheduler().yearly().atMonth(5).atDayOfMonth(28).atHour(4).atMinute(30).atSecond(45)
+        try Scheduler().yearly().on(.may, 17).atHour(19).atMinute(9).atSecond(6)
 
-        let emailJob = EmailJob(to: "to@to.com", from: "from@from.com", message: "message")
-        jobs.schedule(emailJob)
+        // monthly (single dayOfMonth per month)
+        try Scheduler().monthly().atDayOfMonth(17).atHour(19).atMinute(9).atSecond(6)
 
+        // weekly (single dayOfWeek per week)
+        try Scheduler().weekly(onDayOfWeek: 5).atHour(19).atMinute(9).atSecond(6)
+        try Scheduler().weekly(onDayOfWeek: 5).at("19:09").atSecond(6)
+        try Scheduler().weekly(onDayOfWeek: 5).at(.startOfDay)
+        try Scheduler().weekly(onDayOfWeek: 5).at(.endOfDay)
+        try Scheduler().weekly(onDayOfWeek: 5).at(.noon)
+        try Scheduler().weekly(on: .friday).atHour(19).atMinute(9).atSecond(6)
 
-        try Scheduler().fridays().atHour(4).atMinute(2).atSecond(30)
-        try Scheduler().yearly().on(.december, 25).at(.midnight)
-        try Scheduler().monthly().atDayOfMonth(4).atHour(4).atMinute(4).atSecond(4)
-        try Scheduler().weekly(onDayOfWeek: 4).atHour(3).atMinute(2).atSecond(2)
-        try Scheduler().weekdays().atHour(4).atMinute(3).atSecond(2)
-        try Scheduler().wednesdays().atHour(3).atMinute(1).atSecond(4)
-        try Scheduler().daily().atHour(2).atMinute(2).atSecond(1)
-        try Scheduler().hourly().atMinute(2).atSecond(4)
-        try Scheduler().everyThirtyMinutes().atSecond(5)
-        try Scheduler().everyMinute().atSecond(4)
-        try Scheduler().yearly().atMonth(5).atDayOfMonth(30).at("11:20").atSecond(30)
-        try Scheduler().weekly(on:.saturday).at(.midnight)
-        try Scheduler().fridays().atHour(4).atMinute(3).atSecond(0)
+        // daily (single hour per day)
+        try Scheduler().daily().atHour(19).atMinute(9).atSecond(6)
+        try Scheduler().daily().at("19:09").atSecond(6)
+        try Scheduler().daily().at(.startOfDay)
+        try Scheduler().daily().at(.endOfDay)
+        try Scheduler().daily().at(.noon)
+        try Scheduler().weekdays().atHour(19).atMinute(9).atSecond(6)
+        try Scheduler().weekends().atHour(19).atMinute(9).atSecond(6)
+        try Scheduler().mondays().atHour(19).atMinute(9).atSecond(6)
+        try Scheduler().tuesdays().atHour(19).atMinute(9).atSecond(6)
+        try Scheduler().wednesdays().atHour(19).atMinute(9).atSecond(6)
+        try Scheduler().thursdays().atHour(19).atMinute(9).atSecond(6)
+        try Scheduler().fridays().atHour(19).atMinute(9).atSecond(6)
+        try Scheduler().saturdays().atHour(19).atMinute(9).atSecond(6)
+        try Scheduler().sundays().atHour(19).atMinute(9).atSecond(6)
 
+        // hourly (single minute per hour)
+        try Scheduler().hourly().atMinute(9).atSecond(6)
 
-        try Scheduler().sundays().atHour(5)
-
-        try Scheduler().weekdays().at(.noon)
-
-
-        try Scheduler().yearly().on(.december, 24).at(.noon)
-        try Scheduler().daily().atHour(2).atMinute(2).atSecond(1)
-
-        try Scheduler().yearly().on(.april, 20).at(.noon)
-        try Scheduler().fridays().at("14:32").atSecond(0)
-
-//        let emailJob = EmailJob(to: "to@to.com", from: "from@from.com", message: "message")
-//        schedule(emailJob).yearly().on(.december, 24).at(.midnight)
+        // everyXMinutes (single second per minute)
+        try Scheduler().everyMinute().atSecond(6)
+        try Scheduler().everyTwoMinutes().atSecond(6)
+        try Scheduler().everyThreeMinutes().atSecond(6)
+        try Scheduler().everyFourMinutes().atSecond(6)
+        try Scheduler().everyFiveMinutes().atSecond(6)
+        try Scheduler().everySixMinutes().atSecond(6)
+        try Scheduler().everyTenMinutes().atSecond(6)
+        try Scheduler().everyTwelveMinutes().atSecond(6)
+        try Scheduler().everyTwentyMinutes().atSecond(6)
+        try Scheduler().everyThirtyMinutes().atSecond(6)
     }
 
     static var allTests = [
