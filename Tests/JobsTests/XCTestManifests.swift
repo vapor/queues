@@ -25,12 +25,18 @@ extension QueueNameTests {
     ]
 }
 
-
 // Scheduler tests
 extension SchedulerTests {
     static let __allTests = [
         ("testSchedulerCustomConstriants", testSchedulerCustomConstriants),
         ("testScheduler", testScheduler)
+    ]
+}
+
+extension CronTests {
+    static let __allTests = [
+        ("testInvalidCronStrings", testInvalidCronStrings),
+        ("testCronJobParser", testCronJobParser)
     ]
 }
 
@@ -42,6 +48,7 @@ public func __allTests() -> [XCTestCaseEntry] {
         testCase(JobsTests.__allTests),
         testCase(QueueNameTests.__allTests),
         testCase(SchedulerTests.__allTests),
+        testCase(CronTests.__allTests),
     ]
 }
 #endif
