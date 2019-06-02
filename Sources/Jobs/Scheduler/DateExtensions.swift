@@ -135,7 +135,7 @@ extension Date {
     /// - Parameter timeZone: The TimeZone to base the date off of (defaults to current timeZone)
     /// - Returns: The second component of the date (0-59)
     public func second(atTimeZone timeZone: TimeZone? = nil) -> Int? {
-        return calendar(atTimeZone: timeZone).dateComponents([.second], from: self).second
+        return calendar(atTimeZone: timeZone).component(.second, from: self)
     }
 
     /// returns the minute component (Calendar.Component.minute) of the date
@@ -143,7 +143,7 @@ extension Date {
     /// - Parameter timeZone: The TimeZone to base the date off of (defaults to current timeZone)
     /// - Returns: The minute component of the date (0-59)
     public func minute(atTimeZone timeZone: TimeZone? = nil) -> Int? {
-        return calendar(atTimeZone: timeZone).dateComponents([.minute], from: self).minute
+        return calendar(atTimeZone: timeZone).component(.minute, from: self)
     }
 
     /// returns the hour component (Calendar.Component.hour) of the date
@@ -151,7 +151,7 @@ extension Date {
     /// - Parameter timeZone: The TimeZone to base the date off of (defaults to current timeZone)
     /// - Returns: The hour component of the date (0-23)
     public func hour(atTimeZone timeZone: TimeZone? = nil) -> Int? {
-        return calendar(atTimeZone: timeZone).dateComponents([.hour], from: self).hour
+        return calendar(atTimeZone: timeZone).component(.hour, from: self)
     }
 
     /// returns the dayOfWeek (Calendar.Component.weekday) component of the date
@@ -159,7 +159,7 @@ extension Date {
     /// - Parameter timeZone: The TimeZone to base the date off of (defaults to current timeZone)
     /// - Returns: The dayOfWeek of the date (1 Sunday, 7 Saturday)
     public func dayOfWeek(atTimeZone timeZone: TimeZone? = nil) -> Int? {
-        return calendar(atTimeZone: timeZone).dateComponents([.weekday], from: self).weekday
+        return calendar(atTimeZone: timeZone).component(.weekday, from: self)
     }
 
     /// returns the dayOfMonth (Calendar.Component.day) component of the date
@@ -167,7 +167,7 @@ extension Date {
     /// - Parameter timeZone: The TimeZone to base the date off of (defaults to current timeZone)
     /// - Returns: The dayOfMonth of the date (1-31)
     public func dayOfMonth(atTimeZone timeZone: TimeZone? = nil) -> Int? {
-        return calendar(atTimeZone: timeZone).dateComponents([.day], from: self).day
+        return calendar(atTimeZone: timeZone).component(.day, from: self)
     }
 
     /// returns the weekOfMonth (Calendar.Component.weekOfMonth) component of the date
@@ -175,7 +175,7 @@ extension Date {
     /// - Parameter timeZone: The TimeZone to base the date off of (defaults to current timeZone)
     /// - Returns: The weekOfMonth of the date (1-31)
     public func weekOfMonth(atTimeZone timeZone: TimeZone? = nil) -> Int? {
-        return calendar(atTimeZone: timeZone).dateComponents([.weekOfMonth], from: self).weekOfMonth
+        return calendar(atTimeZone: timeZone).component(.weekOfMonth, from: self)
     }
 
     /// returns the weekOfYear (Calendar.Component.weekOfYear) component of the date
@@ -183,7 +183,7 @@ extension Date {
     /// - Parameter timeZone: The TimeZone to base the date off of (defaults to current timeZone)
     /// - Returns: The weekOfYear of the date (1-52)
     public func weekOfYear(atTimeZone timeZone: TimeZone? = nil) -> Int? {
-        return calendar(atTimeZone: timeZone).dateComponents([.weekOfYear], from: self).weekOfYear
+        return calendar(atTimeZone: timeZone).component(.weekOfYear, from: self)
     }
 
     /// returns the month (Calendar.Component.month) component of the date
@@ -191,7 +191,7 @@ extension Date {
     /// - Parameter timeZone: The TimeZone to base the date off of (defaults to current timeZone)
     /// - Returns: The month of the date (1 (january) - 12 (December))
     public func month(atTimeZone timeZone: TimeZone? = nil) -> Int? {
-        return calendar(atTimeZone: timeZone).dateComponents([.month], from: self).month
+        return calendar(atTimeZone: timeZone).component(.month, from: self)
     }
 
     /// returns the quarter (Calendar.Component.quarter) component of the date
@@ -222,7 +222,7 @@ extension Date {
     /// - Parameter timeZone: The TimeZone to base the date off of (defaults to current timeZone)
     /// - Returns: The year of the date
     public func year(atTimeZone timeZone: TimeZone? = nil) -> Int? {
-        return calendar(atTimeZone: timeZone).dateComponents([.year], from: self).year
+        return calendar(atTimeZone: timeZone).component(.year, from: self)
     }
 
     /// returns the yearForWeekOfYear (Calendar.Component.yearForWeekOfYear) component of the date
@@ -230,7 +230,7 @@ extension Date {
     /// - Parameter timeZone: The TimeZone to base the date off of (defaults to current timeZone)
     /// - Returns: The yearForWeekOfYear of the datesss
     public func yearForWeekOfYear(atTimeZone timeZone: TimeZone? = nil) -> Int? {
-        return calendar(atTimeZone: timeZone).dateComponents([.yearForWeekOfYear], from: self).yearForWeekOfYear
+        return calendar(atTimeZone: timeZone).component(.yearForWeekOfYear, from: self)
     }
 
     /// finds the number of weeks the year (52 or 53)
@@ -467,7 +467,6 @@ extension Date {
         if let timeZone = timeZone {
             calendar.timeZone = timeZone
         }
-
         return calendar
     }
 

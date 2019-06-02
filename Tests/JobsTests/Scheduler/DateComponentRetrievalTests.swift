@@ -158,15 +158,15 @@ final class DateComponentRetrievalTests: XCTestCase {
 
         // jan 20 2019 EST
         dateFormatter.timeZone = timeZoneEST
-        let jan152019EST = dateFormatter.date(from: "2019-01-20T13:00:00")!
-        XCTAssertEqual(13, jan152019EST.hour(atTimeZone: timeZoneEST))
-        XCTAssertEqual(18, jan152019EST.hour(atTimeZone: timeZoneUTC))
+        let jan202019EST = dateFormatter.date(from: "2019-01-20T13:00:00")!
+        XCTAssertEqual(13, jan202019EST.hour(atTimeZone: timeZoneEST))
+        XCTAssertEqual(18, jan202019EST.hour(atTimeZone: timeZoneUTC))
 
         // jan 20 2019 UTC (5 hours ahead of EST)
         dateFormatter.timeZone = timeZoneUTC
-        let jan152019UTC = dateFormatter.date(from: "2019-01-20T13:00:00")!
-        XCTAssertEqual(13, jan152019UTC.hour(atTimeZone: timeZoneUTC))
-        XCTAssertEqual(8, jan152019UTC.hour(atTimeZone: timeZoneEST))
+        let jan202019UTC = dateFormatter.date(from: "2019-01-20T13:00:00")!
+        XCTAssertEqual(13, jan202019UTC.hour(atTimeZone: timeZoneUTC))
+        XCTAssertEqual(8, jan202019UTC.hour(atTimeZone: timeZoneEST))
     }
 
     static var allTests = [

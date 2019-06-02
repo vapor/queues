@@ -381,16 +381,16 @@ public final class Scheduler {
             private func resolveHourAndMinute(from hhmm: String) throws -> (hour: Int, minute: Int) {
                 let dateFormatter = DateFormatter()
                 dateFormatter.dateFormat = "H:mm"
+
                 guard let formattedDate = dateFormatter.date(from: hhmm) else {
                     throw RecurrenceRuleError.couldNotParseHourAndMinuteFromString
                 }
                 guard let hour = formattedDate.hour() else {
                     throw RecurrenceRuleError.couldNotParseHourAndMinuteFromString
                 }
-                guard let minute = formattedDate.hour() else {
+                guard let minute = formattedDate.minute() else {
                     throw RecurrenceRuleError.couldNotParseHourAndMinuteFromString
                 }
-
                 return (hour, minute)
             }
         }
