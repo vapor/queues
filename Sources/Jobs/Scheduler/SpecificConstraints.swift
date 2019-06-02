@@ -437,7 +437,6 @@ public struct SecondRecurrenceRuleConstraint: SpecificRecurrenceRuleConstraint {
     }
 
     // convenience
-
     /// Runs the job every second
     public static func everySecond() throws -> SecondRecurrenceRuleConstraint {
         return try self.secondStep(1)

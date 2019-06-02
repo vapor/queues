@@ -187,7 +187,7 @@ private struct RegexHelper {
 
     static func firstMatchRange(for regexPattern: String, inString inputString: String) -> Range<String.Index>? {
         guard let regex = try? NSRegularExpression(pattern: regexPattern, options: [.caseInsensitive]) else {
-            //print("Invalid Regex Pattern: \(regexPattern)")
+            //print("Invalid Regex Pattern: \(regexPattern)")ew
             return nil
         }
 

@@ -29,7 +29,12 @@ extension QueueNameTests {
 extension SchedulerTests {
     static let __allTests = [
         ("testSchedulerCustomConstriants", testSchedulerCustomConstriants),
-        ("testScheduler", testScheduler)
+        ("testSchedulerYearly", testSchedulerYearly),
+        ("testSchedulerMonthly", testSchedulerMonthly),
+        ("testSchedulerWeekly", testSchedulerWeekly),
+        ("testSchedulerDaily", testSchedulerDaily),
+        ("testSchedulerHourly", testSchedulerHourly),
+        ("testSchedulerEveryXMinutes", testSchedulerEveryXMinutes)
     ]
 }
 

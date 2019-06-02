@@ -18,7 +18,7 @@ public enum RecurrenceRuleConstraintType {
 }
 
 public protocol RecurrenceRuleConstraint {
-    var timeUnit: RecurrenceRuleTimeUnit { get}
+    var timeUnit: RecurrenceRuleTimeUnit { get }
     var type: RecurrenceRuleConstraintType { get }
     var validLowerBound: Int? { get }
     var validUpperBound: Int? { get }
@@ -45,7 +45,7 @@ struct ConstraintValueValidator {
     }
 }
 
-struct RecurrenceRuleSetConstraint: RecurrenceRuleConstraint {
+struct RecurrenceRuleSetConstraint: RecurrenceRuleConstraint, Equatable {
     let timeUnit: RecurrenceRuleTimeUnit
     let type = RecurrenceRuleConstraintType.set
     let validLowerBound: Int?
@@ -129,7 +129,7 @@ struct RecurrenceRuleSetConstraint: RecurrenceRuleConstraint {
     }
 }
 
-struct RecurrenceRuleRangeConstraint: RecurrenceRuleConstraint {
+struct RecurrenceRuleRangeConstraint: RecurrenceRuleConstraint, Equatable {
     let timeUnit: RecurrenceRuleTimeUnit
     let type = RecurrenceRuleConstraintType.range
     let validLowerBound: Int?
@@ -193,7 +193,7 @@ struct RecurrenceRuleRangeConstraint: RecurrenceRuleConstraint {
 
 }
 
-struct RecurrenceRuleStepConstraint: RecurrenceRuleConstraint {
+struct RecurrenceRuleStepConstraint: RecurrenceRuleConstraint, Equatable {
     let timeUnit: RecurrenceRuleTimeUnit
     let type = RecurrenceRuleConstraintType.step
     let validLowerBound: Int?
