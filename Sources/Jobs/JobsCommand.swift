@@ -14,7 +14,7 @@ public final class JobsCommand: Command {
     }
     
     /// See `Command.help`
-    public var help: String? = "Runs queued worker jobs"
+    public var help: String = "Runs queued worker jobs"
 
     /// The registered `QueueService`
     public let queueService: QueueService
@@ -60,7 +60,7 @@ public final class JobsCommand: Command {
     /// See `Command`.`run(using:)`
     public func run(using context: CommandContext<JobsCommand>) throws {
         context.console.info("Starting Jobs worker")
-        let queueName = try context.option(\.queue) ?? QueueName.default.name
+        let queueName = context.option(\.queue) ?? QueueName.default.name
         let elg = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
         let signalQueue = DispatchQueue(label: "vapor.jobs.command.SignalHandlingQueue")
         
