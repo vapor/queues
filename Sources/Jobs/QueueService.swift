@@ -1,8 +1,9 @@
 import Foundation
 import Vapor
+import NIO
 
 /// A `Service` used to dispatch `Jobs`
-public struct QueueService: Service {
+public struct QueueService {
     
     /// See `JobsProvider`.`refreshInterval`
     let refreshInterval: TimeAmount
@@ -28,6 +29,6 @@ public struct QueueService: Service {
                                     id: UUID().uuidString,
                                     jobName: J.jobName)
         
-        return persistenceLayer.set(key: queue.makeKey(with: persistenceKey), jobStorage: jobStorage).transform(to: ())
+        return persistenceLayer.set(key: queue.makeKey(with: persistenceKey), jobStorage: jobStorage).map({})
     }
 }

@@ -2,7 +2,7 @@ import Foundation
 import Vapor
 
 /// A `Service` to configure `Job`s
-public struct JobsConfig: Service {
+public struct JobsConfig {
     
     /// Type storage
     internal var storage: [String: AnyJob]

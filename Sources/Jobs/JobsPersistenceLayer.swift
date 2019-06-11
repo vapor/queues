@@ -3,7 +3,7 @@ import NIO
 import Vapor
 
 /// A type that can store and retrieve jobs from a persistence layer
-public protocol JobsPersistenceLayer: Service {
+public protocol JobsPersistenceLayer {
     
     /// The event loop to be run on
     var eventLoop: EventLoop { get }
