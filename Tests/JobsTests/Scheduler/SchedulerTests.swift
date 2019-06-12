@@ -28,6 +28,16 @@ final class SchedulerTests: XCTestCase {
         config.schedule(Cleanup())
             .daily()
             .at("5:23pm")
+        
+        // daily 2
+        config.schedule(Cleanup())
+            .daily()
+            .at(5, 23, .pm)
+        
+        // daily 3
+        config.schedule(Cleanup())
+            .daily()
+            .at(17, 23)
 
         // hourly
         config.schedule(Cleanup())

@@ -40,10 +40,10 @@ public final class ScheduleBuilder {
     
     public struct Time: ExpressibleByStringLiteral, CustomStringConvertible {
         public static var midnight: Time {
-            return "12:00am"
+            return .init(12, 00, .am)
         }
         public static var noon: Time {
-            return "12:00pm"
+            return .init(12, 00, .pm)
         }
         
         var hour: Hour24
@@ -229,6 +229,14 @@ public final class ScheduleBuilder {
 
         public func at(_ time: Time) {
             self.builder.time = time
+        }
+        
+        public func at(_ hour: Hour24, _ minute: Minute) {
+            self.at(.init(hour, minute))
+        }
+        
+        public func at(_ hour: Hour12, _ minute: Minute, _ period: HourPeriod) {
+            self.at(.init(hour, minute, period))
         }
     }
 
