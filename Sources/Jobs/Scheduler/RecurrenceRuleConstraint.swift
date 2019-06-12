@@ -17,16 +17,71 @@ public enum RecurrenceRuleConstraintType {
     case step
 }
 
-public protocol RecurrenceRuleConstraint {
-    var timeUnit: RecurrenceRuleTimeUnit { get }
-    var type: RecurrenceRuleConstraintType { get }
-    var validLowerBound: Int? { get }
-    var validUpperBound: Int? { get }
+internal struct SpecificRecurrenceRuleConstraintFactory {
+    internal static func createSpecificSetConstraint(for timeUnit: RecurrenceRuleTimeUnit, value: Int) throws -> SpecificRecurrenceRuleConstraint {
+        let typeObject = resolveSpecificRecurrenceRuleConstraintTypeObject(for: timeUnit)
+        return try typeObject.init(constraint: RecurrenceRuleSetConstraint.init(timeUnit: typeObject.timeUnit,
+                                                                                setConstraint: [value]))
+    }
+
+    static internal func createSpecificSetConstraint(for timeUnit: RecurrenceRuleTimeUnit, values: Set<Int>) throws -> SpecificRecurrenceRuleConstraint {
+        let typeObject = resolveSpecificRecurrenceRuleConstraintTypeObject(for: timeUnit)
+        return try typeObject.init(constraint: RecurrenceRuleSetConstraint.init(timeUnit: typeObject.timeUnit,
+                                                                                setConstraint: values))
+    }
+
+    static internal func createSpecificStepConstraint(for timeUnit: RecurrenceRuleTimeUnit, stepValue: Int) throws -> SpecificRecurrenceRuleConstraint {
+        let typeObject = resolveSpecificRecurrenceRuleConstraintTypeObject(for: timeUnit)
+        return try typeObject.init(constraint: RecurrenceRuleStepConstraint.init(timeUnit: typeObject.timeUnit,
+                                                                                stepConstraint: stepValue))
+    }
+
+    static internal func createSpecificRangeConstraint(for timeUnit: RecurrenceRuleTimeUnit, range: ClosedRange<Int>) throws -> SpecificRecurrenceRuleConstraint {
+        let typeObject = resolveSpecificRecurrenceRuleConstraintTypeObject(for: timeUnit)
+        return try typeObject.init(constraint: RecurrenceRuleRangeConstraint.init(timeUnit: typeObject.timeUnit,
+                                                                                 rangeConstraint: range))
+    }
+
+    private static func resolveSpecificRecurrenceRuleConstraintTypeObject(for timeUnit: RecurrenceRuleTimeUnit) -> SpecificRecurrenceRuleConstraint.Type {
+        switch timeUnit {
+        case .year:
+            return YearRecurrenceRuleConstraint.self
+        case .quarter:
+            return QuarterRecurrenceRuleConstraint.self
+        case .month:
+            return MonthRecurrenceRuleConstraint.self
+        case .weekOfYear:
+            return WeekOfYearRecurrenceRuleConstraint.self
+        case .weekOfMonth:
+            return WeekOfMonthRecurrenceRuleConstraint.self
+        case .dayOfMonth:
+            return DayOfMonthRecurrenceRuleConstraint.self
+        case .dayOfWeek:
+            return DayOfWeekRecurrenceRuleConstraint.self
+        case .hour:
+            return HourRecurrenceRuleConstraint.self
+        case .minute:
+            return MinuteRecurrenceRuleConstraint.self
+        case .second:
+            return SecondRecurrenceRuleConstraint.self
+        }
+    }
+}
+
+public protocol RecurrenceRuleConstraintEvaluateable {
     var lowestPossibleValue: Int? { get }
     var highestPossibleValue: Int? { get }
 
     func evaluate(_ evaluationAmount: Int) -> EvaluationState
     func nextValidValue(currentValue: Int) -> Int?
+}
+
+
+public protocol RecurrenceRuleConstraint: RecurrenceRuleConstraintEvaluateable {
+    var timeUnit: RecurrenceRuleTimeUnit { get }
+    var type: RecurrenceRuleConstraintType { get }
+    var validLowerBound: Int? { get }
+    var validUpperBound: Int? { get }
 }
 
 struct ConstraintValueValidator {
@@ -81,7 +136,7 @@ struct RecurrenceRuleSetConstraint: RecurrenceRuleConstraint, Equatable {
     init (timeUnit: RecurrenceRuleTimeUnit, setConstraint: Set<Int> = Set<Int>()) throws {
         self.timeUnit = timeUnit
         self.validLowerBound = Calendar.gregorianLowerBound(for: timeUnit)
-        self.validUpperBound  = Calendar.gregorianUpperBound(for: timeUnit)
+        self.validUpperBound = Calendar.gregorianUpperBound(for: timeUnit)
 
         let validator = ConstraintValueValidator()
         for amount in setConstraint {
@@ -190,7 +245,6 @@ struct RecurrenceRuleRangeConstraint: RecurrenceRuleConstraint, Equatable {
             return lowestPossibleValue
         }
     }
-
 }
 
 struct RecurrenceRuleStepConstraint: RecurrenceRuleConstraint, Equatable {

@@ -424,9 +424,9 @@ public final class Scheduler {
                     self.scheduler.recurrenceRule.setSecondConstraint(try .atSecond(0))
                 }
             }
-
         }
     }
+
 
     // yearly
     /// Schedules the job to run once a year. Further specification required.

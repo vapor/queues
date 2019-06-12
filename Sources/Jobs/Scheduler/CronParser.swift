@@ -65,19 +65,18 @@ struct CronParser {
             }
 
             let field = fields[index]
-            if let constraint = try parseCronField(field: String(field), timeUnit: fieldTimeUnit) {
-                switch fieldTimeUnit {
-                case .minute:
-                    recurrenceRule.setMinuteConstraint(try MinuteRecurrenceRuleConstraint.init(constraint: constraint))
-                case .hour:
-                    recurrenceRule.setHourConstraint(try HourRecurrenceRuleConstraint.init(constraint: constraint))
-                case .dayOfMonth:
-                    recurrenceRule.setDayOfMonthConstraint(try DayOfMonthRecurrenceRuleConstraint.init(constraint: constraint))
-                case .month:
-                    recurrenceRule.setMonthConstraint(try MonthRecurrenceRuleConstraint.init(constraint: constraint))
-                case .dayOfWeek:
-                    recurrenceRule.setDayOfWeekConstraint(try DayOfWeekRecurrenceRuleConstraint.init(constraint: constraint))
-                default:
+            if let specificConstraint = try parseCronField(field: String(field), timeUnit: fieldTimeUnit) {
+                if let minuteConstriant = specificConstraint as? MinuteRecurrenceRuleConstraint {
+                    recurrenceRule.setMinuteConstraint(minuteConstriant)
+                } else if let hourConstriant = specificConstraint as? HourRecurrenceRuleConstraint {
+                    recurrenceRule.setHourConstraint(hourConstriant)
+                } else if let dayOfMonthConstriant = specificConstraint as? DayOfMonthRecurrenceRuleConstraint {
+                    recurrenceRule.setDayOfMonthConstraint(dayOfMonthConstriant)
+                } else if let monthConstriant = specificConstraint as? MonthRecurrenceRuleConstraint {
+                    recurrenceRule.setMonthConstraint(monthConstriant)
+                } else if let dayOfWeekConstriant = specificConstraint as? DayOfWeekRecurrenceRuleConstraint {
+                    recurrenceRule.setDayOfWeekConstraint(dayOfWeekConstriant)
+                } else {
                     throw CronParseError.invalidField
                 }
             }
@@ -89,7 +88,7 @@ struct CronParser {
         return recurrenceRule
     }
 
-    private static func parseCronField(field: String, timeUnit: RecurrenceRuleTimeUnit) throws -> RecurrenceRuleConstraint? {
+    private static func parseCronField(field: String, timeUnit: RecurrenceRuleTimeUnit) throws -> SpecificRecurrenceRuleConstraint? {
         // star (any value)
         if field == "*" {
             return nil
@@ -119,7 +118,7 @@ struct CronParser {
         throw CronParseError.invalidField
     }
 
-    private static func parseSingleValueField(field: String, timeUnit: RecurrenceRuleTimeUnit) throws -> RecurrenceRuleConstraint {
+    private static func parseSingleValueField(field: String, timeUnit: RecurrenceRuleTimeUnit) throws -> SpecificRecurrenceRuleConstraint {
         guard var value = Int(field) else {
             throw CronParseError.invalidField
         }
@@ -128,10 +127,10 @@ struct CronParser {
             value = value + 1
         }
 
-        return try RecurrenceRuleSetConstraint.init(timeUnit: timeUnit, setConstraint: [value])
+        return try SpecificRecurrenceRuleConstraintFactory.createSpecificSetConstraint(for: timeUnit, value: value)
     }
 
-    private static func parseListField(field: String, timeUnit: RecurrenceRuleTimeUnit) throws -> RecurrenceRuleSetConstraint {
+    private static func parseListField(field: String, timeUnit: RecurrenceRuleTimeUnit) throws -> SpecificRecurrenceRuleConstraint {
         // pattern for int array ex 55,2,42,19
         let pattern = "\\d+(?:,\\d+)+"
         guard let match = RegexHelper.firstMatch(for: pattern, inString: field) else {
@@ -154,10 +153,10 @@ struct CronParser {
             intSet.insert(int)
         }
 
-        return try RecurrenceRuleSetConstraint.init(timeUnit: timeUnit, setConstraint: intSet)
+        return try SpecificRecurrenceRuleConstraintFactory.createSpecificSetConstraint(for: timeUnit, values: intSet)
     }
 
-    private static func parseRangeField(field: String, timeUnit: RecurrenceRuleTimeUnit) throws -> RecurrenceRuleConstraint {
+    private static func parseRangeField(field: String, timeUnit: RecurrenceRuleTimeUnit) throws -> SpecificRecurrenceRuleConstraint {
         var intsInString = RegexHelper.allInts(inString: field, shouldIncludeSign: false)
         if intsInString.count != 2 {
             throw CronParseError.invalidField
@@ -170,16 +169,16 @@ struct CronParser {
             upperBound = upperBound + 1
         }
 
-        return try RecurrenceRuleRangeConstraint.init(timeUnit: timeUnit, rangeConstraint: lowerBound...upperBound)
+        return try SpecificRecurrenceRuleConstraintFactory.createSpecificRangeConstraint(for: timeUnit, range: lowerBound...upperBound)
     }
 
-    private static func parseStepField(field: String, timeUnit: RecurrenceRuleTimeUnit) throws -> RecurrenceRuleConstraint {
+    private static func parseStepField(field: String, timeUnit: RecurrenceRuleTimeUnit) throws -> SpecificRecurrenceRuleConstraint {
         let intsInString = RegexHelper.allInts(inString: field, shouldIncludeSign: false)
         if intsInString.count != 1 {
             throw CronParseError.invalidField
         }
 
-        return try RecurrenceRuleStepConstraint.init(timeUnit: timeUnit, stepConstraint: intsInString[0])
+        return try SpecificRecurrenceRuleConstraintFactory.createSpecificStepConstraint(for: timeUnit, stepValue: intsInString[0])
     }
 }
 
@@ -187,7 +186,7 @@ private struct RegexHelper {
 
     static func firstMatchRange(for regexPattern: String, inString inputString: String) -> Range<String.Index>? {
         guard let regex = try? NSRegularExpression(pattern: regexPattern, options: [.caseInsensitive]) else {
-            //print("Invalid Regex Pattern: \(regexPattern)")ew
+            //print("Invalid Regex Pattern: \(regexPattern)")
             return nil
         }
 

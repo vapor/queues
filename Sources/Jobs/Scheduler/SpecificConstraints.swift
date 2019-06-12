@@ -4,47 +4,73 @@ enum SpecificRecurrenceRuleConstraintError: Error {
     case incompatibleConstriantTimeUnit
 }
 
-protocol SpecificRecurrenceRuleConstraint {
+protocol SpecificRecurrenceRuleConstraint: RecurrenceRuleConstraintEvaluateable {
     static var timeUnit: RecurrenceRuleTimeUnit { get }
-    var constraint: RecurrenceRuleConstraint { get }
+    static var validLowerBound: Int? { get }
+    static var validUpperBound: Int?  { get }
+    var _constraint: RecurrenceRuleConstraint { get }
 
     init(constraint: RecurrenceRuleConstraint) throws
 }
 
-public struct YearRecurrenceRuleConstraint: SpecificRecurrenceRuleConstraint {
-    static let timeUnit = RecurrenceRuleTimeUnit.year
-    let constraint: RecurrenceRuleConstraint
-
-    public init(constraint: RecurrenceRuleConstraint) throws {
-        if constraint.timeUnit == YearRecurrenceRuleConstraint.timeUnit {
-            self.constraint = constraint
-        } else {
-            throw SpecificRecurrenceRuleConstraintError.incompatibleConstriantTimeUnit
-        }
+// default implementations
+extension SpecificRecurrenceRuleConstraint  {
+    static var validLowerBound: Int? {
+        return Calendar.gregorianLowerBound(for: timeUnit)
+    }
+    static var validUpperBound: Int? {
+        return Calendar.gregorianUpperBound(for: Self.timeUnit)
     }
 
+    public var lowestPossibleValue: Int? {
+        return _constraint.lowestPossibleValue
+    }
+
+    public var highestPossibleValue: Int? {
+        return _constraint.highestPossibleValue
+    }
+
+    public func evaluate(_ evaluationAmount: Int) -> EvaluationState {
+        return _constraint.evaluate(evaluationAmount)
+    }
+
+    public func nextValidValue(currentValue: Int) -> Int? {
+        return _constraint.nextValidValue(currentValue: currentValue)
+    }
+}
+
+
+public struct YearRecurrenceRuleConstraint: SpecificRecurrenceRuleConstraint {
+    static let timeUnit = RecurrenceRuleTimeUnit.year
+    let _constraint: RecurrenceRuleConstraint
+
+    internal init(constraint: RecurrenceRuleConstraint) throws {
+        if constraint.timeUnit != YearRecurrenceRuleConstraint.timeUnit {
+            throw SpecificRecurrenceRuleConstraintError.incompatibleConstriantTimeUnit
+        }
+        _constraint = constraint
+    }
+
+    
     /// The year the job will run pending all other constraints are met
     ///
     /// - Parameter year: Lower bound: 1970, Upper bound: 3000
     public static func atYear(_ year: Int) throws -> YearRecurrenceRuleConstraint {
-        let constraint = try RecurrenceRuleSetConstraint.init(timeUnit: timeUnit, setConstraint: [year])
-        return try .init(constraint: constraint)
+        return try .init(constraint: RecurrenceRuleSetConstraint.init(timeUnit: timeUnit, setConstraint: [year]))
     }
 
     /// The years the job will run pending all other constraints are met
     ///
     /// - Parameter year: Lower bound: 1970, Upper bound: 3000
     public static func atYears(_ years: Set<Int>) throws -> YearRecurrenceRuleConstraint {
-        let constraint = try RecurrenceRuleSetConstraint.init(timeUnit: timeUnit, setConstraint: years)
-        return try .init(constraint: constraint)
+        return try .init(constraint: RecurrenceRuleSetConstraint.init(timeUnit: timeUnit, setConstraint: years))
     }
 
     /// The range of the years (inclusive) the job will run pending all other constraints are met
     /// - Parameter lowerBound: must be at least 1
     /// - Parameter upperBound: must not greater than 3000
     public static func atYearsInRange(lowerBound: Int, upperBound: Int) throws -> YearRecurrenceRuleConstraint {
-        let constraint = try RecurrenceRuleRangeConstraint.init(timeUnit: timeUnit, rangeConstraint: lowerBound...upperBound)
-        return try .init(constraint: constraint)
+        return try .init(constraint: RecurrenceRuleRangeConstraint.init(timeUnit: timeUnit, rangeConstraint: lowerBound...upperBound))
     }
 
     /// Defines the step value of a constraint
@@ -55,21 +81,19 @@ public struct YearRecurrenceRuleConstraint: SpecificRecurrenceRuleConstraint {
     ///
     /// - Parameter yearStep: the step value to be scheduled
     public static func yearStep(_ stepValue: Int) throws -> YearRecurrenceRuleConstraint {
-        let constraint = try RecurrenceRuleStepConstraint.init(timeUnit: timeUnit, stepConstraint: stepValue)
-        return try .init(constraint: constraint)
+        return try .init(constraint: RecurrenceRuleStepConstraint.init(timeUnit: timeUnit, stepConstraint: stepValue))
     }
 }
 
 public struct MonthRecurrenceRuleConstraint: SpecificRecurrenceRuleConstraint {
     static let timeUnit = RecurrenceRuleTimeUnit.month
-    let constraint: RecurrenceRuleConstraint
+    let _constraint: RecurrenceRuleConstraint
 
-    public init(constraint: RecurrenceRuleConstraint) throws {
-        if constraint.timeUnit == MonthRecurrenceRuleConstraint.timeUnit {
-            self.constraint = constraint
-        } else {
+    internal init(constraint: RecurrenceRuleConstraint) throws {
+        if constraint.timeUnit != MonthRecurrenceRuleConstraint.timeUnit {
             throw SpecificRecurrenceRuleConstraintError.incompatibleConstriantTimeUnit
         }
+        _constraint = constraint
     }
 
     /// The month the job will run pending all other constraints are met
@@ -77,8 +101,7 @@ public struct MonthRecurrenceRuleConstraint: SpecificRecurrenceRuleConstraint {
     /// - Note: 1 is January, 12 is December
     /// - Parameter month: Lower bound: 1, Upper bound: 12
     public static func atMonth(_ month: Int) throws -> MonthRecurrenceRuleConstraint {
-        let constraint = try RecurrenceRuleSetConstraint.init(timeUnit: timeUnit, setConstraint: [month])
-        return try .init(constraint: constraint)
+        return try .init(constraint: RecurrenceRuleSetConstraint.init(timeUnit: timeUnit, setConstraint: [month]))
     }
 
     /// The months the job will run pending all other constraints are met
@@ -86,8 +109,7 @@ public struct MonthRecurrenceRuleConstraint: SpecificRecurrenceRuleConstraint {
     /// - Note: 1 is January, 12 is December
     /// - Parameter month: Lower bound: 1, Upper bound: 12
     public static func atMonths(_ months: Set<Int>) throws -> MonthRecurrenceRuleConstraint {
-        let constraint = try RecurrenceRuleSetConstraint.init(timeUnit: timeUnit, setConstraint: months)
-        return try .init(constraint: constraint)
+        return try .init(constraint: RecurrenceRuleSetConstraint.init(timeUnit: timeUnit, setConstraint: months))
     }
 
     /// The range of the months (inclusive) the job will run pending all other constraints are met
@@ -95,8 +117,7 @@ public struct MonthRecurrenceRuleConstraint: SpecificRecurrenceRuleConstraint {
     /// - Parameter lowerBound: must be at least 1
     /// - Parameter upperBound: must not greater than 12
     public static func atMonthsInRange(lowerBound: Int, upperBound: Int) throws -> MonthRecurrenceRuleConstraint {
-        let constraint = try RecurrenceRuleRangeConstraint.init(timeUnit: timeUnit, rangeConstraint: lowerBound...upperBound)
-        return try .init(constraint: constraint)
+        return try .init(constraint: RecurrenceRuleRangeConstraint.init(timeUnit: timeUnit, rangeConstraint: lowerBound...upperBound))
     }
 
     /// Defines the step value of a constraint
@@ -107,45 +128,40 @@ public struct MonthRecurrenceRuleConstraint: SpecificRecurrenceRuleConstraint {
     ///
     /// - Parameter monthStep: the step value to be scheduled
     public static func monthStep(_ stepValue: Int) throws -> MonthRecurrenceRuleConstraint {
-        let constraint = try RecurrenceRuleStepConstraint.init(timeUnit: timeUnit, stepConstraint: stepValue)
-        return try .init(constraint: constraint)
+        return try .init(constraint: RecurrenceRuleStepConstraint.init(timeUnit: timeUnit, stepConstraint: stepValue))
     }
 }
 
 public struct DayOfMonthRecurrenceRuleConstraint: SpecificRecurrenceRuleConstraint {
     static let timeUnit = RecurrenceRuleTimeUnit.dayOfMonth
-    let constraint: RecurrenceRuleConstraint
+    let _constraint: RecurrenceRuleConstraint
 
-    public init(constraint: RecurrenceRuleConstraint) throws {
-        if constraint.timeUnit == DayOfMonthRecurrenceRuleConstraint.timeUnit {
-            self.constraint = constraint
-        } else {
+    internal init(constraint: RecurrenceRuleConstraint) throws {
+        if constraint.timeUnit != DayOfMonthRecurrenceRuleConstraint.timeUnit {
             throw SpecificRecurrenceRuleConstraintError.incompatibleConstriantTimeUnit
         }
+        _constraint = constraint
     }
 
     /// The dayOfMonth the job will run pending all other constraints are met
     ///
     /// - Parameter dayOfMonth: Lower bound: 1, Upper bound: 31
     public static func atDayOfMonth(_ dayOfMonth: Int) throws -> DayOfMonthRecurrenceRuleConstraint {
-        let constraint = try RecurrenceRuleSetConstraint.init(timeUnit: timeUnit, setConstraint: [dayOfMonth])
-        return try .init(constraint: constraint)
+        return try .init(constraint: RecurrenceRuleSetConstraint.init(timeUnit: timeUnit, setConstraint: [dayOfMonth]))
     }
 
     /// The dayOfMonth the job will run pending all other constraints are met
     ///
     /// - Parameter dayOfMonth: Lower bound: 1, Upper bound: 31
     public static func atDaysOfMonth(_ daysOfMonth: Set<Int>) throws -> DayOfMonthRecurrenceRuleConstraint {
-        let constraint = try RecurrenceRuleSetConstraint.init(timeUnit: timeUnit, setConstraint: daysOfMonth)
-        return try .init(constraint: constraint)
+        return try .init(constraint: RecurrenceRuleSetConstraint.init(timeUnit: timeUnit, setConstraint: daysOfMonth))
     }
 
     /// The range of the days of the month (inclusive) the job will run pending all other constraints are met
     /// - Parameter lowerBound: must be at least 1
     /// - Parameter upperBound: must not greater than 31
     public static func atDaysOfMonthInRange(lowerBound: Int, upperBound: Int) throws -> DayOfMonthRecurrenceRuleConstraint {
-        let constraint = try RecurrenceRuleRangeConstraint.init(timeUnit: timeUnit, rangeConstraint: lowerBound...upperBound)
-        return try .init(constraint: constraint)
+        return try .init(constraint: RecurrenceRuleRangeConstraint.init(timeUnit: timeUnit, rangeConstraint: lowerBound...upperBound))
     }
 
     /// Defines the step value of a constraint
@@ -156,21 +172,19 @@ public struct DayOfMonthRecurrenceRuleConstraint: SpecificRecurrenceRuleConstrai
     ///
     /// - Parameter dayOfMonthStep: the step value to be scheduled
     public static func dayOfMonthStep(_ stepValue: Int) throws -> DayOfMonthRecurrenceRuleConstraint {
-        let constraint = try RecurrenceRuleStepConstraint.init(timeUnit: timeUnit, stepConstraint: stepValue)
-        return try .init(constraint: constraint)
+        return try .init(constraint: RecurrenceRuleStepConstraint.init(timeUnit: timeUnit, stepConstraint: stepValue))
     }
 }
 
 public struct DayOfWeekRecurrenceRuleConstraint: SpecificRecurrenceRuleConstraint {
     static let timeUnit = RecurrenceRuleTimeUnit.dayOfWeek
-    let constraint: RecurrenceRuleConstraint
+    let _constraint: RecurrenceRuleConstraint
 
-    public init(constraint: RecurrenceRuleConstraint) throws {
-        if constraint.timeUnit == DayOfWeekRecurrenceRuleConstraint.timeUnit {
-            self.constraint = constraint
-        } else {
+    internal init(constraint: RecurrenceRuleConstraint) throws {
+        if constraint.timeUnit != DayOfWeekRecurrenceRuleConstraint.timeUnit {
             throw SpecificRecurrenceRuleConstraintError.incompatibleConstriantTimeUnit
         }
+        _constraint = constraint
     }
 
     /// The dayOfWeek the job will run pending all other constraints are met
@@ -178,17 +192,15 @@ public struct DayOfWeekRecurrenceRuleConstraint: SpecificRecurrenceRuleConstrain
     /// - Note: 1 is Sunday, 7 is Saturday
     /// - Parameter dayOfWeek: Lower bound: 1, Upper bound: 7
     public static func atDayOfWeek(_ dayOfWeek: Int) throws -> DayOfWeekRecurrenceRuleConstraint {
-        let constraint = try RecurrenceRuleSetConstraint.init(timeUnit: timeUnit, setConstraint: [dayOfWeek])
-        return try .init(constraint: constraint)
+        return try .init(constraint: RecurrenceRuleSetConstraint.init(timeUnit: timeUnit, setConstraint: [dayOfWeek]))
     }
 
     /// The dayOfWeek the job will run pending all other constraints are met
     ///
     /// - Note: 1 is Sunday, 7 is Saturday
     /// - Parameter dayOfWeek: Lower bound: 1, Upper bound: 7
-    public static func atDaysOfWeek(_ dayOfWeeks: Set<Int>) throws -> DayOfWeekRecurrenceRuleConstraint {
-        let constraint = try RecurrenceRuleSetConstraint.init(timeUnit: timeUnit, setConstraint: dayOfWeeks)
-        return try .init(constraint: constraint)
+    public static func atDaysOfWeek(_ daysOfWeek: Set<Int>) throws -> DayOfWeekRecurrenceRuleConstraint {
+        return try .init(constraint: RecurrenceRuleSetConstraint.init(timeUnit: timeUnit, setConstraint: daysOfWeek))
     }
 
     /// The range of the days of the week (inclusive) the job will run pending all other constraints are met
@@ -196,8 +208,7 @@ public struct DayOfWeekRecurrenceRuleConstraint: SpecificRecurrenceRuleConstrain
     /// - Parameter lowerBound: must be at least 1
     /// - Parameter upperBound: must not greater than 7
     public static func atDaysOfWeekInRange(lowerBound: Int, upperBound: Int) throws -> DayOfWeekRecurrenceRuleConstraint {
-        let constraint = try RecurrenceRuleRangeConstraint.init(timeUnit: timeUnit, rangeConstraint: lowerBound...upperBound)
-        return try .init(constraint: constraint)
+        return try .init(constraint: RecurrenceRuleRangeConstraint.init(timeUnit: timeUnit, rangeConstraint: lowerBound...upperBound))
     }
 
     /// Defines the step value of a constraint
@@ -208,8 +219,7 @@ public struct DayOfWeekRecurrenceRuleConstraint: SpecificRecurrenceRuleConstrain
     ///
     /// - Parameter dayOfWeekStep: the step value to be scheduled
     public static func dayOfWeekStep(_ stepValue: Int) throws -> DayOfWeekRecurrenceRuleConstraint {
-        let constraint = try RecurrenceRuleStepConstraint.init(timeUnit: timeUnit, stepConstraint: stepValue)
-        return try .init(constraint: constraint)
+        return try .init(constraint: RecurrenceRuleStepConstraint.init(timeUnit: timeUnit, stepConstraint: stepValue))
     }
 
     // convenience
@@ -262,22 +272,20 @@ public struct DayOfWeekRecurrenceRuleConstraint: SpecificRecurrenceRuleConstrain
 
 public struct HourRecurrenceRuleConstraint: SpecificRecurrenceRuleConstraint {
     static let timeUnit = RecurrenceRuleTimeUnit.hour
-    let constraint: RecurrenceRuleConstraint
+    let _constraint: RecurrenceRuleConstraint
 
-    public init(constraint: RecurrenceRuleConstraint) throws {
-        if constraint.timeUnit == HourRecurrenceRuleConstraint.timeUnit {
-            self.constraint = constraint
-        } else {
+    internal init(constraint: RecurrenceRuleConstraint) throws {
+        if constraint.timeUnit != HourRecurrenceRuleConstraint.timeUnit {
             throw SpecificRecurrenceRuleConstraintError.incompatibleConstriantTimeUnit
         }
+        _constraint = constraint
     }
 
     /// The hour the job will run pending all other constraints are met
     ///
     /// - Parameter hour: Lower bound: 0, Upper bound: 23
     public static func atHour(_ hour: Int) throws -> HourRecurrenceRuleConstraint {
-        let constraint = try RecurrenceRuleSetConstraint.init(timeUnit: timeUnit, setConstraint: [hour])
-        return try .init(constraint: constraint)
+        return try .init(constraint: RecurrenceRuleSetConstraint.init(timeUnit: timeUnit, setConstraint: [hour]))
     }
 
     /// The hour the job will run pending all other constraints are met
@@ -285,16 +293,14 @@ public struct HourRecurrenceRuleConstraint: SpecificRecurrenceRuleConstraint {
     /// - Note: Uses the 24 hour clock
     /// - Parameter hour: Lower bound: 0, Upper bound: 23
     public static func atHours(_ hours: Set<Int>) throws -> HourRecurrenceRuleConstraint {
-        let constraint = try RecurrenceRuleSetConstraint.init(timeUnit: timeUnit, setConstraint: hours)
-        return try .init(constraint: constraint)
+        return try .init(constraint: RecurrenceRuleSetConstraint.init(timeUnit: timeUnit, setConstraint: hours))
     }
 
     /// The range of hours (inclusive) the job will run pending all other constraints are met
     /// - Parameter lowerBound: must be at least 0
     /// - Parameter upperBound: must not greater than 23
     public static func atHoursInRange(lowerBound: Int, upperBound: Int) throws -> HourRecurrenceRuleConstraint {
-        let constraint = try RecurrenceRuleRangeConstraint.init(timeUnit: timeUnit, rangeConstraint: lowerBound...upperBound)
-        return try .init(constraint: constraint)
+        return try .init(constraint: RecurrenceRuleRangeConstraint.init(timeUnit: timeUnit, rangeConstraint: lowerBound...upperBound))
     }
 
     /// Defines the step value of a constraint
@@ -305,45 +311,40 @@ public struct HourRecurrenceRuleConstraint: SpecificRecurrenceRuleConstraint {
     ///
     /// - Parameter hourStep: the step value to be scheduled
     public static func hourStep(_ stepValue: Int) throws -> HourRecurrenceRuleConstraint {
-        let constraint = try RecurrenceRuleStepConstraint.init(timeUnit: timeUnit, stepConstraint: stepValue)
-        return try .init(constraint: constraint)
+        return try .init(constraint: RecurrenceRuleStepConstraint.init(timeUnit: timeUnit, stepConstraint: stepValue))
     }
 }
 
 public struct MinuteRecurrenceRuleConstraint: SpecificRecurrenceRuleConstraint {
     static let timeUnit = RecurrenceRuleTimeUnit.minute
-    let constraint: RecurrenceRuleConstraint
+    let _constraint: RecurrenceRuleConstraint
 
-    public init(constraint: RecurrenceRuleConstraint) throws {
-        if constraint.timeUnit == MinuteRecurrenceRuleConstraint.timeUnit {
-            self.constraint = constraint
-        } else {
+    internal init(constraint: RecurrenceRuleConstraint) throws {
+        if constraint.timeUnit != MinuteRecurrenceRuleConstraint.timeUnit {
             throw SpecificRecurrenceRuleConstraintError.incompatibleConstriantTimeUnit
         }
+        _constraint = constraint
     }
 
     /// The minute the job will run pending all other constraints are met
     ///
     /// - Parameter minute: Lower bound: 0, Upper bound: 59
     public static func atMinute(_ minute: Int) throws -> MinuteRecurrenceRuleConstraint {
-        let constraint = try RecurrenceRuleSetConstraint.init(timeUnit: timeUnit, setConstraint: [minute])
-        return try .init(constraint: constraint)
+        return try .init(constraint: RecurrenceRuleSetConstraint.init(timeUnit: timeUnit, setConstraint: [minute]))
     }
 
     /// The minute the job will run pending all other constraints are met
     ///
     /// - Parameter minute: Lower bound: 0, Upper bound: 59
     public static func atMinutes(_ minutes: Set<Int>) throws -> MinuteRecurrenceRuleConstraint {
-        let constraint = try RecurrenceRuleSetConstraint.init(timeUnit: timeUnit, setConstraint: minutes)
-        return try .init(constraint: constraint)
+        return try .init(constraint: RecurrenceRuleSetConstraint.init(timeUnit: timeUnit, setConstraint: minutes))
     }
 
     /// The range of minutes (inclusive) the job will run pending all other constraints are met
     /// - Parameter lowerBound: must be at least 0
     /// - Parameter upperBound: must not greater than 59
     public static func atMinutesInRange(lowerBound: Int, upperBound: Int) throws -> MinuteRecurrenceRuleConstraint {
-        let constraint = try RecurrenceRuleRangeConstraint.init(timeUnit: timeUnit, rangeConstraint: lowerBound...upperBound)
-        return try .init(constraint: constraint)
+        return try .init(constraint: RecurrenceRuleRangeConstraint.init(timeUnit: timeUnit, rangeConstraint: lowerBound...upperBound))
     }
 
     /// Defines the step value of a constraint
@@ -354,8 +355,7 @@ public struct MinuteRecurrenceRuleConstraint: SpecificRecurrenceRuleConstraint {
     ///
     /// - Parameter minuteStep: the step value to be scheduled
     public static func minuteStep(_ stepValue: Int) throws -> MinuteRecurrenceRuleConstraint {
-        let constraint = try RecurrenceRuleStepConstraint.init(timeUnit: timeUnit, stepConstraint: stepValue)
-        return try .init(constraint: constraint)
+        return try .init(constraint: RecurrenceRuleStepConstraint.init(timeUnit: timeUnit, stepConstraint: stepValue))
     }
 
     // conveince
@@ -389,39 +389,34 @@ public struct MinuteRecurrenceRuleConstraint: SpecificRecurrenceRuleConstraint {
 
 public struct SecondRecurrenceRuleConstraint: SpecificRecurrenceRuleConstraint {
     static let timeUnit = RecurrenceRuleTimeUnit.second
-    let constraint: RecurrenceRuleConstraint
+    let _constraint: RecurrenceRuleConstraint
 
-    public init(constraint: RecurrenceRuleConstraint) throws {
-        if constraint.timeUnit == SecondRecurrenceRuleConstraint.timeUnit {
-            self.constraint = constraint
-        } else {
+    internal init(constraint: RecurrenceRuleConstraint) throws {
+        if constraint.timeUnit != SecondRecurrenceRuleConstraint.timeUnit {
             throw SpecificRecurrenceRuleConstraintError.incompatibleConstriantTimeUnit
         }
-
+        _constraint = constraint
     }
 
     /// The second the job will run pending all other constraints are met
     ///
     /// - Parameter second: Lower bound: 0, Upper bound: 59
     public static func atSecond(_ second: Int) throws -> SecondRecurrenceRuleConstraint {
-        let constraint = try RecurrenceRuleSetConstraint.init(timeUnit: timeUnit, setConstraint: [second])
-        return try .init(constraint: constraint)
+        return try .init(constraint: RecurrenceRuleSetConstraint.init(timeUnit: timeUnit, setConstraint: [second]))
     }
 
     /// The second the job will run pending all other constraints are met
     ///
     /// - Parameter second: Lower bound: 0, Upper bound: 59
     public static func atSeconds(_ seconds: Set<Int>) throws -> SecondRecurrenceRuleConstraint {
-        let constraint = try RecurrenceRuleSetConstraint.init(timeUnit: timeUnit, setConstraint: seconds)
-        return try .init(constraint: constraint)
+        return try .init(constraint: RecurrenceRuleSetConstraint.init(timeUnit: timeUnit, setConstraint: seconds))
     }
 
     /// The range of seconds (inclusive) the job will run pending all other constraints are met
     /// - Parameter lowerBound: must be at least 0
     /// - Parameter upperBound: 59
     public static func atSecondsInRange(lowerBound: Int, upperBound: Int) throws -> SecondRecurrenceRuleConstraint {
-        let constraint = try RecurrenceRuleRangeConstraint.init(timeUnit: timeUnit, rangeConstraint: lowerBound...upperBound)
-        return try .init(constraint: constraint)
+        return try .init(constraint: RecurrenceRuleRangeConstraint.init(timeUnit: timeUnit, rangeConstraint: lowerBound...upperBound))
     }
 
     /// Defines the step value of a constraint
@@ -432,8 +427,7 @@ public struct SecondRecurrenceRuleConstraint: SpecificRecurrenceRuleConstraint {
     ///
     /// - Parameter secondStep: the step value to be scheduled
     public static func secondStep(_ stepValue: Int) throws -> SecondRecurrenceRuleConstraint {
-        let constraint = try RecurrenceRuleStepConstraint.init(timeUnit: timeUnit, stepConstraint: stepValue)
-        return try .init(constraint: constraint)
+        return try .init(constraint: RecurrenceRuleStepConstraint.init(timeUnit: timeUnit, stepConstraint: stepValue))
     }
 
     // convenience
@@ -460,5 +454,45 @@ public struct SecondRecurrenceRuleConstraint: SpecificRecurrenceRuleConstraint {
     /// Runs the job every 30 second
     public static func everyThirtySeconds() throws -> SecondRecurrenceRuleConstraint {
         return try self.secondStep(30)
+    }
+}
+
+
+
+
+// other
+public struct QuarterRecurrenceRuleConstraint: SpecificRecurrenceRuleConstraint {
+    static let timeUnit = RecurrenceRuleTimeUnit.quarter
+    let _constraint: RecurrenceRuleConstraint
+
+    internal init(constraint: RecurrenceRuleConstraint) throws {
+        if constraint.timeUnit != QuarterRecurrenceRuleConstraint.timeUnit {
+            throw SpecificRecurrenceRuleConstraintError.incompatibleConstriantTimeUnit
+        }
+        _constraint = constraint
+    }
+}
+
+public struct WeekOfYearRecurrenceRuleConstraint: SpecificRecurrenceRuleConstraint {
+    static let timeUnit = RecurrenceRuleTimeUnit.weekOfYear
+    let _constraint: RecurrenceRuleConstraint
+
+    internal init(constraint: RecurrenceRuleConstraint) throws {
+        if constraint.timeUnit != WeekOfYearRecurrenceRuleConstraint.timeUnit {
+            throw SpecificRecurrenceRuleConstraintError.incompatibleConstriantTimeUnit
+        }
+        _constraint = constraint
+    }
+}
+
+public struct WeekOfMonthRecurrenceRuleConstraint: SpecificRecurrenceRuleConstraint {
+    static let timeUnit = RecurrenceRuleTimeUnit.weekOfMonth
+    let _constraint: RecurrenceRuleConstraint
+
+    internal init(constraint: RecurrenceRuleConstraint) throws {
+        if constraint.timeUnit != WeekOfMonthRecurrenceRuleConstraint.timeUnit {
+            throw SpecificRecurrenceRuleConstraintError.incompatibleConstriantTimeUnit
+        }
+        _constraint = constraint
     }
 }

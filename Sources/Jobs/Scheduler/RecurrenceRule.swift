@@ -21,16 +21,16 @@ enum RecurrenceRuleError: Error {
 public struct RecurrenceRule {
     var timeZone: TimeZone
 
-    private(set) var yearConstraint: RecurrenceRuleConstraint?
-    private(set) var quarterConstraint: RecurrenceRuleConstraint?
-    private(set) var monthConstraint: RecurrenceRuleConstraint?
-    private(set) var weekOfYearConstraint: RecurrenceRuleConstraint?
-    private(set) var weekOfMonthConstraint: RecurrenceRuleConstraint?
-    private(set) var dayOfMonthConstraint: RecurrenceRuleConstraint?
-    private(set) var dayOfWeekConstraint: RecurrenceRuleConstraint?
-    private(set) var hourConstraint: RecurrenceRuleConstraint?
-    private(set) var minuteConstraint: RecurrenceRuleConstraint?
-    private(set) var secondConstraint: RecurrenceRuleConstraint?
+    private(set) var yearConstraint: YearRecurrenceRuleConstraint?
+    private(set) var quarterConstraint: QuarterRecurrenceRuleConstraint?
+    private(set) var monthConstraint: MonthRecurrenceRuleConstraint?
+    private(set) var weekOfYearConstraint: WeekOfYearRecurrenceRuleConstraint?
+    private(set) var weekOfMonthConstraint: WeekOfMonthRecurrenceRuleConstraint?
+    private(set) var dayOfMonthConstraint: DayOfMonthRecurrenceRuleConstraint?
+    private(set) var dayOfWeekConstraint: DayOfWeekRecurrenceRuleConstraint?
+    private(set) var hourConstraint: HourRecurrenceRuleConstraint?
+    private(set) var minuteConstraint: MinuteRecurrenceRuleConstraint?
+    private(set) var secondConstraint: SecondRecurrenceRuleConstraint?
 
     private let recurrenceRuleTimeUnits: [RecurrenceRuleTimeUnit] = [
         .year,
@@ -58,17 +58,17 @@ public struct RecurrenceRule {
          secondConstraint: SecondRecurrenceRuleConstraint? = nil,
          timeZone: TimeZone = TimeZone.current) {
         self.timeZone = timeZone
-        self.yearConstraint = yearConstraint?.constraint
-        self.monthConstraint = monthConstraint?.constraint
-        self.dayOfMonthConstraint = dayOfMonthConstraint?.constraint
-        self.dayOfWeekConstraint = dayOfWeekConstraint?.constraint
-        self.hourConstraint = hourConstraint?.constraint
-        self.minuteConstraint = minuteConstraint?.constraint
-        self.secondConstraint = secondConstraint?.constraint
+        self.yearConstraint = yearConstraint
+        self.monthConstraint = monthConstraint
+        self.dayOfMonthConstraint = dayOfMonthConstraint
+        self.dayOfWeekConstraint = dayOfWeekConstraint
+        self.hourConstraint = hourConstraint
+        self.minuteConstraint = minuteConstraint
+        self.secondConstraint = secondConstraint
     }
 
     public mutating func setYearConstraint(_ yearConstraint: YearRecurrenceRuleConstraint) {
-        self.yearConstraint = yearConstraint.constraint
+        self.yearConstraint = yearConstraint
     }
 
 //    public mutating func setQuarterConstraint(quarterConstraint: QuarterRecurrenceRuleConstraint) {
@@ -82,27 +82,27 @@ public struct RecurrenceRule {
 //    }
 
     public mutating func setMonthConstraint(_ monthConstraint: MonthRecurrenceRuleConstraint) {
-        self.monthConstraint = monthConstraint.constraint
+        self.monthConstraint = monthConstraint
     }
 
     public mutating func setDayOfMonthConstraint(_ dayOfMonthConstraint: DayOfMonthRecurrenceRuleConstraint) {
-        self.dayOfMonthConstraint = dayOfMonthConstraint.constraint
+        self.dayOfMonthConstraint = dayOfMonthConstraint
     }
 
     public mutating func setDayOfWeekConstraint(_ dayOfWeekConstraint: DayOfWeekRecurrenceRuleConstraint) {
-        self.dayOfWeekConstraint = dayOfWeekConstraint.constraint
+        self.dayOfWeekConstraint = dayOfWeekConstraint
     }
 
     public mutating func setHourConstraint(_ hourConstraint: HourRecurrenceRuleConstraint) {
-        self.hourConstraint = hourConstraint.constraint
+        self.hourConstraint = hourConstraint
     }
 
     public mutating func setMinuteConstraint(_ minuteConstraint: MinuteRecurrenceRuleConstraint) {
-        self.minuteConstraint = minuteConstraint.constraint
+        self.minuteConstraint = minuteConstraint
     }
 
     public mutating func setSecondConstraint(_ secondConstraint: SecondRecurrenceRuleConstraint) {
-        self.secondConstraint = secondConstraint.constraint
+        self.secondConstraint = secondConstraint
     }
 
     ///  Sets the timeZone used by rule constraintss
@@ -303,7 +303,7 @@ public struct RecurrenceRule {
 
     }
 
-    private func resolveConstraint(_ ruleTimeUnit: RecurrenceRuleTimeUnit) -> RecurrenceRuleConstraint? {
+    private func resolveConstraint(_ ruleTimeUnit: RecurrenceRuleTimeUnit) -> SpecificRecurrenceRuleConstraint? {
         switch ruleTimeUnit {
         case .second:
             return self.secondConstraint

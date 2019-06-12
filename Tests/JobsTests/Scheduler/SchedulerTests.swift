@@ -17,37 +17,46 @@ final class SchedulerTests: XCTestCase {
                                                                             secondConstraint: secondConstraint)
     }
 
+    func testShedulerWhen() throws {
+        var config = JobsConfig()
+        try config.schedule(JobMock<JobDataMock>())
+            .daily()
+            .atHour(19)
+            .atMinute(9)
+            .atSecond(6)
+    }
+
     func testSchedulerYearly() throws {
         var config = JobsConfig()
 
         // yearly (single monthOfYear per year)
         try config.schedule(JobMock<JobDataMock>()).yearly().atMonth(5).atDayOfMonth(17).atHour(19).atMinute(9).atSecond(6)
-        XCTAssertEqual(config.scheduler.recurrenceRule.yearConstraint as? RecurrenceRuleStepConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.yearConstraint?._constraint as? RecurrenceRuleStepConstraint,
                        try RecurrenceRuleStepConstraint.init(timeUnit: .year, stepConstraint: 1))
-        XCTAssertEqual(config.scheduler.recurrenceRule.monthConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.monthConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .month, setConstraint: [5]))
-        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfMonthConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfMonthConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .dayOfMonth, setConstraint: [17]))
-        XCTAssertEqual(config.scheduler.recurrenceRule.hourConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.hourConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .hour, setConstraint: [19]))
-        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .minute, setConstraint: [9]))
-        XCTAssertEqual(config.scheduler.recurrenceRule.secondConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.secondConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .second, setConstraint: [6]))
         XCTAssertNil(config.scheduler.recurrenceRule.dayOfWeekConstraint)
 
         try config.schedule(JobMock<JobDataMock>()).yearly().on(.may, 17).atHour(19).atMinute(9).atSecond(6)
-        XCTAssertEqual(config.scheduler.recurrenceRule.yearConstraint as? RecurrenceRuleStepConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.yearConstraint?._constraint as? RecurrenceRuleStepConstraint,
                        try RecurrenceRuleStepConstraint.init(timeUnit: .year, stepConstraint: 1))
-        XCTAssertEqual(config.scheduler.recurrenceRule.monthConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.monthConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .month, setConstraint: [5]))
-        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfMonthConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfMonthConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .dayOfMonth, setConstraint: [17]))
-        XCTAssertEqual(config.scheduler.recurrenceRule.hourConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.hourConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .hour, setConstraint: [19]))
-        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .minute, setConstraint: [9]))
-        XCTAssertEqual(config.scheduler.recurrenceRule.secondConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.secondConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .second, setConstraint: [6]))
         XCTAssertNil(config.scheduler.recurrenceRule.dayOfWeekConstraint)
     }
@@ -57,15 +66,15 @@ final class SchedulerTests: XCTestCase {
 
         // monthly (single dayOfMonth per month)
         try config.schedule(JobMock<JobDataMock>()).monthly().atDayOfMonth(17).atHour(19).atMinute(9).atSecond(6)
-        XCTAssertEqual(config.scheduler.recurrenceRule.monthConstraint as? RecurrenceRuleStepConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.monthConstraint?._constraint as? RecurrenceRuleStepConstraint,
                        try RecurrenceRuleStepConstraint.init(timeUnit: .month, stepConstraint: 1))
-        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfMonthConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfMonthConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .dayOfMonth, setConstraint: [17]))
-        XCTAssertEqual(config.scheduler.recurrenceRule.hourConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.hourConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .hour, setConstraint: [19]))
-        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .minute, setConstraint: [9]))
-        XCTAssertEqual(config.scheduler.recurrenceRule.secondConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.secondConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .second, setConstraint: [6]))
         XCTAssertNil(config.scheduler.recurrenceRule.yearConstraint)
         XCTAssertNil(config.scheduler.recurrenceRule.dayOfWeekConstraint)
@@ -76,13 +85,13 @@ final class SchedulerTests: XCTestCase {
 
         // weekly (single dayOfWeek per week)
         try config.schedule(JobMock<JobDataMock>()).weekly(onDayOfWeek: 5).atHour(19).atMinute(9).atSecond(6)
-        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfWeekConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfWeekConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .dayOfWeek, setConstraint: [5]))
-        XCTAssertEqual(config.scheduler.recurrenceRule.hourConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.hourConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .hour, setConstraint: [19]))
-        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .minute, setConstraint: [9]))
-        XCTAssertEqual(config.scheduler.recurrenceRule.secondConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.secondConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .second, setConstraint: [6]))
         XCTAssertNil(config.scheduler.recurrenceRule.yearConstraint)
         XCTAssertNil(config.scheduler.recurrenceRule.monthConstraint)
@@ -91,13 +100,13 @@ final class SchedulerTests: XCTestCase {
 
         // weekly(onDayOfWeek:).at()
         try config.schedule(JobMock<JobDataMock>()).weekly(onDayOfWeek: 5).at("19:09").atSecond(6)
-        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfWeekConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfWeekConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .dayOfWeek, setConstraint: [5]))
-        XCTAssertEqual(config.scheduler.recurrenceRule.hourConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.hourConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .hour, setConstraint: [19]))
-        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .minute, setConstraint: [9]))
-        XCTAssertEqual(config.scheduler.recurrenceRule.secondConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.secondConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .second, setConstraint: [6]))
         XCTAssertNil(config.scheduler.recurrenceRule.yearConstraint)
         XCTAssertNil(config.scheduler.recurrenceRule.monthConstraint)
@@ -105,13 +114,13 @@ final class SchedulerTests: XCTestCase {
 
         // start of day
         try config.schedule(JobMock<JobDataMock>()).weekly(onDayOfWeek: 5).at(.startOfDay)
-        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfWeekConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfWeekConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .dayOfWeek, setConstraint: [5]))
-        XCTAssertEqual(config.scheduler.recurrenceRule.hourConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.hourConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .hour, setConstraint: [0]))
-        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .minute, setConstraint: [0]))
-        XCTAssertEqual(config.scheduler.recurrenceRule.secondConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.secondConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .second, setConstraint: [0]))
         XCTAssertNil(config.scheduler.recurrenceRule.yearConstraint)
         XCTAssertNil(config.scheduler.recurrenceRule.monthConstraint)
@@ -119,13 +128,13 @@ final class SchedulerTests: XCTestCase {
 
         // end of day
         try config.schedule(JobMock<JobDataMock>()).weekly(onDayOfWeek: 5).at(.endOfDay)
-        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfWeekConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfWeekConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .dayOfWeek, setConstraint: [5]))
-        XCTAssertEqual(config.scheduler.recurrenceRule.hourConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.hourConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .hour, setConstraint: [23]))
-        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .minute, setConstraint: [59]))
-        XCTAssertEqual(config.scheduler.recurrenceRule.secondConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.secondConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .second, setConstraint: [59]))
         XCTAssertNil(config.scheduler.recurrenceRule.yearConstraint)
         XCTAssertNil(config.scheduler.recurrenceRule.monthConstraint)
@@ -133,13 +142,13 @@ final class SchedulerTests: XCTestCase {
 
         // noon
         try config.schedule(JobMock<JobDataMock>()).weekly(onDayOfWeek: 5).at(.noon)
-        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfWeekConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfWeekConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .dayOfWeek, setConstraint: [5]))
-        XCTAssertEqual(config.scheduler.recurrenceRule.hourConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.hourConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .hour, setConstraint: [12]))
-        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .minute, setConstraint: [0]))
-        XCTAssertEqual(config.scheduler.recurrenceRule.secondConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.secondConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .second, setConstraint: [0]))
         XCTAssertNil(config.scheduler.recurrenceRule.yearConstraint)
         XCTAssertNil(config.scheduler.recurrenceRule.monthConstraint)
@@ -147,13 +156,13 @@ final class SchedulerTests: XCTestCase {
 
         // weekly(on:)
         try config.schedule(JobMock<JobDataMock>()).weekly(on: .thursday).atHour(19).atMinute(9).atSecond(6)
-        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfWeekConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfWeekConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .dayOfWeek, setConstraint: [5]))
-        XCTAssertEqual(config.scheduler.recurrenceRule.hourConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.hourConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .hour, setConstraint: [19]))
-        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .minute, setConstraint: [9]))
-        XCTAssertEqual(config.scheduler.recurrenceRule.secondConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.secondConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .second, setConstraint: [6]))
         XCTAssertNil(config.scheduler.recurrenceRule.yearConstraint)
         XCTAssertNil(config.scheduler.recurrenceRule.monthConstraint)
@@ -166,26 +175,26 @@ final class SchedulerTests: XCTestCase {
 
         // daily (single hour per day)
         try config.schedule(JobMock<JobDataMock>()).daily().atHour(19).atMinute(9).atSecond(6)
-        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfWeekConstraint as? RecurrenceRuleStepConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfWeekConstraint?._constraint as? RecurrenceRuleStepConstraint,
                        try RecurrenceRuleStepConstraint.init(timeUnit: .dayOfWeek, stepConstraint: 1))
-        XCTAssertEqual(config.scheduler.recurrenceRule.hourConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.hourConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .hour, setConstraint: [19]))
-        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .minute, setConstraint: [9]))
-        XCTAssertEqual(config.scheduler.recurrenceRule.secondConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.secondConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .second, setConstraint: [6]))
         XCTAssertNil(config.scheduler.recurrenceRule.yearConstraint)
         XCTAssertNil(config.scheduler.recurrenceRule.monthConstraint)
         XCTAssertNil(config.scheduler.recurrenceRule.dayOfMonthConstraint)
 
         try config.schedule(JobMock<JobDataMock>()).daily().at("19:09").atSecond(6)
-        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfWeekConstraint as? RecurrenceRuleStepConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfWeekConstraint?._constraint as? RecurrenceRuleStepConstraint,
                        try RecurrenceRuleStepConstraint.init(timeUnit: .dayOfWeek, stepConstraint: 1))
-        XCTAssertEqual(config.scheduler.recurrenceRule.hourConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.hourConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .hour, setConstraint: [19]))
-        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .minute, setConstraint: [9]))
-        XCTAssertEqual(config.scheduler.recurrenceRule.secondConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.secondConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .second, setConstraint: [6]))
         XCTAssertNil(config.scheduler.recurrenceRule.yearConstraint)
         XCTAssertNil(config.scheduler.recurrenceRule.monthConstraint)
@@ -193,13 +202,13 @@ final class SchedulerTests: XCTestCase {
 
         // startOfDay
         try config.schedule(JobMock<JobDataMock>()).daily().at(.startOfDay)
-        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfWeekConstraint as? RecurrenceRuleStepConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfWeekConstraint?._constraint as? RecurrenceRuleStepConstraint,
                        try RecurrenceRuleStepConstraint.init(timeUnit: .dayOfWeek, stepConstraint: 1))
-        XCTAssertEqual(config.scheduler.recurrenceRule.hourConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.hourConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .hour, setConstraint: [0]))
-        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .minute, setConstraint: [0]))
-        XCTAssertEqual(config.scheduler.recurrenceRule.secondConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.secondConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .second, setConstraint: [0]))
         XCTAssertNil(config.scheduler.recurrenceRule.yearConstraint)
         XCTAssertNil(config.scheduler.recurrenceRule.monthConstraint)
@@ -207,13 +216,13 @@ final class SchedulerTests: XCTestCase {
 
         // endOfDay
         try config.schedule(JobMock<JobDataMock>()).daily().at(.endOfDay)
-        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfWeekConstraint as? RecurrenceRuleStepConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfWeekConstraint?._constraint as? RecurrenceRuleStepConstraint,
                        try RecurrenceRuleStepConstraint.init(timeUnit: .dayOfWeek, stepConstraint: 1))
-        XCTAssertEqual(config.scheduler.recurrenceRule.hourConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.hourConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .hour, setConstraint: [23]))
-        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .minute, setConstraint: [59]))
-        XCTAssertEqual(config.scheduler.recurrenceRule.secondConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.secondConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .second, setConstraint: [59]))
         XCTAssertNil(config.scheduler.recurrenceRule.yearConstraint)
         XCTAssertNil(config.scheduler.recurrenceRule.monthConstraint)
@@ -221,13 +230,13 @@ final class SchedulerTests: XCTestCase {
 
         // noon
         try config.schedule(JobMock<JobDataMock>()).daily().at(.noon)
-        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfWeekConstraint as? RecurrenceRuleStepConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfWeekConstraint?._constraint as? RecurrenceRuleStepConstraint,
                        try RecurrenceRuleStepConstraint.init(timeUnit: .dayOfWeek, stepConstraint: 1))
-        XCTAssertEqual(config.scheduler.recurrenceRule.hourConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.hourConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .hour, setConstraint: [12]))
-        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .minute, setConstraint: [0]))
-        XCTAssertEqual(config.scheduler.recurrenceRule.secondConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.secondConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .second, setConstraint: [0]))
         XCTAssertNil(config.scheduler.recurrenceRule.yearConstraint)
         XCTAssertNil(config.scheduler.recurrenceRule.monthConstraint)
@@ -236,39 +245,39 @@ final class SchedulerTests: XCTestCase {
 
         // test day of week combinations
         try config.schedule(JobMock<JobDataMock>()).weekdays().atHour(19).atMinute(9).atSecond(6)
-        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfWeekConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfWeekConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .dayOfWeek, setConstraint: [2, 3, 4, 5, 6]))
 
         try config.schedule(JobMock<JobDataMock>()).weekends().atHour(19).atMinute(9).atSecond(6)
-        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfWeekConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfWeekConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .dayOfWeek, setConstraint: [1, 7]))
 
         try config.schedule(JobMock<JobDataMock>()).sundays().atHour(19).atMinute(9).atSecond(6)
-        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfWeekConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfWeekConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .dayOfWeek, setConstraint: [1]))
 
         try config.schedule(JobMock<JobDataMock>()).mondays().atHour(19).atMinute(9).atSecond(6)
-        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfWeekConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfWeekConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .dayOfWeek, setConstraint: [2]))
 
         try config.schedule(JobMock<JobDataMock>()).tuesdays().atHour(19).atMinute(9).atSecond(6)
-        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfWeekConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfWeekConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .dayOfWeek, setConstraint: [3]))
 
         try config.schedule(JobMock<JobDataMock>()).wednesdays().atHour(19).atMinute(9).atSecond(6)
-        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfWeekConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfWeekConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .dayOfWeek, setConstraint: [4]))
 
         try config.schedule(JobMock<JobDataMock>()).thursdays().atHour(19).atMinute(9).atSecond(6)
-        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfWeekConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfWeekConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .dayOfWeek, setConstraint: [5]))
 
         try config.schedule(JobMock<JobDataMock>()).fridays().atHour(19).atMinute(9).atSecond(6)
-        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfWeekConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfWeekConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .dayOfWeek, setConstraint: [6]))
 
         try config.schedule(JobMock<JobDataMock>()).saturdays().atHour(19).atMinute(9).atSecond(6)
-        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfWeekConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.dayOfWeekConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .dayOfWeek, setConstraint: [7]))
     }
 
@@ -277,11 +286,11 @@ final class SchedulerTests: XCTestCase {
 
         // hourly (single minute per hour)
         try config.schedule(JobMock<JobDataMock>()).hourly().atMinute(9).atSecond(6)
-        XCTAssertEqual(config.scheduler.recurrenceRule.hourConstraint as? RecurrenceRuleStepConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.hourConstraint?._constraint as? RecurrenceRuleStepConstraint,
                        try RecurrenceRuleStepConstraint.init(timeUnit: .hour, stepConstraint: 1))
-        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .minute, setConstraint: [9]))
-        XCTAssertEqual(config.scheduler.recurrenceRule.secondConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.secondConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .second, setConstraint: [6]))
         XCTAssertNil(config.scheduler.recurrenceRule.yearConstraint)
         XCTAssertNil(config.scheduler.recurrenceRule.monthConstraint)
@@ -294,9 +303,9 @@ final class SchedulerTests: XCTestCase {
 
         // everyXMinutes (single second per minute)
         try config.schedule(JobMock<JobDataMock>()).everyMinute().atSecond(6)
-        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint as? RecurrenceRuleStepConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint?._constraint as? RecurrenceRuleStepConstraint,
                        try RecurrenceRuleStepConstraint.init(timeUnit: .minute, stepConstraint: 1))
-        XCTAssertEqual(config.scheduler.recurrenceRule.secondConstraint as? RecurrenceRuleSetConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.secondConstraint?._constraint as? RecurrenceRuleSetConstraint,
                        try RecurrenceRuleSetConstraint.init(timeUnit: .second, setConstraint: [6]))
         XCTAssertNil(config.scheduler.recurrenceRule.yearConstraint)
         XCTAssertNil(config.scheduler.recurrenceRule.monthConstraint)
@@ -307,52 +316,52 @@ final class SchedulerTests: XCTestCase {
         // other factors of 60
         // 2
         try config.schedule(JobMock<JobDataMock>()).everyTwoMinutes().atSecond(6)
-        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint as? RecurrenceRuleStepConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint?._constraint as? RecurrenceRuleStepConstraint,
                        try RecurrenceRuleStepConstraint.init(timeUnit: .minute, stepConstraint: 2))
 
         // 3
         try config.schedule(JobMock<JobDataMock>()).everyThreeMinutes().atSecond(6)
-        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint as? RecurrenceRuleStepConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint?._constraint as? RecurrenceRuleStepConstraint,
                        try RecurrenceRuleStepConstraint.init(timeUnit: .minute, stepConstraint: 3))
 
         // 4
         try config.schedule(JobMock<JobDataMock>()).everyFourMinutes().atSecond(6)
-        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint as? RecurrenceRuleStepConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint?._constraint as? RecurrenceRuleStepConstraint,
                        try RecurrenceRuleStepConstraint.init(timeUnit: .minute, stepConstraint: 4))
 
         // 5
         try config.schedule(JobMock<JobDataMock>()).everyFiveMinutes().atSecond(6)
-        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint as? RecurrenceRuleStepConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint?._constraint as? RecurrenceRuleStepConstraint,
                        try RecurrenceRuleStepConstraint.init(timeUnit: .minute, stepConstraint: 5))
 
         // 6
         try config.schedule(JobMock<JobDataMock>()).everySixMinutes().atSecond(6)
-        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint as? RecurrenceRuleStepConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint?._constraint as? RecurrenceRuleStepConstraint,
                        try RecurrenceRuleStepConstraint.init(timeUnit: .minute, stepConstraint: 6))
 
         // 10
         try config.schedule(JobMock<JobDataMock>()).everyTenMinutes().atSecond(6)
-        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint as? RecurrenceRuleStepConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint?._constraint as? RecurrenceRuleStepConstraint,
                        try RecurrenceRuleStepConstraint.init(timeUnit: .minute, stepConstraint: 10))
 
         // 12
         try config.schedule(JobMock<JobDataMock>()).everyTwelveMinutes().atSecond(6)
-        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint as? RecurrenceRuleStepConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint?._constraint as? RecurrenceRuleStepConstraint,
                        try RecurrenceRuleStepConstraint.init(timeUnit: .minute, stepConstraint: 12))
 
         // 15
         try config.schedule(JobMock<JobDataMock>()).everyFifteenMinutes().atSecond(6)
-        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint as? RecurrenceRuleStepConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint?._constraint as? RecurrenceRuleStepConstraint,
                        try RecurrenceRuleStepConstraint.init(timeUnit: .minute, stepConstraint: 15))
 
         // 20
         try config.schedule(JobMock<JobDataMock>()).everyTwentyMinutes().atSecond(6)
-        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint as? RecurrenceRuleStepConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint?._constraint as? RecurrenceRuleStepConstraint,
                        try RecurrenceRuleStepConstraint.init(timeUnit: .minute, stepConstraint: 20))
 
         // 30
         try config.schedule(JobMock<JobDataMock>()).everyThirtyMinutes().atSecond(6)
-        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint as? RecurrenceRuleStepConstraint,
+        XCTAssertEqual(config.scheduler.recurrenceRule.minuteConstraint?._constraint as? RecurrenceRuleStepConstraint,
                        try RecurrenceRuleStepConstraint.init(timeUnit: .minute, stepConstraint: 30))
     }
 
