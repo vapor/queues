@@ -8,7 +8,7 @@ public struct JobsConfiguration {
     internal var storage: [String: AnyJob]
     
     /// Scheduled Job Storage
-    internal var scheduledStorage: [String: AnyScheduledJob]
+    internal var scheduledStorage: [AnyScheduledJob]
     
     /// A Logger object
     internal let logger: Logger
@@ -16,7 +16,7 @@ public struct JobsConfiguration {
     /// Creates an empty `JobsConfig`
     public init() {
         storage = [:]
-        scheduledStorage = [:]
+        scheduledStorage = []
         logger = Logger(label: "vapor.codes.jobs")
     }
     
@@ -36,18 +36,17 @@ public struct JobsConfiguration {
     
     /// Schedules a new job for execution at a later date.
     ///
-    ///     config.schedule(job).daily().at(.startOfDay)
+    ///     config.schedule(Cleanup())
+    ///     .yearly()
+    ///     .in(.may)
+    ///     .on(23)
+    ///     .at(.noon)
     ///
     /// - Parameter job: The `ScheduledJob` to be scheduled.
     mutating public func schedule<J: ScheduledJob>(_ job: J) -> ScheduleBuilder {
-        let key = String(describing: J.self)
-        if let existing = scheduledStorage[key] {
-            logger.warning("WARNING: A scheduled job is already registered with key \(key): \(existing)")
-        }
-        
         let scheduler = ScheduleBuilder()
         let storage = AnyScheduledJob(job: job, scheduler: scheduler)
-        scheduledStorage[key] = storage
+        scheduledStorage.append(storage)
         
         return scheduler
     }

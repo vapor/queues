@@ -45,6 +45,5 @@ final class JobsConfigTests: XCTestCase {
             .at("1:01am")
 
         XCTAssertEqual(config.scheduledStorage.count, 1)
-        XCTAssertEqual(config.scheduledStorage.first?.key, "DailyCleanup")
     }
 }

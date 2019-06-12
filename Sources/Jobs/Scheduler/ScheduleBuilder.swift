@@ -1,8 +1,10 @@
 import Foundation
 
+/// An object that can be used to build a scheduled job
 public final class ScheduleBuilder {
     // MARK: Data Structures
 
+    /// Months of the year
     public enum Month: Int {
         case january = 1
         case february = 2
@@ -18,6 +20,7 @@ public final class ScheduleBuilder {
         case december = 12
     }
     
+    /// Describes a day
     public enum Day: ExpressibleByIntegerLiteral {
         case first
         case last
@@ -28,6 +31,7 @@ public final class ScheduleBuilder {
         }
     }
     
+    /// Describes a day of the week
     public enum DayOfWeek: Int {
         case sunday = 1
         case monday = 2
@@ -38,17 +42,22 @@ public final class ScheduleBuilder {
         case saturday = 7
     }
     
+    /// Describes a time of day
     public struct Time: ExpressibleByStringLiteral, CustomStringConvertible {
+        var hour: Hour24
+        var minute: Minute
+        
+        /// Returns a `Time` object at midnight (12:00 AM)
         public static var midnight: Time {
             return .init(12, 00, .am)
         }
+        
+        /// Returns a `Time` object at noon (12:00 PM)
         public static var noon: Time {
             return .init(12, 00, .pm)
         }
         
-        var hour: Hour24
-        var minute: Minute
-        
+        /// The readable description of the time
         public var description: String {
             return "\(self.hour):\(self.minute)"
         }
@@ -68,6 +77,7 @@ public final class ScheduleBuilder {
             self.minute = minute
         }
         
+        /// Takes a stringLiteral and returns a `TimeObject`. Must be in the format `00:00am/pm`
         public init(stringLiteral value: String) {
             let parts = value.split(separator: ":")
             switch parts.count {
@@ -102,9 +112,11 @@ public final class ScheduleBuilder {
         }
     }
     
+    /// Represents an hour numeral that must be in 12 hour format
     public struct Hour12: ExpressibleByIntegerLiteral, CustomStringConvertible {
         let number: Int
         
+        /// The readable description of the hour
         public var description: String {
             return self.number.description
         }
@@ -115,14 +127,17 @@ public final class ScheduleBuilder {
             self.number = number
         }
         
+        /// Takes an integerLiteral and creates a `Hour12`. Must be `> 0 && <= 12`
         public init(integerLiteral value: Int) {
             self.init(value)
         }
     }
     
+    /// Represents an hour numeral that must be in 24 hour format
     public struct Hour24: ExpressibleByIntegerLiteral, CustomStringConvertible {
         let number: Int
         
+        /// The readable description of the hour, zero padding included
         public var description: String {
             switch self.number {
             case 0..<10:
@@ -138,15 +153,18 @@ public final class ScheduleBuilder {
             self.number = number
         }
         
+        /// Takes an integerLiteral and creates a `Hour24`. Must be `>= 0 && < 24`
         public init(integerLiteral value: Int) {
             self.init(value)
         }
     }
     
+    /// A period of hours - either `am` or `pm`
     public enum HourPeriod: ExpressibleByStringLiteral, CustomStringConvertible {
         case am
         case pm
         
+        /// The readable string
         public var description: String {
             switch self {
             case .am:
@@ -167,14 +185,17 @@ public final class ScheduleBuilder {
             }
         }
         
+        /// Takes a stringLiteral and creates a `HourPeriod.` Must be `am` or `pm`
         public init(stringLiteral value: String) {
             self.init(value)
         }
     }
     
+    /// Describes a minute numeral
     public struct Minute: ExpressibleByIntegerLiteral, CustomStringConvertible {
         let number: Int
         
+        /// The readable minute, zero padded.
         public var description: String {
             switch self.number {
             case 0..<10:
@@ -190,6 +211,7 @@ public final class ScheduleBuilder {
             self.number = number
         }
         
+        /// Takes an integerLiteral and creates a `Minute`. Must be `>= 0 && < 60`
         public init(integerLiteral value: Int) {
             self.init(value)
         }
@@ -197,52 +219,74 @@ public final class ScheduleBuilder {
     
     // MARK: Builders
     
+    /// An object to build a `Yearly` scheduled job
     public struct Yearly {
         let builder: ScheduleBuilder
 
+        /// The month to run the job in
+        /// - Parameter month: A `Month` to run the job in
         public func `in`(_ month: Month) -> Monthly {
             self.builder.month = month
             return self.builder.monthly()
         }
     }
 
+    /// An object to build a `Monthly` scheduled job
     public struct Monthly {
         let builder: ScheduleBuilder
-
+        
+        /// The day to run the job on
+        /// - Parameter day: A `Day` to run the job on
         public func on(_ day: Day) -> Daily {
             self.builder.day = day
             return self.builder.daily()
         }
     }
-
+    
+    /// An object to build a `Weekly` scheduled job
     public struct Weekly {
         let builder: ScheduleBuilder
         
+        /// The day of week to run the job on
+        /// - Parameter dayOfWeek: A `DayOfWeek` to run the job on
         public func on(_ dayOfWeek: DayOfWeek) -> Daily {
             self.builder.dayOfWeek = dayOfWeek
             return self.builder.daily()
         }
     }
-
+    
+    /// An object to build a `Daily` scheduled job
     public struct Daily {
         let builder: ScheduleBuilder
-
+        
+        /// The time to run the job at
+        /// - Parameter time: A `Time` object to run the job on
         public func at(_ time: Time) {
             self.builder.time = time
         }
         
+        /// The 24 hour time to run the job at
+        /// - Parameter hour: A `Hour24` to run the job at
+        /// - Parameter minute: A `Minute` to run the job at
         public func at(_ hour: Hour24, _ minute: Minute) {
             self.at(.init(hour, minute))
         }
         
+        /// The 12 hour time to run the job at
+        /// - Parameter hour: A `Hour12` to run the job at
+        /// - Parameter minute: A `Minute` to run the job at
+        /// - Parameter period: A `HourPeriod` to run the job at (`am` or `pm`)
         public func at(_ hour: Hour12, _ minute: Minute, _ period: HourPeriod) {
             self.at(.init(hour, minute, period))
         }
     }
-
+    
+    /// An object to build a `Hourly` scheduled job
     public struct Hourly {
         let builder: ScheduleBuilder
         
+        /// The minute to run the job at
+        /// - Parameter minute: A `Minute` to run the job at
         public func at(_ minute: Minute) {
             self.builder.minute = minute
         }
@@ -259,23 +303,28 @@ public final class ScheduleBuilder {
     init() { }
     
     // MARK: Helpers
-
+    
+    /// Creates a yearly scheduled job for further building
     public func yearly() -> Yearly {
         return Yearly(builder: self)
     }
-
+    
+    /// Creates a monthly scheduled job for further building
     public func monthly() -> Monthly {
         return Monthly(builder: self)
     }
     
+    /// Creates a weekly scheduled job for further building
     public func weekly() -> Weekly {
         return Weekly(builder: self)
     }
-
+    
+    /// Creates a daily scheduled job for further building
     public func daily() -> Daily {
         return Daily(builder: self)
     }
-
+    
+    /// Creates a hourly scheduled job for further building
     public func hourly() -> Hourly {
         return Hourly(builder: self)
     }

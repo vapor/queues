@@ -44,6 +44,7 @@ final class SchedulerTests: XCTestCase {
             .hourly()
             .at(30)
 
+        XCTAssertEqual(config.scheduledStorage.count, 7)
     }
 }
 
