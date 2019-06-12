@@ -12,7 +12,7 @@
     <a href="LICENSE">
         <img src="http://img.shields.io/badge/license-MIT-brightgreen.svg" alt="MIT License">
     </a>
-    <a href="https://circleci.com/gh/vapor/routing-kit">
+    <a href="https://circleci.com/gh/vapor/jobs">
         <img src="https://circleci.com/gh/vapor/jobs.svg?style=shield" alt="Continuous Integration">
     </a>
     <a href="https://swift.org">
