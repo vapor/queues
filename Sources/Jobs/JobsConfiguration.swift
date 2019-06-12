@@ -10,10 +10,14 @@ public struct JobsConfiguration {
     /// Scheduled Job Storage
     internal var scheduledStorage: [String: AnyScheduledJob]
     
+    /// A Logger object
+    internal let logger: Logger
+    
     /// Creates an empty `JobsConfig`
     public init() {
         storage = [:]
         scheduledStorage = [:]
+        logger = Logger(label: "vapor.codes.jobs")
     }
     
     /// Adds a new `Job` to the queue configuration.
@@ -23,19 +27,22 @@ public struct JobsConfiguration {
     mutating public func add<J: Job>(_ job: J) {
         let key = String(describing: J.Data.self)
         if let existing = storage[key] {
-            print("WARNING: A job is already registered with key \(key): \(existing)")
+            logger.warning("WARNING: A job is already registered with key \(key): \(existing)")
         }
         
         storage[key] = job
     }
     
+    
     /// Schedules a new job for execution at a later date.
-    /// Example: `config.schedule(job).daily().at(.startOfDay)`
+    ///
+    ///     config.schedule(job).daily().at(.startOfDay)
+    ///
     /// - Parameter job: The `ScheduledJob` to be scheduled.
     mutating public func schedule<J: ScheduledJob>(_ job: J) -> ScheduleBuilder {
         let key = String(describing: J.self)
         if let existing = scheduledStorage[key] {
-            print("WARNING: A scheduled job is already registered with key \(key): \(existing)")
+            logger.warning("WARNING: A scheduled job is already registered with key \(key): \(existing)")
         }
         
         let scheduler = ScheduleBuilder()

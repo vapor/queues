@@ -33,6 +33,7 @@ final class SchedulerTests: XCTestCase {
         config.schedule(Cleanup())
             .hourly()
             .at(30)
+
     }
 }
 
