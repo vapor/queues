@@ -8,7 +8,7 @@
 import Foundation
 import Vapor
 
-struct ScheduledJobStorage {
-    let scheduledJob: ScheduledJob
-    let scheduler: Scheduler
+struct AnyScheduledJob {
+    let job: ScheduledJob
+    let scheduler: ScheduleBuilder
 }

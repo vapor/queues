@@ -40,14 +40,11 @@ final class JobsConfigTests: XCTestCase {
     
     func testScheduledJob() throws {
         var config = JobsConfiguration()
-        try config.schedule(DailyCleanup()).daily().atHour(1).atMinute(1).atSecond(0)
+        config.schedule(DailyCleanup())
+            .daily()
+            .at("1:01am")
 
         XCTAssertEqual(config.scheduledStorage.count, 1)
         XCTAssertEqual(config.scheduledStorage.first?.key, "DailyCleanup")
     }
-    
-    static var allTests = [
-        ("testAddingJobs", testAddingJobs),
-        ("testAddingAlreadyRegistratedJobsAreIgnored", testAddingAlreadyRegistratedJobsAreIgnored)
-    ]
 }

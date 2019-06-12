@@ -8,7 +8,7 @@ public struct JobsConfiguration {
     internal var storage: [String: AnyJob]
     
     /// Scheduled Job Storage
-    internal var scheduledStorage: [String: ScheduledJobStorage]
+    internal var scheduledStorage: [String: AnyScheduledJob]
     
     /// Creates an empty `JobsConfig`
     public init() {
@@ -32,14 +32,14 @@ public struct JobsConfiguration {
     /// Schedules a new job for execution at a later date.
     /// Example: `config.schedule(job).daily().at(.startOfDay)`
     /// - Parameter job: The `ScheduledJob` to be scheduled.
-    mutating public func schedule<J: ScheduledJob>(_ job: J) -> Scheduler {
+    mutating public func schedule<J: ScheduledJob>(_ job: J) -> ScheduleBuilder {
         let key = String(describing: J.self)
         if let existing = scheduledStorage[key] {
             print("WARNING: A scheduled job is already registered with key \(key): \(existing)")
         }
         
-        let scheduler = Scheduler()
-        let storage = ScheduledJobStorage(scheduledJob: job, scheduler: scheduler)
+        let scheduler = ScheduleBuilder()
+        let storage = AnyScheduledJob(job: job, scheduler: scheduler)
         scheduledStorage[key] = storage
         
         return scheduler
