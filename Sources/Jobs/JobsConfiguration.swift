@@ -8,7 +8,7 @@ public struct JobsConfiguration {
     internal var storage: [String: AnyJob]
     
     /// Scheduled Job Storage
-    internal var scheduledStorage: [String: ScheduledJob]
+    internal var scheduledStorage: [String: ScheduledJobStorage]
     
     /// Creates an empty `JobsConfig`
     public init() {
@@ -38,9 +38,11 @@ public struct JobsConfiguration {
             print("WARNING: A scheduled job is already registered with key \(key): \(existing)")
         }
         
-        scheduledStorage[key] = job
+        let scheduler = Scheduler()
+        let storage = ScheduledJobStorage(scheduledJob: job, scheduler: scheduler)
+        scheduledStorage[key] = storage
         
-        return Scheduler()
+        return scheduler
     }
     
     /// Returns the `AnyJob` for the string it was registered under
