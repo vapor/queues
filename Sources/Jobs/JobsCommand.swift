@@ -22,8 +22,8 @@ public final class JobsCommand: Command {
     /// The registered `JobContext`
     public let jobContext: JobContext
     
-    /// The registered `JobsConfig`
-    public let config: JobsConfig
+    /// The registered `JobsConfiguration`
+    public let config: JobsConfiguration
     
     private var isShuttingDown: Bool {
         get {
@@ -48,8 +48,8 @@ public final class JobsCommand: Command {
     /// - Parameters:
     ///   - queueService: The registered `QueueService`
     ///   - jobContext: The registered `JobContext` object
-    ///   - config: The registered `JobsConfig` object
-    public init(queueService: QueueService, jobContext: JobContext, config: JobsConfig) {
+    ///   - config: The registered `JobsConfiguration` object
+    public init(queueService: QueueService, jobContext: JobContext, config: JobsConfiguration) {
         _lock = NSLock()
         
         self.queueService = queueService

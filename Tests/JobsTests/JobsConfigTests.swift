@@ -9,9 +9,15 @@ import XCTest
 import NIO
 @testable import Jobs
 
+struct DailyCleanup: ScheduledJob {
+    func run(context: JobContext) -> EventLoopFuture<Void> {
+        return context.eventLoop.makeSucceededFuture(())
+    }
+}
+
 final class JobsConfigTests: XCTestCase {
     func testAddingJobs() {
-        var config = JobsConfig()
+        var config = JobsConfiguration()
         config.add(JobMock<JobDataMock>())
         
         XCTAssertEqual(config.storage.count, 1)
@@ -19,7 +25,7 @@ final class JobsConfigTests: XCTestCase {
     }
     
     func testAddingAlreadyRegistratedJobsAreIgnored() {
-        var config = JobsConfig()
+        var config = JobsConfiguration()
         config.add(JobMock<JobDataMock>())
         config.add(JobMock<JobDataMock>())
         
@@ -32,8 +38,12 @@ final class JobsConfigTests: XCTestCase {
         XCTAssertNotNil(config.storage["JobDataOtherMock"])
     }
     
-    static var allTests = [
-        ("testAddingJobs", testAddingJobs),
-        ("testAddingAlreadyRegistratedJobsAreIgnored", testAddingAlreadyRegistratedJobsAreIgnored)
-    ]
+    func testScheduledJob() throws {
+        var config = JobsConfiguration()
+        config.schedule(DailyCleanup())
+            .daily()
+            .at("1:01am")
+
+        XCTAssertEqual(config.scheduledStorage.count, 1)
+    }
 }
