@@ -2,14 +2,18 @@ import Foundation
 import Vapor
 
 /// A `Service` to configure `Job`s
-public struct JobsConfig {
+public struct JobsConfiguration {
     
     /// Type storage
     internal var storage: [String: AnyJob]
     
+    /// Scheduled Job Storage
+    internal var scheduledStorage: [String: ScheduledJob]
+    
     /// Creates an empty `JobsConfig`
     public init() {
         storage = [:]
+        scheduledStorage = [:]
     }
     
     /// Adds a new `Job` to the queue configuration.
@@ -25,6 +29,19 @@ public struct JobsConfig {
         storage[key] = job
     }
     
+    /// Schedules a new job for execution at a later date.
+    /// Example: `config.schedule(job).daily().at(.startOfDay)`
+    /// - Parameter job: The `ScheduledJob` to be scheduled.
+    mutating public func schedule<J: ScheduledJob>(_ job: J) -> Scheduler {
+        let key = String(describing: J.self)
+        if let existing = scheduledStorage[key] {
+            print("WARNING: A scheduled job is already registered with key \(key): \(existing)")
+        }
+        
+        scheduledStorage[key] = job
+        
+        return Scheduler()
+    }
     
     /// Returns the `AnyJob` for the string it was registered under
     ///
