@@ -1,150 +1,21 @@
 # Jobs
-A library that allows for scheduling tasks to be executed at some point in the future. 
-
-# Goals
-The goal of this library is twofold: 
-
-1. Allow users to schedule tasks that will be executed at some point in the future.
-2. Transparently handle errors, success, and retries. 
-
-In addition, this library should be able to handle various persistence stores. It ships with Redis by default (the implementation can be found at https://github.com/vapor-community/jobs-redis-driver). Eventually, it would be fantastic to get this added to the core Vapor org. 
-
-# Installation
-To use the Redis implementation of this package, add this to your `Package.swift`:
-
-```swift
-.package(url: "https://github.com/vapor-community/jobs-redis-driver.git", from: "0.1.0")
-```
-
-You should not use this package alone unless you plan to reimplement the persistence layer. 
-
-# Usage
-There's a full example of this implementation at https://github.com/mcdappdev/jobs-example.
-
-Start by creating a job: 
-
-```swift
-struct EmailJob: Job {
-    let to: String
-    let from: String
-    let message: String
+<p align="center">
     
-    func dequeue(context: JobContext, worker: EventLoopGroup) -> EventLoopFuture<Void> {
-        print(to)
-        print(from)
-        print(message)
-        
-        return worker.future()
-    }
-    
-    func error(context: JobContext, error: Error, worker: EventLoopGroup) -> EventLoopFuture<Void> {
-        print(error)
-        return worker.future()
-    }
-}
-```
-
-Next, configure the `Jobs` package in your `configure.swift`:
-
-```swift
-import Jobs
-import JobsRedisDriver
-
-public func configure(_ config: inout Config, _ env: inout Environment, _ services: inout Services) throws {
-    /// Redis
-    //MARK: - Redis
-    try services.register(RedisProvider())
-    
-    let redisUrlString = "redis://localhost:6379"
-    guard let redisUrl = URL(string: redisUrlString) else { throw Abort(.internalServerError) }
-    let redisConfig = try RedisDatabase(config: RedisClientConfig(url: redisUrl))
-    
-    var databaseConfig = DatabasesConfig()
-    databaseConfig.add(database: redisConfig, as: .redis)
-    services.register(databaseConfig)
-    
-    services.register(JobsPersistenceLayer.self) { container -> JobsRedisDriver in
-        return JobsRedisDriver(database: redisConfig, eventLoop: container.next())
-    }
-    
-    try jobs(&services)
-}
-
-public func jobs(_ services: inout Services, persistenceLayer: JobsPersistenceLayer) throws {
-    let jobsProvider = JobsProvider(refreshInterval: .seconds(10))
-    try services.register(jobsProvider)
-    
-    //Register jobs
-    services.register { _ -> JobsConfig in
-        var jobsConfig = JobsConfig()
-        jobsConfig.add(EmailJob.self)
-        return jobsConfig
-    }
-    
-    services.register { _ -> CommandConfig in
-        var commandConfig = CommandConfig.default()
-        commandConfig.use(JobsCommand(), as: "jobs")
-        
-        return commandConfig
-    }
-}
-```
-
-To add some data to the queue, add a controller like this:
-
-```swift
-final class JobsController: RouteCollection {
-    let queue: QueueService
-    
-    init(queue: QueueService) {
-        self.queue = queue
-    }
-    
-    func boot(router: Router) throws {
-        router.get("/queue", use: addToQueue)
-    }
-    
-    func addToQueue(req: Request) throws -> Future<HTTPStatus> {
-        let job = EmailJob(to: "to@to.com", from: "from@from.com", message: "message")
-        return queue.dispatch(job: job, maxRetryCount: 10).transform(to: .ok)
-    }
-}
-```
-
-Finally, spin up a queue worker like this:
-
-`vapor build && vapor run jobs`
-
-## Adding a job to a specific queue:
-```swift
-extension QueueType {
-    static let emails = QueueType(name: "emails")
-}
-```
-
-```swift
-func addToQueue(req: Request) throws -> Future<HTTPStatus> {
-    let job = EmailJob(to: "to@to.com", from: "from@from.com", message: "message")
-    return queue.dispatch(job: job, maxRetryCount: 10, queue = .emails).transform(to: .ok)
-}
-```
-
-`vapor run jobs --queue emails`
-
-## Handling errors 
-There are no public-facing methods that are marked as throwing in this library. To return an error from the dequeue function, for example, do this:
-
-```swift
-func dequeue(context: JobContext, worker: EventLoopGroup) -> EventLoopFuture<Void> {   
-    return worker.future(error: Abort(.badRequest, reason: "My error here."))
-}
-```
-
-You can use the `error` method on `Job` to catch any errors thrown in the process and send an email, perform database cleanup, etc. 
-
-# To-Do
-
-- Full documentation in the Vapor docs style
-- Potentially ship with a Fluent integration as well
-- Look into what it would take to pull this into the main Vapor org
-- Tag versions
+<br>
+<br>
+    <a href="https://api.vapor.codes/routing/master/RoutingKit/index.html">
+        <img src="http://img.shields.io/badge/api-docs-2196f3.svg" alt="API Docs">
+    </a>
+    <a href="http://vapor.team">
+        <img src="https://img.shields.io/discord/431917998102675485.svg" alt="Team Chat">
+    </a>
+    <a href="LICENSE">
+        <img src="http://img.shields.io/badge/license-MIT-brightgreen.svg" alt="MIT License">
+    </a>
+    <a href="https://circleci.com/gh/vapor/routing-kit">
+        <img src="https://circleci.com/gh/vapor/routing-kit.svg?style=shield" alt="Continuous Integration">
+    </a>
+    <a href="https://swift.org">
+        <img src="http://img.shields.io/badge/swift-5.0-brightgreen.svg" alt="Swift 5.0">
+    </a>
+</p>
