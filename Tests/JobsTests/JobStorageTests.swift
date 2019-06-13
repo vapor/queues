@@ -10,7 +10,13 @@ import XCTest
 
 final class JobStorageTests: XCTestCase {
     func testStringRepresentationIsValidJSON() {
-        let jobStorage = JobStorage(key: "vapor", data: Data(), maxRetryCount: 1, id: "identifier", jobName: "jobs")
+        let jobStorage = JobStorage(key: "vapor",
+                                    data: Data(),
+                                    maxRetryCount: 1,
+                                    id: "identifier",
+                                    jobName: "jobs",
+                                    delayUntil: nil)
+        
         let stringRepresentation = jobStorage.stringValue()
         
         if let data = stringRepresentation?.data(using: String.Encoding.utf8), let jobStorageRestored = try? JSONDecoder().decode(JobStorage.self, from: data) {
@@ -19,6 +25,7 @@ final class JobStorageTests: XCTestCase {
             XCTAssertEqual(jobStorage.maxRetryCount, jobStorageRestored.maxRetryCount)
             XCTAssertEqual(jobStorage.id, jobStorageRestored.id)
             XCTAssertEqual(jobStorage.jobName, jobStorageRestored.jobName)
+            XCTAssertEqual(jobStorage.delayUntil, nil)
         } else {
             XCTFail("There was a problem restoring JobStorage")
         }
