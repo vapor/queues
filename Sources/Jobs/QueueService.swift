@@ -22,11 +22,12 @@ public struct QueueService {
     ///   - queue: The queue to run this job on
     ///   - delay: A date to execute the job after
     /// - Returns: A future `Void` value used to signify completion
-    public func dispatch<J: JobData>(jobData: J,
-                                     maxRetryCount: Int = 0,
-                                     queue: QueueName = .default,
-                                     delay: Date? = nil) throws -> EventLoopFuture<Void>
-    {
+    public func dispatch<J: JobData>(
+        jobData: J,
+        maxRetryCount: Int = 0,
+        queue: QueueName = .default,
+        delay: Date? = nil
+    ) throws -> EventLoopFuture<Void> {
         let data = try JSONEncoder().encode(jobData)
         let jobStorage = JobStorage(key: persistenceKey,
                                     data: data,

@@ -113,7 +113,12 @@ public final class JobsCommand: Command {
     ) throws {
         let queue = QueueName(name: queueName)
         let key = queue.makeKey(with: queueService.persistenceKey)
-        _ = eventLoop.scheduleRepeatedAsyncTask(initialDelay: .seconds(0), delay: queueService.refreshInterval) { task -> EventLoopFuture<Void> in
+        
+        // Schedule the repeating task
+        _ = eventLoop.scheduleRepeatedAsyncTask(
+            initialDelay: .seconds(0),
+            delay: queueService.refreshInterval
+        ) { task -> EventLoopFuture<Void> in
             //Check if shutting down
 
             if self.isShuttingDown {
@@ -124,6 +129,15 @@ public final class JobsCommand: Command {
             return self.queueService.persistenceLayer.get(key: key).flatMap { jobStorage in
                 //No job found, go to the next iteration
                 guard let jobStorage = jobStorage else { return eventLoop.makeSucceededFuture(()) }
+                
+                // If the job has a delay, we must check to make sure we can execute
+                if let delay = jobStorage.delay {
+                    guard delay >= Date() else {
+                        // The delay has not passed yet, requeue the job
+                        return self.queueService.persistenceLayer.requeue(key: key, jobStorage: jobStorage)
+                    }
+                }
+                
                 guard let job = self.config.make(for: jobStorage.jobName) else {
                     return eventLoop.makeFailedFuture(Abort(.internalServerError, reason: "Please register \(jobStorage.jobName)"))
                 }

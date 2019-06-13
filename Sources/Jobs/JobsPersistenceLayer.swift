@@ -36,4 +36,9 @@ public protocol JobsPersistenceLayer {
     /// - Parameter key: The base key
     /// - Returns: The processing key
     func processingKey(key: String) -> String
+    
+    /// Requeues a job due to a delay
+    /// - Parameter key: The key of the job
+    /// - Parameter jobStorage: The jobStorage holding the `Job` to be requeued
+    func requeue(key: String, jobStorage: JobStorage) -> EventLoopFuture<Void>
 }
