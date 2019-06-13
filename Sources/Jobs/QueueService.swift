@@ -26,7 +26,7 @@ public struct QueueService {
         jobData: J,
         maxRetryCount: Int = 0,
         queue: QueueName = .default,
-        delay: Date? = nil
+        delayUntil: Date? = nil
     ) throws -> EventLoopFuture<Void> {
         let data = try JSONEncoder().encode(jobData)
         let jobStorage = JobStorage(key: persistenceKey,
@@ -34,7 +34,7 @@ public struct QueueService {
                                     maxRetryCount: maxRetryCount,
                                     id: UUID().uuidString,
                                     jobName: J.jobName,
-                                    delay: delay)
+                                    delayUntil: delayUntil)
         
         return persistenceLayer.set(key: queue.makeKey(with: persistenceKey), jobStorage: jobStorage).map({})
     }

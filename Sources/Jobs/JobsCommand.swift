@@ -131,7 +131,7 @@ public final class JobsCommand: Command {
                 guard let jobStorage = jobStorage else { return eventLoop.makeSucceededFuture(()) }
                 
                 // If the job has a delay, we must check to make sure we can execute
-                if let delay = jobStorage.delay {
+                if let delay = jobStorage.delayUntil {
                     guard delay >= Date() else {
                         // The delay has not passed yet, requeue the job
                         return self.queueService.persistenceLayer.requeue(key: key, jobStorage: jobStorage)

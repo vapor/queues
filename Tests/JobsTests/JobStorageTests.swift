@@ -15,7 +15,7 @@ final class JobStorageTests: XCTestCase {
                                     maxRetryCount: 1,
                                     id: "identifier",
                                     jobName: "jobs",
-                                    delay: nil)
+                                    delayUntil: nil)
         
         let stringRepresentation = jobStorage.stringValue()
         
@@ -25,7 +25,7 @@ final class JobStorageTests: XCTestCase {
             XCTAssertEqual(jobStorage.maxRetryCount, jobStorageRestored.maxRetryCount)
             XCTAssertEqual(jobStorage.id, jobStorageRestored.id)
             XCTAssertEqual(jobStorage.jobName, jobStorageRestored.jobName)
-            XCTAssertEqual(jobStorage.delay, nil)
+            XCTAssertEqual(jobStorage.delayUntil, nil)
         } else {
             XCTFail("There was a problem restoring JobStorage")
         }
