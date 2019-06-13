@@ -304,13 +304,13 @@ public final class ScheduleBuilder {
     func resolveNextDateThatSatisifiesSchedule(date: Date) throws -> Date {
 
         var monthConstraint: MonthRecurrenceRuleConstraint? = nil
-        if let month = month {
-            monthConstraint = try MonthRecurrenceRuleConstraint.atMonth(month.rawValue)
+        if let monthValue = month?.rawValue {
+            monthConstraint = try MonthRecurrenceRuleConstraint.atMonth(monthValue)
         }
 
         var dayOfMonthConstraint: DayOfMonthRecurrenceRuleConstraint? = nil
-        if let dayVal = day {
-            switch dayVal {
+        if let dayValue = day {
+            switch dayValue {
             case .first:
                 dayOfMonthConstraint = try DayOfMonthRecurrenceRuleConstraint.atDayOfMonth(1)
             case .last:
