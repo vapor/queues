@@ -17,5 +17,5 @@ final class QueueNameTests: XCTestCase {
     
     static var allTests = [
         ("testKeyIsGeneratedCorrectly", testKeyIsGeneratedCorrectly),
-        ]
+    ]
 }

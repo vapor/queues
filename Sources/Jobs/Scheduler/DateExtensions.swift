@@ -309,24 +309,6 @@ extension Date {
         }
     }
 
-    /// A string describing the year
-    public func componentsToString() -> String {
-        var componentString = ""
-
-        componentString += "year: \(String(describing: self.year()))\n"
-        componentString += "quarter: \(String(describing: self.quarter()))\n"
-        componentString += "month: \(String(describing: self.month()))\n"
-        componentString += "weekOfYear: \(String(describing: self.weekOfYear()))\n"
-        componentString += "weekOfMonth: \(String(describing: self.weekOfMonth()))\n"
-        componentString += "dayOfMonth: \(String(describing: self.dayOfMonth()))\n"
-        componentString += "dayOfWeek: \(String(describing: self.dayOfWeek()))\n"
-        componentString += "hour: \(String(describing: self.hour()))\n"
-        componentString += "minute: \(String(describing: self.minute()))\n"
-        componentString += "second: \(String(describing: self.second()))\n"
-
-        return componentString
-    }
-
     /// Returns the amount of years from another date
     public func years(from date: Date) -> Int? {
         return Calendar.current.dateComponents([.year], from: date, to: self).year
@@ -460,6 +442,15 @@ extension Date {
         }
 
         return unitsToAdd
+    }
+
+    public func isLastDayOfMonth() -> Bool {
+        let tomorrow = self.dateByIncrementing(.dayOfMonth)
+        if tomorrow?.dayOfMonth() == 1 {
+            return true
+        }
+
+        return false
     }
 
     private func calendar(atTimeZone timeZone: TimeZone? = nil) -> Calendar {

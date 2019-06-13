@@ -157,7 +157,7 @@ struct CronParser {
     }
 
     private static func parseRangeField(field: String, timeUnit: RecurrenceRuleTimeUnit) throws -> SpecificRecurrenceRuleConstraint {
-        var intsInString = RegexHelper.allInts(inString: field, shouldIncludeSign: false)
+        let intsInString = RegexHelper.allInts(inString: field, shouldIncludeSign: false)
         if intsInString.count != 2 {
             throw CronParseError.invalidField
         }

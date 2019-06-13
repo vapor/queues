@@ -210,6 +210,24 @@ final class RecurrenceRuleTests: XCTestCase {
         XCTAssertThrowsError(try reccurrenceRule.resolveNextDateThatSatisfiesRule(date: date1))
     }
 
+    func testLastDayOfMonth() throws {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+
+        var reccurrenceRule = RecurrenceRule()
+        reccurrenceRule.setDayOfMonthConstraint(try .atLastDayOfMonth())
+        reccurrenceRule.setMinuteConstraint(try .atMinute(30))
+        reccurrenceRule.setSecondConstraint(try .atSecond(0))
+
+        // Fri, Jan 1, 2019 00:00:00
+        let date1 = dateFormatter.date(from: "2019-01-01T00:00:00")!
+
+        // Thu Jan 31, 2019 00:00:00
+        let date2 = dateFormatter.date(from: "2019-01-31T00:00:00")!
+
+        XCTAssertEqual(try reccurrenceRule.resolveNextDateThatSatisfiesRule(date: date1), date2)
+    }
+
     static var allTests = [
         ("testReccurrenceRuleEvaluationSimple", testReccurrenceRuleEvaluationSimple),
         ("testReccurrenceRuleEvaluationStepSimple", testReccurrenceRuleEvaluationStepSimple),
@@ -219,7 +237,8 @@ final class RecurrenceRuleTests: XCTestCase {
         ("testNextDateWhere", testNextDateWhere),
         ("testResolveNextDateThatSatisfiesRule", testResolveNextDateThatSatisfiesRule),
         ("testResolveNextDateThatSatisfiesRuleLeapYear", testResolveNextDateThatSatisfiesRuleLeapYear),
-        ("testResolveNextDateThatSatisfiesRuleImpossible", testResolveNextDateThatSatisfiesRuleLeapYear)
+        ("testResolveNextDateThatSatisfiesRuleImpossible", testResolveNextDateThatSatisfiesRuleLeapYear),
+        ("testLastDayOfMonth", testLastDayOfMonth)
     ]
 
 }

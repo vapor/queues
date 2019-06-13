@@ -135,12 +135,30 @@ public struct MonthRecurrenceRuleConstraint: SpecificRecurrenceRuleConstraint {
 public struct DayOfMonthRecurrenceRuleConstraint: SpecificRecurrenceRuleConstraint {
     static let timeUnit = RecurrenceRuleTimeUnit.dayOfMonth
     let _constraint: RecurrenceRuleConstraint
+    public let isLimitedToLastDayOfMonth: Bool
 
     internal init(constraint: RecurrenceRuleConstraint) throws {
         if constraint.timeUnit != DayOfMonthRecurrenceRuleConstraint.timeUnit {
             throw SpecificRecurrenceRuleConstraintError.incompatibleConstriantTimeUnit
         }
+        self.isLimitedToLastDayOfMonth = false
         _constraint = constraint
+    }
+
+    internal init(constraint: RecurrenceRuleConstraint, isLimitedToLastDayOfMonth: Bool = false) throws {
+        if constraint.timeUnit != DayOfMonthRecurrenceRuleConstraint.timeUnit {
+            throw SpecificRecurrenceRuleConstraintError.incompatibleConstriantTimeUnit
+        }
+        self.isLimitedToLastDayOfMonth = isLimitedToLastDayOfMonth
+        _constraint = constraint
+    }
+
+    public func evaluate(_ evaluationAmount: Int) -> EvaluationState {
+        return _constraint.evaluate(evaluationAmount)
+    }
+
+    public func nextValidValue(currentValue: Int) -> Int? {
+        return _constraint.nextValidValue(currentValue: currentValue)
     }
 
     /// The dayOfMonth the job will run pending all other constraints are met
@@ -173,6 +191,11 @@ public struct DayOfMonthRecurrenceRuleConstraint: SpecificRecurrenceRuleConstrai
     /// - Parameter dayOfMonthStep: the step value to be scheduled
     public static func dayOfMonthStep(_ stepValue: Int) throws -> DayOfMonthRecurrenceRuleConstraint {
         return try .init(constraint: RecurrenceRuleStepConstraint.init(timeUnit: timeUnit, stepConstraint: stepValue))
+    }
+
+    public static func atLastDayOfMonth() throws -> DayOfMonthRecurrenceRuleConstraint {
+        let isLimitedToLastDayOfMonth = true
+        return try .init(constraint: RecurrenceRuleSetConstraint.init(timeUnit: timeUnit, setConstraint: [28, 29, 30, 31]), isLimitedToLastDayOfMonth: isLimitedToLastDayOfMonth)
     }
 }
 

@@ -1,6 +1,7 @@
 import Foundation
 
 enum RecurrenceRuleError: Error {
+    case atLeastOneRecurrenceRuleConstraintRequiredToIntialize
     case lowerBoundGreaterThanUpperBound
     case noSetConstraintForRecurrenceRuleTimeUnit
     case couldNotResolveDateComponentValueFromRecurrenceRuleTimeUnit
@@ -56,7 +57,7 @@ public struct RecurrenceRule {
          hourConstraint: HourRecurrenceRuleConstraint? = nil,
          minuteConstraint: MinuteRecurrenceRuleConstraint? = nil,
          secondConstraint: SecondRecurrenceRuleConstraint? = nil,
-         timeZone: TimeZone = TimeZone.current) {
+         timeZone: TimeZone = TimeZone.current) throws {
         self.timeZone = timeZone
         self.yearConstraint = yearConstraint
         self.monthConstraint = monthConstraint
@@ -120,6 +121,7 @@ public struct RecurrenceRule {
         return try evaluate(date: date).isValid
     }
 
+    // Iterates through constraints to deterine if they are satisfied
     private func evaluate(date: Date) throws -> (isValid: Bool, ruleTimeUnitFailedOn: RecurrenceRuleTimeUnit?) {
         var ruleEvaluationState = EvaluationState.noComparisonAttempted
         var ruleTimeUnitFailedOn: RecurrenceRuleTimeUnit?
@@ -129,9 +131,9 @@ public struct RecurrenceRule {
                 throw RecurrenceRuleError.couldNotResolveDateComponentValueFromRecurrenceRuleTimeUnit
             }
 
-            if let constraint = resolveConstraint(ruleTimeUnit) {
-                // evaluate the constraint
-                let constraintEvalutionState = constraint.evaluate(dateComponentValue)
+            if let specificConstraint = resolveSpecificConstraint(ruleTimeUnit) {
+                // evaluate the constraints
+                let constraintEvalutionState = specificConstraint.evaluate(dateComponentValue)
 
                 if constraintEvalutionState != .noComparisonAttempted {
                     ruleEvaluationState = constraintEvalutionState
@@ -189,10 +191,10 @@ public struct RecurrenceRule {
 
         var dateToTest = date.dateByIncrementing(timeUnitOfLowestActiveConstraint)
 
-        var nextInstanceFound = false
+        var isNextInstanceFound = false
         var isSearchExhausted = false
         var numOfChecksMade = 0
-        while nextInstanceFound == false && isSearchExhausted == false {
+        while isNextInstanceFound == false && isSearchExhausted == false {
             guard let currentDateToTest = dateToTest else {
                 throw RecurrenceRuleError.coundNotResolveNextInstanceWithin1000Years
             }
@@ -212,11 +214,11 @@ public struct RecurrenceRule {
                 }
                 numOfChecksMade += 1
             } else {
-                nextInstanceFound = true
+                isNextInstanceFound = true
             }
         }
 
-        if nextInstanceFound {
+        if isNextInstanceFound {
             if let nextDate = dateToTest {
                 return nextDate
             } else {
@@ -278,7 +280,7 @@ public struct RecurrenceRule {
         var activeConstraintTimeUnitWithLowestCadenceLevel: RecurrenceRuleTimeUnit?
 
         for ruleTimeUnit in recurrenceRuleTimeUnits {
-            let constraint = resolveConstraint(ruleTimeUnit)
+            let constraint = resolveSpecificConstraint(ruleTimeUnit)
             if constraint != nil {
                 activeConstraintTimeUnitWithLowestCadenceLevel = ruleTimeUnit
             }
@@ -292,10 +294,11 @@ public struct RecurrenceRule {
             throw RecurrenceRuleError.couldNotResolveDateComponentValueFromRecurrenceRuleTimeUnit
         }
 
-        if let constraint = resolveConstraint(ruleTimeUnit) {
-            guard let nextValidValue = constraint.nextValidValue(currentValue: currentValue) else {
+        if let specificConstraint = resolveSpecificConstraint(ruleTimeUnit) {
+            guard let nextValidValue = specificConstraint.nextValidValue(currentValue: currentValue) else {
                 throw RecurrenceRuleError.couldNotResloveNextValueFromConstraint
             }
+
             return nextValidValue
         } else {
             throw RecurrenceRuleError.couldNotResloveNextValueFromConstraint
@@ -303,7 +306,8 @@ public struct RecurrenceRule {
 
     }
 
-    private func resolveConstraint(_ ruleTimeUnit: RecurrenceRuleTimeUnit) -> SpecificRecurrenceRuleConstraint? {
+    // get a specificConstraint by its RecurrenceRuleTimeUnit
+    private func resolveSpecificConstraint(_ ruleTimeUnit: RecurrenceRuleTimeUnit) -> SpecificRecurrenceRuleConstraint? {
         switch ruleTimeUnit {
         case .second:
             return self.secondConstraint
