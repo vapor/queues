@@ -299,6 +299,55 @@ public final class ScheduleBuilder {
     var dayOfWeek: DayOfWeek?
     var time: Time?
     var minute: Minute?
+
+    /// returns the next date that satisfied the created schedule
+    internal func resolveNextDateThatSatisifiesSchedule(date: Date) throws -> Date {
+
+        var monthConstraint: MonthRecurrenceRuleConstraint? = nil
+        if let monthValue = month?.rawValue {
+            monthConstraint = try MonthRecurrenceRuleConstraint.atMonth(monthValue)
+        }
+
+        var dayOfMonthConstraint: DayOfMonthRecurrenceRuleConstraint? = nil
+        if let dayValue = day {
+            switch dayValue {
+            case .first:
+                dayOfMonthConstraint = try DayOfMonthRecurrenceRuleConstraint.atDayOfMonth(1)
+            case .last:
+                dayOfMonthConstraint = try DayOfMonthRecurrenceRuleConstraint.atDaysOfMonth([28, 29, 30, 31])
+            case .exact(let exactValue):
+                dayOfMonthConstraint = try DayOfMonthRecurrenceRuleConstraint.atDayOfMonth(exactValue)
+            }
+        }
+
+        var dayOfWeekConstraint: DayOfWeekRecurrenceRuleConstraint? = nil
+        if let dayOfWeek = dayOfWeek {
+            dayOfWeekConstraint = try DayOfWeekRecurrenceRuleConstraint.atDayOfWeek(dayOfWeek.rawValue)
+        }
+
+        var hourConstraint: HourRecurrenceRuleConstraint? = nil
+        if let hourValue = time?.hour.number {
+            hourConstraint = try HourRecurrenceRuleConstraint.atHour(hourValue)
+        }
+
+        var minuteConstraint: MinuteRecurrenceRuleConstraint? = nil
+        if let timeMinuteValue = time?.minute.number {
+            minuteConstraint = try MinuteRecurrenceRuleConstraint.atMinute(timeMinuteValue)
+        }
+
+        if let minuteValue = minute?.number {
+            minuteConstraint = try MinuteRecurrenceRuleConstraint.atMinute(minuteValue)
+        }
+
+        let recurrenceRule = try RecurrenceRule.init(yearConstraint: nil,
+                                                     monthConstraint: monthConstraint,
+                                                     dayOfMonthConstraint: dayOfMonthConstraint,
+                                                     dayOfWeekConstraint: dayOfWeekConstraint,
+                                                     hourConstraint: hourConstraint,
+                                                     minuteConstraint: minuteConstraint)
+
+        return try recurrenceRule.resolveNextDateThatSatisfiesRule(date: date)
+    }
     
     init() { }
     
