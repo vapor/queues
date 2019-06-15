@@ -5,19 +5,19 @@ enum RecurrenceRuleConstraintError: Error {
     case constraintAmountGreaterThanUpperBound
 }
 
-public enum EvaluationState {
+internal enum EvaluationState {
     case noComparisonAttempted
     case failed
     case passing
 }
 
-public enum RecurrenceRuleConstraintType {
+internal enum RecurrenceRuleConstraintType {
     case set
     case range
     case step
 }
 
-public protocol RecurrenceRuleConstraintEvaluateable {
+internal protocol RecurrenceRuleConstraintEvaluateable {
     var lowestPossibleValue: Int? { get }
     var highestPossibleValue: Int? { get }
 
@@ -25,16 +25,19 @@ public protocol RecurrenceRuleConstraintEvaluateable {
     func nextValidValue(currentValue: Int) -> Int?
 }
 
-
-public protocol RecurrenceRuleConstraint: RecurrenceRuleConstraintEvaluateable {
+internal protocol RecurrenceRuleConstraint: RecurrenceRuleConstraintEvaluateable {
     var timeUnit: RecurrenceRule.TimeUnit { get }
     var type: RecurrenceRuleConstraintType { get }
     var validLowerBound: Int? { get }
     var validUpperBound: Int? { get }
+
+    static func validate(value: Int, validLowerBound: Int?, validUpperBound: Int?) throws
 }
 
-struct ConstraintValueValidator {
-    func validate(value: Int, validLowerBound: Int?, validUpperBound: Int?) throws {
+/// default implementation
+extension RecurrenceRuleConstraint {
+    /// validates a constraint value is within the constraint bounds
+    static func validate(value: Int, validLowerBound: Int?, validUpperBound: Int?) throws {
         if let lowerBound = validLowerBound {
             if value < lowerBound {
                 throw RecurrenceRuleConstraintError.constraintAmountLessThanLowerBound
@@ -49,7 +52,10 @@ struct ConstraintValueValidator {
     }
 }
 
-struct RecurrenceRuleSetConstraint: RecurrenceRuleConstraint, Equatable {
+/// A `RecurrenceRuleConstraint` that limits valid values to a given set
+/// Equivalent in cron to a single value or list (i.e 14 or 8,3,6,21)
+internal struct RecurrenceRuleSetConstraint: RecurrenceRuleConstraint, Equatable {
+    
     let timeUnit: RecurrenceRule.TimeUnit
     let type = RecurrenceRuleConstraintType.set
     let validLowerBound: Int?
@@ -69,9 +75,8 @@ struct RecurrenceRuleSetConstraint: RecurrenceRuleConstraint, Equatable {
         self.validLowerBound = Calendar.gregorianLowerBound(for: timeUnit)
         self.validUpperBound = Calendar.gregorianUpperBound(for: timeUnit)
 
-        let validator = ConstraintValueValidator()
         for amount in setConstraint {
-            try validator.validate(value: amount, validLowerBound: validLowerBound, validUpperBound: validUpperBound)
+            try Self.validate(value: amount, validLowerBound: validLowerBound, validUpperBound: validUpperBound)
         }
         self.setConstraint = setConstraint
     }
@@ -80,7 +85,7 @@ struct RecurrenceRuleSetConstraint: RecurrenceRuleConstraint, Equatable {
     ///
     /// - Parameter evaluationAmount: The amount to test
     /// - Returns: passing, failed, or noComparisonAttempted
-    public func evaluate(_ evaluationAmount: Int) -> EvaluationState {
+    internal func evaluate(_ evaluationAmount: Int) -> EvaluationState {
         if setConstraint.contains(evaluationAmount) {
             return EvaluationState.passing
         } else {
@@ -92,7 +97,7 @@ struct RecurrenceRuleSetConstraint: RecurrenceRuleConstraint, Equatable {
     ///
     /// - Parameter currentValue: The current value the date component
     /// - Returns: The next value that satisfies the constraint
-    public func nextValidValue(currentValue: Int) -> Int? {
+    internal func nextValidValue(currentValue: Int) -> Int? {
         var lowestValueGreaterThanCurrentValue: Int?
 
         for value in setConstraint {
@@ -115,7 +120,9 @@ struct RecurrenceRuleSetConstraint: RecurrenceRuleConstraint, Equatable {
     }
 }
 
-struct RecurrenceRuleRangeConstraint: RecurrenceRuleConstraint, Equatable {
+/// A `RecurrenceRuleConstraint` that limits valid values to a given range
+/// Equivalent in cron to a range of values (i.e 12-6)
+internal struct RecurrenceRuleRangeConstraint: RecurrenceRuleConstraint, Equatable {
     let timeUnit: RecurrenceRule.TimeUnit
     let type = RecurrenceRuleConstraintType.range
     let validLowerBound: Int?
@@ -135,9 +142,8 @@ struct RecurrenceRuleRangeConstraint: RecurrenceRuleConstraint, Equatable {
         self.validLowerBound = Calendar.gregorianLowerBound(for: timeUnit)
         self.validUpperBound = Calendar.gregorianUpperBound(for: timeUnit)
 
-        let validator = ConstraintValueValidator()
-        try validator.validate(value: rangeConstraint.lowerBound, validLowerBound: validLowerBound, validUpperBound: validUpperBound)
-        try validator.validate(value: rangeConstraint.upperBound, validLowerBound: validLowerBound, validUpperBound: validUpperBound)
+        try Self.validate(value: rangeConstraint.lowerBound, validLowerBound: validLowerBound, validUpperBound: validUpperBound)
+        try Self.validate(value: rangeConstraint.upperBound, validLowerBound: validLowerBound, validUpperBound: validUpperBound)
         self.rangeConstraint = rangeConstraint
     }
 
@@ -145,7 +151,7 @@ struct RecurrenceRuleRangeConstraint: RecurrenceRuleConstraint, Equatable {
     ///
     /// - Parameter evaluationAmount: The amount to test
     /// - Returns: passing, failed, or noComparisonAttempted
-    public func evaluate(_ evaluationAmount: Int) -> EvaluationState {
+    internal func evaluate(_ evaluationAmount: Int) -> EvaluationState {
         if rangeConstraint.contains(evaluationAmount) {
             return .passing
         } else {
@@ -157,7 +163,7 @@ struct RecurrenceRuleRangeConstraint: RecurrenceRuleConstraint, Equatable {
     ///
     /// - Parameter currentValue: The current value the date component
     /// - Returns: The next value that satisfies the constraint
-    public func nextValidValue(currentValue: Int) -> Int? {
+    internal func nextValidValue(currentValue: Int) -> Int? {
         var lowestValueGreaterThanCurrentValue: Int?
 
         if (currentValue + 1) <= rangeConstraint.upperBound {
@@ -178,7 +184,9 @@ struct RecurrenceRuleRangeConstraint: RecurrenceRuleConstraint, Equatable {
     }
 }
 
-struct RecurrenceRuleStepConstraint: RecurrenceRuleConstraint, Equatable {
+/// A `RecurrenceRuleConstraint` that limits valid values to a given set
+/// Equivalent in cron to a step value  (i.e */2)
+internal struct RecurrenceRuleStepConstraint: RecurrenceRuleConstraint, Equatable {
     let timeUnit: RecurrenceRule.TimeUnit
     let type = RecurrenceRuleConstraintType.step
     let validLowerBound: Int?
@@ -217,7 +225,7 @@ struct RecurrenceRuleStepConstraint: RecurrenceRuleConstraint, Equatable {
     ///
     /// - Parameter evaluationAmount: The amount to test
     /// - Returns: passing, failed, or noComparisonAttempted
-    public func evaluate(_ evaluationAmount: Int) -> EvaluationState {
+    internal func evaluate(_ evaluationAmount: Int) -> EvaluationState {
         // pass if evaluationAmount is divisiable of stepConstriant
         if evaluationAmount % stepConstraint == 0 {
             return EvaluationState.passing
@@ -230,7 +238,7 @@ struct RecurrenceRuleStepConstraint: RecurrenceRuleConstraint, Equatable {
     ///
     /// - Parameter currentValue: The current value the date component
     /// - Returns: The next value that satisfies the constraint
-    public func nextValidValue(currentValue: Int) -> Int? {
+    internal func nextValidValue(currentValue: Int) -> Int? {
         var lowestValueGreaterThanCurrentValue: Int?
 
         // step
@@ -271,11 +279,7 @@ struct RecurrenceRuleStepConstraint: RecurrenceRuleConstraint, Equatable {
             }
         }
 
-        if lowestValueGreaterThanCurrentValue != nil {
-            return lowestValueGreaterThanCurrentValue
-        } else {
-            return lowestPossibleValue
-        }
+        return lowestValueGreaterThanCurrentValue ?? lowestPossibleValue
     }
 
 }

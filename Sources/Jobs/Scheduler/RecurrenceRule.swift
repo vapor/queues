@@ -19,8 +19,8 @@ enum RecurrenceRuleError: Error {
 /// - warning: RecurrenceRule only supports the Gregorian calendar (i.e. Calendar.identifier.gregorian or Calendar.identifier.iso8601)
 ///
 /// - Note: RecurrenceRule uses the local TimeZone as default
-public struct RecurrenceRule {
-    public enum TimeUnit: CaseIterable {
+internal struct RecurrenceRule {
+    internal enum TimeUnit: CaseIterable {
         case second
         case minute
         case hour
@@ -75,55 +75,42 @@ public struct RecurrenceRule {
         self.secondConstraint = secondConstraint
     }
 
-    public mutating func setYearConstraint(_ yearConstraint: YearRecurrenceRuleConstraint) {
+    internal mutating func setYearConstraint(_ yearConstraint: YearRecurrenceRuleConstraint) {
         self.yearConstraint = yearConstraint
     }
 
-    public mutating func setQuarterConstraint(_ quarterConstraint: QuarterRecurrenceRuleConstraint) {
+    internal mutating func setQuarterConstraint(_ quarterConstraint: QuarterRecurrenceRuleConstraint) {
         self.quarterConstraint = quarterConstraint
     }
 
-    public mutating func setMonthConstraint(_ monthConstraint: MonthRecurrenceRuleConstraint) {
+    internal mutating func setMonthConstraint(_ monthConstraint: MonthRecurrenceRuleConstraint) {
         self.monthConstraint = monthConstraint
     }
 
-    public mutating func setDayOfMonthConstraint(_ dayOfMonthConstraint: DayOfMonthRecurrenceRuleConstraint) {
+    internal mutating func setDayOfMonthConstraint(_ dayOfMonthConstraint: DayOfMonthRecurrenceRuleConstraint) {
         self.dayOfMonthConstraint = dayOfMonthConstraint
     }
 
-    public mutating func setDayOfWeekConstraint(_ dayOfWeekConstraint: DayOfWeekRecurrenceRuleConstraint) {
+    internal mutating func setDayOfWeekConstraint(_ dayOfWeekConstraint: DayOfWeekRecurrenceRuleConstraint) {
         self.dayOfWeekConstraint = dayOfWeekConstraint
     }
 
-    public mutating func setHourConstraint(_ hourConstraint: HourRecurrenceRuleConstraint) {
+    internal mutating func setHourConstraint(_ hourConstraint: HourRecurrenceRuleConstraint) {
         self.hourConstraint = hourConstraint
     }
 
-    public mutating func setMinuteConstraint(_ minuteConstraint: MinuteRecurrenceRuleConstraint) {
+    internal mutating func setMinuteConstraint(_ minuteConstraint: MinuteRecurrenceRuleConstraint) {
         self.minuteConstraint = minuteConstraint
     }
 
-    public mutating func setSecondConstraint(_ secondConstraint: SecondRecurrenceRuleConstraint) {
+    internal mutating func setSecondConstraint(_ secondConstraint: SecondRecurrenceRuleConstraint) {
         self.secondConstraint = secondConstraint
     }
 
     ///  Sets the timeZone used by rule constraintss
     ///
     /// - Parameter timeZone: The TimeZone constraints reference against
-    public mutating func usingTimeZone(_ timeZone: TimeZone) {
+    internal mutating func usingTimeZone(_ timeZone: TimeZone) {
         self.timeZone = timeZone
-    }
-}
-
-// RecurrenceRule Evaluation
-extension RecurrenceRule {
-    /// Finds the next date from the starting date that satisfies the rule
-    ///
-    /// - Warning: The search is exhausted after the year 3000
-    ///
-    /// - Parameter date: The starting date
-    /// - Returns: The next date that satisfies the rule
-    public func resolveNextDateThatSatisfiesRule(date: Date) throws -> Date {
-        fatalError("Not Implemented: resolveNextDateThatSatisfiesRule")
     }
 }

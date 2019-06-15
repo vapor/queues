@@ -1,6 +1,6 @@
 import Foundation
 
-extension Calendar {
+internal extension Calendar {
     enum CalendarExtensionError: Error {
         case counldNotFindLowerBoundForRecurrenceRuleTimeUnit
         case counldNotFindUpperBoundForRecurrenceRuleTimeUnit
@@ -12,7 +12,7 @@ extension Calendar {
     ///   - ruleTimeUnit: The TimeUnit to check value against
     ///   - value: the value to check
     /// - Returns:  true if value is valid, false if value is invalid
-    public func validate(ruleTimeUnit: RecurrenceRule.TimeUnit, value: Int) throws -> Bool {
+    func validate(ruleTimeUnit: RecurrenceRule.TimeUnit, value: Int) throws -> Bool {
         if let validLowerBound = try self.lowerBound(for: ruleTimeUnit) {
             if value < validLowerBound {
                 return false
@@ -33,7 +33,7 @@ extension Calendar {
     /// - Parameter ruleTimeUnit: The RecurrenceRule.TimeUnit to reference
     /// - Returns: The range (validUpperBound - validLowerBound)
     /// - Throws: will throw if no lowerBound or upperBound is available for a given RecurrenceRule.TimeUnit
-    public func rangeOfValidBounds(_ ruleTimeUnit: RecurrenceRule.TimeUnit) throws -> Int? {
+    func rangeOfValidBounds(_ ruleTimeUnit: RecurrenceRule.TimeUnit) throws -> Int? {
         guard let validLowerBound = try lowerBound(for: ruleTimeUnit) else {
             return nil
         }
@@ -42,14 +42,14 @@ extension Calendar {
             return nil
         }
 
-        return (validUpperBound - validLowerBound)
+        return validUpperBound - validLowerBound
     }
 
     ///  Resolves The lower bound (inclusive) of a given RecurrenceRule.TimeUnit
     ///
     /// - Parameter ruleTimeUnit: The referenced RecurrenceRule.TimeUnit
     /// - Returns: The lower bound(inclusive)
-    public func lowerBound(for ruleTimeUnit: RecurrenceRule.TimeUnit) throws -> Int? {
+    func lowerBound(for ruleTimeUnit: RecurrenceRule.TimeUnit) throws -> Int? {
         switch self.identifier {
         case .gregorian, .iso8601:
             return Calendar.gregorianLowerBound(for: ruleTimeUnit)
@@ -62,7 +62,7 @@ extension Calendar {
     ///
     /// - Parameter ruleTimeUnit: The referenced RecurrenceRule.TimeUnit
     /// - Returns: The upper bound(inclusive)
-    public func upperBound(for ruleTimeUnit: RecurrenceRule.TimeUnit) throws -> Int? {
+    func upperBound(for ruleTimeUnit: RecurrenceRule.TimeUnit) throws -> Int? {
         switch self.identifier {
         case .gregorian, .iso8601:
             return Calendar.gregorianUpperBound(for: ruleTimeUnit)
@@ -114,4 +114,3 @@ extension Calendar {
     }
 
 }
-
