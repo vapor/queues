@@ -51,6 +51,11 @@ public final class JobsCommand: Command {
         signal(SIGINT, SIG_IGN)
         intSignalSource.resume()
 
+        // allow for this command to be stopped programmatically 
+        self.application.running = .init(stop: {
+            self.shutdown()
+        })
+
         try self.start(queue: queue).wait()
     }
 

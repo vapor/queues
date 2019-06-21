@@ -30,8 +30,4 @@ final class JobStorageTests: XCTestCase {
             XCTFail("There was a problem restoring JobStorage")
         }
     }
-    
-    static var allTests = [
-        ("testStringRepresentationIsValidJSON", testStringRepresentationIsValidJSON),
-        ]
 }
