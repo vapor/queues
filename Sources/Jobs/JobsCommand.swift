@@ -23,7 +23,7 @@ public final class JobsCommand: Command {
     public let jobContext: JobContext
     
     /// The registered `JobsConfiguration`
-    public let config: JobsConfiguration
+    public let configuration: JobsConfiguration
     
     private var isShuttingDown: Bool {
         get {
@@ -48,13 +48,13 @@ public final class JobsCommand: Command {
     /// - Parameters:
     ///   - queueService: The registered `QueueService`
     ///   - jobContext: The registered `JobContext` object
-    ///   - config: The registered `JobsConfiguration` object
-    public init(queueService: QueueService, jobContext: JobContext, config: JobsConfiguration) {
+    ///   - configuration: The registered `JobsConfiguration` object
+    public init(queueService: QueueService, jobContext: JobContext, configuration: JobsConfiguration) {
         _lock = NSLock()
         
         self.queueService = queueService
         self.jobContext = jobContext
-        self.config = config
+        self.configuration = configuration
     }
     
     /// See `Command`.`run(using:)`
@@ -138,7 +138,7 @@ public final class JobsCommand: Command {
                     }
                 }
                 
-                guard let job = self.config.make(for: jobStorage.jobName) else {
+                guard let job = self.configuration.make(for: jobStorage.jobName) else {
                     return eventLoop.makeFailedFuture(Abort(.internalServerError, reason: "Please register \(jobStorage.jobName)"))
                 }
 
