@@ -4,7 +4,6 @@ import Vapor
 
 /// A task that can be queued for future execution.
 public protocol Job: AnyJob {
-    
     /// The data associated with a job
     associatedtype Data: JobData
     
@@ -27,7 +26,6 @@ public protocol Job: AnyJob {
 }
 
 public extension Job {
-    
     /// The jobName of the Job
     static var jobName: String {
         return Data.jobName
@@ -56,4 +54,42 @@ public extension Job {
             return context.eventLoop.makeFailedFuture(error)
         }
     }
+}
+
+/// A type-erased version of `Job`
+public protocol AnyJob {
+    /// The name of the `Job`
+    static var jobName: String { get }
+
+    /// Dequeues the `Job`
+    ///
+    /// - Parameters:
+    ///   - context: The context for the job
+    ///   - storage: The `JobStorage` metadata object
+    /// - Returns: A future void, signifying completion
+    func anyDequeue(_ context: JobContext, _ storage: JobStorage) -> EventLoopFuture<Void>
+
+    /// Handles errors thrown from `anyDequeue`
+    ///
+    /// - Parameters:
+    ///   - context: The context for the job
+    ///   - error: The error thrown
+    ///   - storage: The JobStorage
+    /// - Returns: A future void, signifying completion
+    func error(_ context: JobContext, _ error: Error, _ storage: JobStorage) -> EventLoopFuture<Void>
+}
+
+// MARK: Scheduled
+
+/// Describes a job that can be scheduled and repeated
+public protocol ScheduledJob {
+
+    /// The method called when the job is run
+    /// - Parameter context: A `JobContext` that can be used
+    func run(context: JobContext) -> EventLoopFuture<Void>
+}
+
+struct AnyScheduledJob {
+    let job: ScheduledJob
+    let scheduler: ScheduleBuilder
 }

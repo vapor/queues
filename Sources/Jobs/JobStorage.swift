@@ -2,7 +2,6 @@ import Foundation
 
 /// Holds information about the Job that is to be encoded to the persistence store.
 public struct JobStorage: Codable {
-    
     /// The persistence key for the backing store.
     var key: String
     
