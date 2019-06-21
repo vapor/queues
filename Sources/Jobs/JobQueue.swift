@@ -42,26 +42,31 @@ public struct JobQueue {
     /// Dispatches a job to the queue for future execution
     ///
     /// - Parameters:
-    ///   - data: The `JobData` to dispatch to the queue
+    ///   - jobData: The `JobData` to dispatch to the queue
     ///   - maxRetryCount: The number of retries to attempt upon error before calling `Job`.`error()`
     ///   - queue: The queue to run this job on
     ///   - delay: A date to execute the job after
     /// - Returns: A future `Void` value used to signify completion
-    public func dispatch<Data>(
-        _ data: Data,
+    public func dispatch<JobData>(
+        _ jobData: JobData,
         maxRetryCount: Int = 0,
         queue: Name = .default,
         delayUntil: Date? = nil
-    ) throws -> EventLoopFuture<Void>
-        where Data: JobData
+    ) -> EventLoopFuture<Void>
+        where JobData: Jobs.JobData
     {
-        let data = try JSONEncoder().encode(data)
+        let data: Data
+        do {
+            data = try JSONEncoder().encode(jobData)
+        } catch {
+            return self.driver.eventLoop.makeFailedFuture(error)
+        }
         let jobStorage = JobStorage(
             key: self.configuration.persistenceKey,
             data: data,
             maxRetryCount: maxRetryCount,
             id: UUID().uuidString,
-            jobName: Data.jobName,
+            jobName: JobData.jobName,
             delayUntil: delayUntil
         )
         return self.driver.set(
