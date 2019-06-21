@@ -1,9 +1,9 @@
 import Foundation
 import Vapor
+import NIO
 
 /// A `Service` to configure `Job`s
 public struct JobsConfiguration {
-    
     /// Type storage
     internal var storage: [String: AnyJob]
     
@@ -12,25 +12,32 @@ public struct JobsConfiguration {
     
     /// A Logger object
     internal let logger: Logger
+
+    public var refreshInterval: TimeAmount
+
+    public var persistenceKey: String
     
     /// Creates an empty `JobsConfig`
     public init() {
-        storage = [:]
-        scheduledStorage = []
-        logger = Logger(label: "vapor.codes.jobs")
+        self.storage = [:]
+        self.scheduledStorage = []
+        self.logger = Logger(label: "vapor.codes.jobs")
+        self.refreshInterval = .seconds(1)
+        self.persistenceKey = "vapor_jobs"
     }
     
     /// Adds a new `Job` to the queue configuration.
     /// This must be called on all `Job` objects before they can be run in a queue.
     ///
     /// - Parameter job: The `Job` to add.
-    mutating public func add<J: Job>(_ job: J) {
+    mutating public func add<J>(_ job: J)
+        where J: Job
+    {
         let key = String(describing: J.Data.self)
         if let existing = storage[key] {
-            logger.warning("WARNING: A job is already registered with key \(key): \(existing)")
+            self.logger.warning("A job is already registered with key \(key): \(existing)")
         }
-        
-        storage[key] = job
+        self.storage[key] = job
     }
     
     
@@ -43,11 +50,12 @@ public struct JobsConfiguration {
     ///     .at(.noon)
     ///
     /// - Parameter job: The `ScheduledJob` to be scheduled.
-    mutating public func schedule<J: ScheduledJob>(_ job: J) -> ScheduleBuilder {
+    mutating public func schedule<J>(_ job: J) -> ScheduleBuilder
+        where J: ScheduledJob
+    {
         let scheduler = ScheduleBuilder()
         let storage = AnyScheduledJob(job: job, scheduler: scheduler)
-        scheduledStorage.append(storage)
-        
+        self.scheduledStorage.append(storage)
         return scheduler
     }
     
