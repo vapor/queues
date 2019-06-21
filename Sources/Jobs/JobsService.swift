@@ -1,35 +1,9 @@
 import Foundation
-import Vapor
-import NIO
 
 /// A `Service` used to dispatch `Jobs`
-public struct JobQueue {
-    /// A specific queue that jobs are run on.
-    public struct Name {
-        /// The default queue that jobs are run on
-        public static let `default` = Name(string: "default")
-
-        /// The name of the queue
-        public let string: String
-
-        /// Creates a new `QueueType`
-        ///
-        /// - Parameter name: The name of the `QueueType`
-        public init(string: String) {
-            self.string = string
-        }
-
-        /// Makes the name of the queue
-        ///
-        /// - Parameter persistanceKey: The base persistence key
-        /// - Returns: A string of the queue's fully qualified name
-        public func makeKey(with persistanceKey: String) -> String {
-            return persistanceKey + "[\(self.string)]"
-        }
-    }
-
-    let configuration: JobsConfiguration
-    let driver: JobsDriver
+public struct JobsService {
+    internal let configuration: JobsConfiguration
+    internal let driver: JobsDriver
 
     internal init(
         configuration: JobsConfiguration,
@@ -38,7 +12,7 @@ public struct JobQueue {
         self.configuration = configuration
         self.driver = driver
     }
-    
+
     /// Dispatches a job to the queue for future execution
     ///
     /// - Parameters:
@@ -50,7 +24,7 @@ public struct JobQueue {
     public func dispatch<JobData>(
         _ jobData: JobData,
         maxRetryCount: Int = 0,
-        queue: Name = .default,
+        queue: JobsQueue = .default,
         delayUntil: Date? = nil
     ) -> EventLoopFuture<Void>
         where JobData: Jobs.JobData

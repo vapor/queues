@@ -9,8 +9,8 @@ public struct JobsProvider: Provider {
 
     /// See `Provider`.`register(_ services:)`
     public func register(_ s: inout Services) {
-        s.register(JobQueue.self) { c in
-            return try JobQueue(configuration: c.make(), driver: c.make())
+        s.register(JobsService.self) { c in
+            return try JobsService(configuration: c.make(), driver: c.make())
         }
 
         s.register(JobsConfiguration.self) { container in

@@ -26,8 +26,8 @@ public final class JobsCommand: Command {
 
     public func run(using context: CommandContext<JobsCommand>) throws {
         context.console.info("Starting Jobs worker")
-        let queue: JobQueue.Name = context.option(\.queue)
-            .flatMap { .init(string: $0) } ?? .default
+        let queue: JobsQueue = context.option(\.queue)
+            .flatMap { .init(name: $0) } ?? .default
 
         let signalQueue = DispatchQueue(label: "vapor.jobs.command.SignalHandlingQueue")
         
@@ -56,10 +56,10 @@ public final class JobsCommand: Command {
             self.shutdown()
         })
 
-        try self.start(queue: queue).wait()
+        try self.start(on: queue).wait()
     }
 
-    private func start(queue: JobQueue.Name) throws -> EventLoopFuture<Void> {
+    private func start(on queue: JobsQueue) throws -> EventLoopFuture<Void> {
         var workers: [(JobsWorker, Container)] = []
         for eventLoop in self.application.eventLoopGroup.makeIterator() {
             let container = try self.application.makeContainer(on: eventLoop).wait()

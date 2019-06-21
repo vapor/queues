@@ -33,7 +33,7 @@ final class JobsWorker {
         self.isShuttingDown = false
     }
 
-    func start(on queue: JobQueue.Name) {
+    func start(on queue: JobsQueue) {
         // Schedule the repeating task
         self.repeatedTask = eventLoop.scheduleRepeatedAsyncTask(
             initialDelay: .seconds(0),
@@ -54,7 +54,7 @@ final class JobsWorker {
         self.isShuttingDown = true
     }
 
-    private func run(on queue: JobQueue.Name) -> EventLoopFuture<Void> {
+    private func run(on queue: JobsQueue) -> EventLoopFuture<Void> {
         let key = queue.makeKey(with: self.configuration.persistenceKey)
         self.logger.debug("Jobs worker running \(key)")
         return self.driver.get(key: key).flatMap { jobStorage in

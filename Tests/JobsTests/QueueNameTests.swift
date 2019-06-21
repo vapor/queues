@@ -10,7 +10,7 @@ import XCTest
 
 final class QueueNameTests: XCTestCase {
     func testKeyIsGeneratedCorrectly() {
-        let key = JobQueue.Name(string: "vapor").makeKey(with: "jobs")
+        let key = JobsQueue(name: "vapor").makeKey(with: "jobs")
         XCTAssertEqual(key, "jobs[vapor]")
     }
 }
