@@ -119,7 +119,7 @@ public class JobsCommand: Command {
                 console.info("Dequeing Job job_id=[\(jobStorage.id)]", newLine: true)
                 
                 let jobRunPromise = eventLoop.newPromise(Void.self)
-                self.firstJobToSucceed(job: job,x
+                self.firstJobToSucceed(job: job,
                                        jobContext: jobContext,
                                        jobStorage: jobStorage,
                                        tries: jobStorage.maxRetryCount,
