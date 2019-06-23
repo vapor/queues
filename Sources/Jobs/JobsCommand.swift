@@ -119,9 +119,12 @@ public class JobsCommand: Command {
                 console.info("Dequeing Job job_id=[\(jobStorage.id)]", newLine: true)
                 
                 let jobRunPromise = eventLoop.newPromise(Void.self)
-                
-                let futureJob = job.anyDequeue(jobContext, jobStorage)
-                self.firstFutureToSucceed(future: futureJob, tries: jobStorage.maxRetryCount, on: eventLoop).catchFlatMap { error in
+                self.firstJobToSucceed(job: job,x
+                                       jobContext: jobContext,
+                                       jobStorage: jobStorage,
+                                       tries: jobStorage.maxRetryCount,
+                                       on: eventLoop)
+                .catchFlatMap { error in
                     console.error("Error: \(error) job_id=[\(jobStorage.id)]", newLine: true)
                     return job.error(jobContext, error, jobStorage)
                 }.always {
@@ -133,21 +136,21 @@ public class JobsCommand: Command {
         }
     }
     
-    /// Returns the first time a given future succeeds and is under the `tries`
-    ///
-    /// - Parameters:
-    ///   - future: The future to run recursively
-    ///   - tries: The number of tries to execute this future before returning a failure
-    ///   - worker: An `EventLoopGroup` that can be used to generate future values
-    /// - Returns: The completed future, with or without an error
-    private func firstFutureToSucceed<T>(future: Future<T>, tries: Int, on worker: EventLoopGroup) -> Future<T> {
-        return future.map { complete in
+    private func firstJobToSucceed(job: AnyJob,
+                                   jobContext: JobContext,
+                                   jobStorage: JobStorage,
+                                   tries: Int,
+                                   on worker: EventLoopGroup) -> Future<Void>
+    {
+        
+        let futureJob = job.anyDequeue(jobContext, jobStorage)
+        return futureJob.map { complete in
             return complete
         }.catchFlatMap { error in
             if tries == 0 {
                 return worker.future(error: error)
             } else {
-                return self.firstFutureToSucceed(future: future, tries: tries - 1, on: worker)
+                return self.firstJobToSucceed(job: job, jobContext: jobContext, jobStorage: jobStorage, tries: tries - 1, on: worker)
             }
         }
     }
