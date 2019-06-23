@@ -79,11 +79,12 @@ final class JobsWorker {
 
             self.logger.info("Dequeing Job job_id=[\(jobStorage.id)]")
             let jobRunPromise = self.eventLoop.makePromise(of: Void.self)
-            let futureJob = job.anyDequeue(self.context, jobStorage)
-            self.firstFutureToSucceed(
-                future: futureJob,
-                tries: jobStorage.maxRetryCount
-            ).flatMapError { error in
+            self.firstJobToSucceed(
+                job: job,
+                jobContext: self.context,
+                jobStorage: jobStorage,
+                tries: jobStorage.maxRetryCount)
+            .flatMapError { error in
                 self.logger.error("Error: \(error) job_id=[\(jobStorage.id)]")
                 return job.error(self.context, error, jobStorage)
             }.whenComplete { _ in
@@ -95,14 +96,20 @@ final class JobsWorker {
         }
     }
 
-    private func firstFutureToSucceed<T>(future: EventLoopFuture<T>, tries: Int) -> EventLoopFuture<T> {
-        return future.map { complete in
+    private func firstJobToSucceed(job: AnyJob,
+                                   jobContext: JobContext,
+                                   jobStorage: JobStorage,
+                                   tries: Int) -> EventLoopFuture<Void>
+    {
+        
+        let futureJob = job.anyDequeue(jobContext, jobStorage)
+        return futureJob.map { complete in
             return complete
         }.flatMapError { error in
             if tries == 0 {
                 return self.eventLoop.makeFailedFuture(error)
             } else {
-                return self.firstFutureToSucceed(future: future, tries: tries - 1)
+                return self.firstJobToSucceed(job: job, jobContext: jobContext, jobStorage: jobStorage, tries: tries - 1)
             }
         }
     }
