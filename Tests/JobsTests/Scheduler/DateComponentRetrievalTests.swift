@@ -10,8 +10,5 @@ final class DateComponentRetrievalTests: XCTestCase {
         XCTAssertEqual(gregorianCalendar.identifier, Calendar.current.identifier)
         XCTAssertEqual(iso8601Calendar.identifier, Calendar.current.identifier)
     }
-
-    static var allTests = [
-        ("testCalendarIdentifier", testCalendarIdentifier),
-    ]
+    
 }

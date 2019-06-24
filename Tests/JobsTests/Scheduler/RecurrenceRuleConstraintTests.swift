@@ -185,11 +185,4 @@ final class RecurrenceRuleConstraintTests: XCTestCase {
         XCTAssertNoThrow(try YearRecurrenceRuleConstraint.yearStep(1000))
         //        XCTAssertThrowsError(try reccurrenceRule.atYear(3001))
     }
-
-    static var allTests = [
-        ("testRecurrenceRuleConstraintCreationSetSingleValue", testRecurrenceRuleConstraintCreationSetSingleValue),
-        ("testRecurrenceRuleConstraintCreationSetMultipleValues", testRecurrenceRuleConstraintCreationSetMultipleValues),
-        ("testRecurrenceRuleConstraintCreationRange", testRecurrenceRuleConstraintCreationRange),
-        ("testRecurrenceRuleConstraintCreationStep", testRecurrenceRuleConstraintCreationStep)
-    ]
 }
