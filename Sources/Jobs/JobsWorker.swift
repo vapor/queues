@@ -46,6 +46,8 @@ final class JobsWorker {
                     task.cancel()
                     self.shutdownPromise.succeed(())
                 }
+            }.recover { error in
+                self.logger.error("Job run failed: \(error)")
             }
         }
     }
