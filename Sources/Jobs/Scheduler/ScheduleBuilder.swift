@@ -299,7 +299,7 @@ public final class ScheduleBuilder {
     var dayOfWeek: DayOfWeek?
     var time: Time?
     var minute: Minute?
-    
+
     init() { }
     
     // MARK: Helpers
