@@ -170,10 +170,10 @@ final class RecurrenceRuleTests: XCTestCase {
 
         // Fri, Feb 1, 2019 03:00:00
         let date1 = dateFormatter.date(from: "2019-02-01T03:00:00")!
-        let date2 = try reccurrenceRule.resolveNextDateThatSatisfiesRule(date: date1)
+        let date2 = try reccurrenceRule.resolveNextDateThatSatisfiesRule(currentDate: date1)
         XCTAssertEqual(dateFormatter.date(from: "2019-04-26T00:00:00")!, date2)
 
-        let date3 = try reccurrenceRule.resolveNextDateThatSatisfiesRule(date: date2)
+        let date3 = try reccurrenceRule.resolveNextDateThatSatisfiesRule(currentDate: date2)
         XCTAssertEqual(dateFormatter.date(from: "2019-04-26T00:33:00")!, date3)
     }
 
@@ -189,7 +189,7 @@ final class RecurrenceRuleTests: XCTestCase {
 
         // Fri, Feb 1, 2019 03:00:00
         let date1 = dateFormatter.date(from: "2019-02-01T03:00:00")!
-        let date2 = try reccurrenceRule.resolveNextDateThatSatisfiesRule(date: date1)
+        let date2 = try reccurrenceRule.resolveNextDateThatSatisfiesRule(currentDate: date1)
         XCTAssertEqual(dateFormatter.date(from: "2020-02-29T00:25:01")!, date2)
     }
 
@@ -207,7 +207,7 @@ final class RecurrenceRuleTests: XCTestCase {
         // Fri, Jan 1, 2019 00:00:00
         let date1 = dateFormatter.date(from: "2019-01-01T00:00:00")!
 
-        XCTAssertThrowsError(try reccurrenceRule.resolveNextDateThatSatisfiesRule(date: date1))
+        XCTAssertThrowsError(try reccurrenceRule.resolveNextDateThatSatisfiesRule(currentDate: date1))
     }
 
     func testLastDayOfMonthSimple() throws {
@@ -223,12 +223,12 @@ final class RecurrenceRuleTests: XCTestCase {
         // Thu Jan 31, 2019 18:30:00
         let date2 = dateFormatter.date(from: "2019-01-31T00:00:00")!
 
-        XCTAssertEqual(try reccurrenceRule.resolveNextDateThatSatisfiesRule(date: date1), date2)
+        XCTAssertEqual(try reccurrenceRule.resolveNextDateThatSatisfiesRule(currentDate: date1), date2)
 
         // feb 28, 2019 18:30:00
         let date3 = dateFormatter.date(from: "2019-02-28T00:00:00")!
 
-        XCTAssertEqual(try reccurrenceRule.resolveNextDateThatSatisfiesRule(date: date2), date3)
+        XCTAssertEqual(try reccurrenceRule.resolveNextDateThatSatisfiesRule(currentDate: date2), date3)
     }
 
     func testLastDayOfMonth() throws {
@@ -247,12 +247,12 @@ final class RecurrenceRuleTests: XCTestCase {
         // Thu Jan 31, 2019 18:30:00
         let date2 = dateFormatter.date(from: "2019-01-31T18:30:00")!
 
-        XCTAssertEqual(try reccurrenceRule.resolveNextDateThatSatisfiesRule(date: date1), date2)
+        XCTAssertEqual(try reccurrenceRule.resolveNextDateThatSatisfiesRule(currentDate: date1), date2)
 
         // feb 28, 2019 18:30:00
         let date3 = dateFormatter.date(from: "2019-02-28T18:30:00")!
 
-        XCTAssertEqual(try reccurrenceRule.resolveNextDateThatSatisfiesRule(date: date2), date3)
+        XCTAssertEqual(try reccurrenceRule.resolveNextDateThatSatisfiesRule(currentDate: date2), date3)
     }
 
 }
