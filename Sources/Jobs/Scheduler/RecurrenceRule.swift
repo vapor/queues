@@ -202,7 +202,7 @@ extension RecurrenceRule {
     ///
     /// - Parameter currentDate: The starting date, a date after this will be searched for
     /// - Returns: The next date that satisfies the rule
-    public func resolveNextDateThatSatisfiesRule(currentDate: Date) throws -> Date {
+    internal func resolveNextDateThatSatisfiesRule(currentDate: Date) throws -> Date {
         guard let timeUnitOfLowestActiveConstraint = resolveTimeUnitOfActiveConstraintWithLowestCadenceLevel() else {
             throw RecurrenceRuleError.noConstraintsSetForRecurrenceRule
         }

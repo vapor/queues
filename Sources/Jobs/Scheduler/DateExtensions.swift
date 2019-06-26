@@ -228,7 +228,6 @@ extension Date {
 
     /// finds the number of weeks the year (52 or 53)
     internal func weeksInYear() -> Int? {
-        // return NSCalendar.current.range(of: .weekOfYear, in: .yearForWeekOfYear, for: self)?.count
         func weeksInYearFormula(_ year: Int) -> Int {
             return (year + year/4 - year/100 + year/400) % 7
         }
