@@ -218,7 +218,7 @@ extension RecurrenceRule {
 
         /// Increments the `RecurrenceRule.TimeUnit` of the lowest active constraint so that
         /// the currentDate will not be returned (The result must be some date after the currentDate parameter)
-        var dateToTest = try currentDate.dateByIncrementing(timeUnitOfLowestActiveConstraint)
+        var dateToTest = try currentDate.dateByIncrementing(timeUnitOfLowestActiveConstraint, atTimeZone: timeZone)
 
         var isNextInstanceFound = false
         var isSearchExhausted = false

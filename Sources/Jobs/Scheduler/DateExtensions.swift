@@ -337,25 +337,28 @@ extension Date {
         return Calendar.current.dateComponents([.second], from: date, to: self).second
     }
 
-    /// Produces a date by advancinga date component by a given value
+    /// Produces a date by advancing a date component by a given value
     ///
     /// - Parameter calendarComponent: The compoent of the date to increment
     /// - Returns: a date with the specified component incremented
     internal func dateByIncrementing(calendarComponent: Calendar.Component) -> Date? {
         return Calendar.current.date(byAdding: calendarComponent, value: 1, to: self)
     }
-
+    
     /// Produces a date by incrementing the date component associated with the RecurrenceRule.TimeUnit
     ///
     /// - Parameter ruleTimeUnit: The time unit to increment
     /// - Returns: a date the referenced component incrementeds
-    internal func dateByIncrementing(_ ruleTimeUnit: RecurrenceRule.TimeUnit) throws -> Date {
+    internal func dateByIncrementing(_ ruleTimeUnit: RecurrenceRule.TimeUnit, atTimeZone timeZone: TimeZone? = nil) throws -> Date {
         let calendarComponent = resolveCalendarComponent(for: ruleTimeUnit)
-
-        guard let incrementedDate = dateByIncrementing(calendarComponent: calendarComponent) else {
+        
+        /// sets the date component values lower than ruleTimeUnit to 0
+        let dateWithDefaultValues = try setDateComponentValuesToDefault(lowerThan: ruleTimeUnit, date: self, atTimeZone: timeZone)
+        
+        guard let incrementedDate = dateWithDefaultValues.dateByIncrementing(calendarComponent: calendarComponent) else {
             throw DateExtensionError.couldNotIncrementDateByTimeUnit
         }
-
+        
         return incrementedDate
     }
 
