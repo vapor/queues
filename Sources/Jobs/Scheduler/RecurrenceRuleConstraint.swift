@@ -55,7 +55,7 @@ extension RecurrenceRuleConstraint {
 /// A `RecurrenceRuleConstraint` that limits valid values to a given set
 /// Equivalent in cron to a single value or list (i.e 14 or 8,3,6,21)
 internal struct RecurrenceRuleSetConstraint: RecurrenceRuleConstraint, Equatable {
-    
+
     let timeUnit: RecurrenceRule.TimeUnit
     let type = RecurrenceRuleConstraintType.set
     let validLowerBound: Int?
