@@ -20,9 +20,12 @@ public final class JobsCommand: Command {
     private let application: Application
     private var workers: [(JobsWorker, Container)]?
     private var scheduledWorkers: [(ScheduledJobsWorker, Container)]?
+    private let scheduled: Bool
 
-    internal init(application: Application) {
+    /// Create a new `JobsCommand`
+    public init(application: Application, scheduled: Bool = false) {
         self.application = application
+        self.scheduled = scheduled
     }
 
     public func run(using context: CommandContext<JobsCommand>) throws {
@@ -52,11 +55,9 @@ public final class JobsCommand: Command {
         self.application.running = .init(stop: {
             self.shutdown()
         })
-
         
-        let isScheduled = context.option(\.scheduledJobs) ?? false
-        
-        if isScheduled {
+        let isScheduledFromCli = context.option(\.scheduledJobs) ?? false
+        if isScheduledFromCli || self.scheduled {
             context.console.info("Starting scheduled jobs worker")
             try self.startScheduledWorker().wait()
         } else {

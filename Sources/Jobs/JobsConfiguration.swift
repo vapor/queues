@@ -20,12 +20,12 @@ public struct JobsConfiguration {
     public var persistenceKey: String
     
     /// Creates an empty `JobsConfig`
-    public init() {
+    public init(refreshInterval: TimeAmount = .seconds(1), persistenceKey: String = "vapor_jobs") {
         self.storage = [:]
         self.scheduledStorage = []
         self.logger = Logger(label: "vapor.codes.jobs")
-        self.refreshInterval = .seconds(1)
-        self.persistenceKey = "vapor_jobs"
+        self.refreshInterval = refreshInterval
+        self.persistenceKey = persistenceKey
     }
     
     /// Adds a new `Job` to the queue configuration.
