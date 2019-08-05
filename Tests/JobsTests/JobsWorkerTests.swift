@@ -14,7 +14,7 @@ final class JobsWorkerTests: XCTestCase {
     
     func testScheduledJob() throws {
         let el = MultiThreadedEventLoopGroup(numberOfThreads: 1).next()
-        let expectation = XCTestExpectation()
+        let expectation = XCTestCase().expectation(description: "Waits for scheduled job to be completed")
         var config = JobsConfiguration()
         
         guard let minute = Date().minute() else { XCTFail("Can't get date minute"); return }
@@ -32,7 +32,7 @@ final class JobsWorkerTests: XCTestCase {
         try worker.start()
         worker.shutdown()
         
-        wait(for: [expectation], timeout: 61)
+        XCTestCase().wait(for: [expectation], timeout: 61)
     }
 }
 
