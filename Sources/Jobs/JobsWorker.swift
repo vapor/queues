@@ -58,7 +58,8 @@ final class JobsWorker {
 
     private func run(on queue: JobsQueue) -> EventLoopFuture<Void> {
         let key = queue.makeKey(with: self.configuration.persistenceKey)
-        self.logger.debug("Jobs worker running \(key)")
+        self.logger.info("Jobs worker running", metadata: ["key": .string(key)])
+        
         return self.driver.get(key: key).flatMap { jobStorage in
             //No job found, go to the next iteration
             guard let jobStorage = jobStorage else {
@@ -79,7 +80,7 @@ final class JobsWorker {
                 return self.eventLoop.makeFailedFuture(error)
             }
 
-            self.logger.info("Dequeing Job job_id=[\(jobStorage.id)]")
+            self.logger.info("Dequeing Job", metadata: ["job_id": .string(jobStorage.id)])
             let jobRunPromise = self.eventLoop.makePromise(of: Void.self)
             self.firstJobToSucceed(
                 job: job,
@@ -87,7 +88,7 @@ final class JobsWorker {
                 jobStorage: jobStorage,
                 tries: jobStorage.maxRetryCount)
             .flatMapError { error in
-                self.logger.error("Error: \(error) job_id=[\(jobStorage.id)]")
+                self.logger.error("Error: \(error)", metadata: ["job_id": .string(jobStorage.id)])
                 return job.error(self.context, error, jobStorage)
             }.whenComplete { _ in
                 self.driver.completed(key: key, jobStorage: jobStorage)
