@@ -13,8 +13,10 @@ public struct JobsConfiguration {
     /// A Logger object
     internal let logger: Logger
 
+    /// The number of seconds to wait before checking for the next job. Defaults to `1`
     public var refreshInterval: TimeAmount
 
+    /// The key that stores the data about a job. Defaults to `vapor_jobs`
     public var persistenceKey: String
     
     /// Creates an empty `JobsConfig`

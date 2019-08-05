@@ -20,10 +20,20 @@ public struct JobsProvider: Provider {
         s.register(JobsCommand.self) { c in
             return try .init(application: c.make())
         }
+        
         s.register(JobsWorker.self) { c in
             return try .init(
                 configuration: c.make(),
                 driver: c.make(),
+                context: c.make(),
+                logger: c.make(),
+                on: c.eventLoop
+            )
+        }
+        
+        s.register(ScheduledJobsWorker.self) { c in
+            return try .init(
+                configuration: c.make(),
                 context: c.make(),
                 logger: c.make(),
                 on: c.eventLoop

@@ -302,7 +302,6 @@ public final class ScheduleBuilder {
 
     /// returns the next date that satisfies the schedule
     internal func resolveNextDateThatSatisifiesSchedule(date: Date) throws -> Date {
-
         var monthConstraint: MonthRecurrenceRuleConstraint?
         if let monthValue = month?.rawValue {
             monthConstraint = try MonthRecurrenceRuleConstraint.atMonth(monthValue)
