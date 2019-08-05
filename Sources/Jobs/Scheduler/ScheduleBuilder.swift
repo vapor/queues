@@ -338,12 +338,14 @@ public final class ScheduleBuilder {
             minuteConstraint = try MinuteRecurrenceRuleConstraint.atMinute(minuteValue)
         }
 
+        let secondConstraint = try SecondRecurrenceRuleConstraint.atSecond(0)
         let recurrenceRule = try RecurrenceRule(yearConstraint: nil,
                                                 monthConstraint: monthConstraint,
                                                 dayOfMonthConstraint: dayOfMonthConstraint,
                                                 dayOfWeekConstraint: dayOfWeekConstraint,
                                                 hourConstraint: hourConstraint,
-                                                minuteConstraint: minuteConstraint)
+                                                minuteConstraint: minuteConstraint,
+                                                secondConstraint: secondConstraint)
 
         return try recurrenceRule.resolveNextDateThatSatisfiesRule(currentDate: date)
     }
