@@ -14,6 +14,7 @@ final class ScheduledJobsWorker {
     
     private let shutdownPromise: EventLoopPromise<Void>
     private var isShuttingDown: Bool
+    internal var scheduledJobs: [(AnyScheduledJob, Date)]
     
     init(
         configuration: JobsConfiguration,
@@ -27,6 +28,7 @@ final class ScheduledJobsWorker {
         self.logger = logger
         self.shutdownPromise = eventLoop.makePromise()
         self.isShuttingDown = false
+        self.scheduledJobs = []
     }
     
     func start() throws {
@@ -39,10 +41,12 @@ final class ScheduledJobsWorker {
             if let date = job.1 {
                 // This means that it was successful in calculating the next applicable date
                 counter += 1
+                scheduledJobs.append((job.0, date))
                 self.run(job: job.0, date: date)
             }
         }
         
+        // Shut down the promise immediately if there were no jobs scheduled
         if counter == 0 {
             self.shutdownPromise.succeed(())
         }
@@ -63,6 +67,7 @@ final class ScheduledJobsWorker {
             
             return job.job.run(context: self.context).always { _ in
                 if let nextDate = try? job.scheduler.resolveNextDateThatSatisifiesSchedule(date: date) {
+                    self.scheduledJobs.append((job, nextDate))
                     self.run(job: job, date: nextDate)
                 }
             }.transform(to: ())
