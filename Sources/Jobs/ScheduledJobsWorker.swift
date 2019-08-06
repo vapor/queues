@@ -55,17 +55,16 @@ final class ScheduledJobsWorker {
             delay: .seconds(0)
         ) { task -> EventLoopFuture<Void> in
             // Cancel no matter what
+            task.cancel()
+            
             if self.isShuttingDown {
                 self.shutdownPromise.succeed(())
             }
             
             return job.job.run(context: self.context).always { _ in
-                if let nextDate = try? job.scheduler.resolveNextDateThatSatisifiesSchedule(date: Date()) {
+                if let nextDate = try? job.scheduler.resolveNextDateThatSatisifiesSchedule(date: date) {
                     self.run(job: job, date: nextDate)
                 }
-                
-                // Always cancel the task no matter what so that it gets picked up by a separate, new scheduled job
-                task.cancel()
             }.transform(to: ())
         }
     }

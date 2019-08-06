@@ -39,7 +39,7 @@ final class JobsWorkerTests: XCTestCase {
 struct DailyCleanupScheduledJob: ScheduledJob {
     let expectation: XCTestExpectation
     
-    func run(context: JobContext) -> EventLoopFuture<Void> {
+    func run(context: JobContext) -> EvientLoopFuture<Void> {
         expectation.fulfill()
         return context.eventLoop.makeSucceededFuture(())
     }
