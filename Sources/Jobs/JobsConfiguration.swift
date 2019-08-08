@@ -13,17 +13,19 @@ public struct JobsConfiguration {
     /// A Logger object
     internal let logger: Logger
 
+    /// The number of seconds to wait before checking for the next job. Defaults to `1`
     public var refreshInterval: TimeAmount
 
+    /// The key that stores the data about a job. Defaults to `vapor_jobs`
     public var persistenceKey: String
     
     /// Creates an empty `JobsConfig`
-    public init() {
+    public init(refreshInterval: TimeAmount = .seconds(1), persistenceKey: String = "vapor_jobs") {
         self.storage = [:]
         self.scheduledStorage = []
         self.logger = Logger(label: "vapor.codes.jobs")
-        self.refreshInterval = .seconds(1)
-        self.persistenceKey = "vapor_jobs"
+        self.refreshInterval = refreshInterval
+        self.persistenceKey = persistenceKey
     }
     
     /// Adds a new `Job` to the queue configuration.

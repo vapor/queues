@@ -4,8 +4,13 @@ import NIO
 
 /// A provider used to setup the `Jobs` package
 public struct JobsProvider: Provider {
+    /// The key to use for calling the command. Defaults to `jobs`
+    public var commandKey: String
+    
     /// Initializes the `Jobs` package
-    public init() { }
+    public init(commandKey: String = "jobs") {
+        self.commandKey = commandKey
+    }
 
     /// See `Provider`.`register(_ services:)`
     public func register(_ s: inout Services) {
@@ -20,10 +25,20 @@ public struct JobsProvider: Provider {
         s.register(JobsCommand.self) { c in
             return try .init(application: c.make())
         }
+        
         s.register(JobsWorker.self) { c in
             return try .init(
                 configuration: c.make(),
                 driver: c.make(),
+                context: c.make(),
+                logger: c.make(),
+                on: c.eventLoop
+            )
+        }
+        
+        s.register(ScheduledJobsWorker.self) { c in
+            return try .init(
+                configuration: c.make(),
                 context: c.make(),
                 logger: c.make(),
                 on: c.eventLoop
@@ -35,7 +50,7 @@ public struct JobsProvider: Provider {
         }
 
         s.extend(CommandConfiguration.self) { configuration, c in
-            try configuration.use(c.make(JobsCommand.self), as: "jobs")
+            try configuration.use(c.make(JobsCommand.self), as: self.commandKey)
         }
     }
 }
