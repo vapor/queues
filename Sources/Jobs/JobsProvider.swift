@@ -4,23 +4,11 @@ import NIO
 
 /// A provider used to setup the `Jobs` package
 public struct JobsProvider: Provider {
-    /// The number of seconds to wait before checking for the next job. Defaults to `1`
-    public var refreshInterval: TimeAmount
-    
-    /// The key that stores the data about a job. Defaults to `vapor_jobs`
-    public var persistenceKey: String
-    
     /// The key to use for calling the command. Defaults to `jobs`
     public var commandKey: String
     
     /// Initializes the `Jobs` package
-    public init(
-        refreshInterval: TimeAmount = .seconds(1),
-        persistenceKey: String = "vapor_jobs",
-        commandKey: String = "jobs"
-    ) {
-        self.refreshInterval = refreshInterval
-        self.persistenceKey = persistenceKey
+    public init(commandKey: String = "jobs") {
         self.commandKey = commandKey
     }
 
@@ -31,10 +19,7 @@ public struct JobsProvider: Provider {
         }
 
         s.register(JobsConfiguration.self) { container in
-            return JobsConfiguration(
-                refreshInterval: self.refreshInterval,
-                persistenceKey: self.persistenceKey
-            )
+            return JobsConfiguration()
         }
 
         s.register(JobsCommand.self) { c in
