@@ -7,7 +7,7 @@ final class JobsWorker {
     let driver: JobsDriver
     let context: JobContext
     let logger: Logger
-    let eventLoopGroup: EventLoopGroup
+    let eventLoop: EventLoop
 
     var onShutdown: EventLoopFuture<Void> {
         return self.shutdownPromise.futureResult
@@ -22,12 +22,13 @@ final class JobsWorker {
         driver: JobsDriver,
         context: JobContext,
         logger: Logger,
-        on eventLoopGroup: EventLoopGroup
+        on eventLoopGroup: EventLoopGroup,
+        preference: JobsEventLoopPreference
     ) {
         self.configuration = configuration
         self.driver = driver
         self.context = context
-        self.eventLoopGroup = eventLoopGroup
+        self.eventLoop = preference.delegate(for: eventLoopGroup)
         self.logger = logger
         self.shutdownPromise = eventLoopGroup.next().makePromise()
         self.isShuttingDown = false
@@ -35,7 +36,7 @@ final class JobsWorker {
 
     func start(on queue: JobsQueue) {
         // Schedule the repeating task
-        self.repeatedTask = eventLoopGroup.next().scheduleRepeatedAsyncTask(
+        self.repeatedTask = eventLoop.scheduleRepeatedAsyncTask(
             initialDelay: .seconds(0),
             delay: self.configuration.refreshInterval
         ) { task in
@@ -63,7 +64,7 @@ final class JobsWorker {
         return self.driver.get(key: key).flatMap { jobStorage in
             //No job found, go to the next iteration
             guard let jobStorage = jobStorage else {
-                return self.eventLoopGroup.next().makeSucceededFuture(())
+                return self.eventLoop.makeSucceededFuture(())
             }
 
             // If the job has a delay, we must check to make sure we can execute
@@ -77,11 +78,11 @@ final class JobsWorker {
             guard let job = self.configuration.make(for: jobStorage.jobName) else {
                 let error = Abort(.internalServerError)
                 self.logger.error("No job named \(jobStorage.jobName) is registered")
-                return self.eventLoopGroup.next().makeFailedFuture(error)
+                return self.eventLoop.makeFailedFuture(error)
             }
 
             self.logger.info("Dequeing Job", metadata: ["job_id": .string(jobStorage.id)])
-            let jobRunPromise = self.eventLoopGroup.next().makePromise(of: Void.self)
+            let jobRunPromise = self.eventLoop.makePromise(of: Void.self)
             self.firstJobToSucceed(
                 job: job,
                 jobContext: self.context,
@@ -110,7 +111,7 @@ final class JobsWorker {
             return complete
         }.flatMapError { error in
             if tries == 0 {
-                return self.eventLoopGroup.next().makeFailedFuture(error)
+                return self.eventLoop.makeFailedFuture(error)
             } else {
                 return self.firstJobToSucceed(job: job, jobContext: jobContext, jobStorage: jobStorage, tries: tries - 1)
             }

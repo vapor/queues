@@ -32,7 +32,8 @@ public struct JobsProvider: Provider {
                 driver: a.make(),
                 context: a.make(),
                 logger: a.make(),
-                on: a.make()
+                on: a.make(),
+                preference: .indifferent
             )
         }
         
