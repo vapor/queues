@@ -23,7 +23,7 @@ public struct JobsProvider: Provider {
         }
 
         app.register(JobsCommand.self) { a in
-            return .init(application: a.make())
+            return .init(application: a.make(), preference: .indifferent)
         }
         
         app.register(JobsWorker.self) { a in
@@ -56,3 +56,9 @@ public struct JobsProvider: Provider {
         }
     }
 }
+//
+//extension Request {
+//    var queue: JobsService {
+//        return self.application.make(JobsService.self).with(self)
+//    }
+//}

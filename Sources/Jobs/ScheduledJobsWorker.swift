@@ -27,7 +27,7 @@ final class ScheduledJobsWorker {
         self.eventLoop = preference.delegate(for: eventLoopGroup)
         self.context = context
         self.logger = logger
-        self.shutdownPromise = eventLoopGroup.next().makePromise()
+        self.shutdownPromise = self.eventLoop.makePromise()
         self.isShuttingDown = false
         self.scheduledJobs = []
     }

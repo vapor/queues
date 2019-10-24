@@ -35,12 +35,12 @@ final class JobsWorkerTests: XCTestCase {
         XCTAssertEqual(worker.scheduledJobs.count, 1)
         wait(for: [expectation], timeout: 61)
 
-        sleep(2)
-        
-        // Assert that the job gets rescheduled for next hour
-        XCTAssertEqual(worker.scheduledJobs.count, 2)
-        
-        worker.shutdown()
+        elg.next().scheduleTask(in: .seconds(2)) { () -> Void in
+            // Assert that the job gets rescheduled for next hour
+            XCTAssertEqual(worker.scheduledJobs.count, 2)
+            
+            worker.shutdown()
+        }
     }
 }
 

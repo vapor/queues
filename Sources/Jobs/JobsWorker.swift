@@ -30,7 +30,7 @@ final class JobsWorker {
         self.context = context
         self.eventLoop = preference.delegate(for: eventLoopGroup)
         self.logger = logger
-        self.shutdownPromise = eventLoopGroup.next().makePromise()
+        self.shutdownPromise = self.eventLoop.makePromise()
         self.isShuttingDown = false
     }
 

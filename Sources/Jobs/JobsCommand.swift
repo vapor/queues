@@ -26,11 +26,13 @@ public final class JobsCommand: Command {
     private var workers: [JobsWorker]?
     private var scheduledWorkers: [ScheduledJobsWorker]?
     private let scheduled: Bool
+    private let eventLoop: EventLoop
 
     /// Create a new `JobsCommand`
-    public init(application: Application, scheduled: Bool = false) {
+    public init(application: Application, scheduled: Bool = false, preference: JobsEventLoopPreference) {
         self.application = application
         self.scheduled = scheduled
+        self.eventLoop = preference.delegate(for: application.make(EventLoopGroup.self))
     }
 
     public func run(using context: CommandContext, signature: JobsCommand.Signature) throws {
@@ -80,7 +82,7 @@ public final class JobsCommand: Command {
         self.workers = workers
         return .andAllComplete(
             workers.map { $0.onShutdown },
-            on: eventLoopGroup.next()
+            on: self.eventLoop
         )
     }
     
@@ -96,7 +98,7 @@ public final class JobsCommand: Command {
         self.scheduledWorkers = scheduledWorkers
         return .andAllComplete(
             scheduledWorkers.map { $0.onShutdown },
-            on: eventLoopGroup.next()
+            on: self.eventLoop
         )
     }
 
