@@ -15,7 +15,11 @@ public struct JobsProvider: Provider {
     /// See `Provider`.`register(_ app:)`
     public func register(_ app: Application) {
         app.register(JobsService.self) { a in
-            return JobsService(configuration: a.make(), driver: a.make())
+            return BasicJobsService(
+                configuration: a.make(),
+                driver: a.make(),
+                preference: .indifferent
+            )
         }
 
         app.register(JobsConfiguration.self) { _ in
@@ -56,9 +60,9 @@ public struct JobsProvider: Provider {
         }
     }
 }
-//
-//extension Request {
-//    var queue: JobsService {
-//        return self.application.make(JobsService.self).with(self)
-//    }
-//}
+
+extension Request {
+    var queue: JobsService {
+        return self.application.make(JobsService.self).with(self)
+    }
+}
