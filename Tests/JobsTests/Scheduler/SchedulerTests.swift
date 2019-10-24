@@ -183,6 +183,6 @@ final class SchedulerTests: XCTestCase {
 
 final class Cleanup: ScheduledJob {
     func run(context: JobContext) -> EventLoopFuture<Void> {
-        return context.eventLoopGroup.next().makeSucceededFuture(())
+        return context.eventLoop.makeSucceededFuture(())
     }
 }

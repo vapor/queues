@@ -23,7 +23,7 @@ final class JobsWorkerTests: XCTestCase {
             .hourly()
             .at(.init(minute + 1))
         
-        let context = JobContext(eventLoopGroup: elg)
+        let context = JobContext(eventLoopGroup: elg, preference: .indifferent)
         let logger = Logger(label: "com.vapor.codes.jobs.tests")
         let worker = ScheduledJobsWorker(configuration: config,
                                          context: context,
@@ -48,6 +48,6 @@ struct DailyCleanupScheduledJob: ScheduledJob {
     
     func run(context: JobContext) -> EventLoopFuture<Void> {
         expectation.fulfill()
-        return context.eventLoopGroup.next().makeSucceededFuture(())
+        return context.eventLoop.makeSucceededFuture(())
     }
 }

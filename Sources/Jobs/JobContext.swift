@@ -7,11 +7,11 @@ public struct JobContext {
     public var userInfo: [String: Any]
     
     /// Event loop for jobs to access
-    public var eventLoopGroup: EventLoopGroup
+    public var eventLoop: EventLoop
     
     /// Creates an empty `JobContext`
-    public init(eventLoopGroup: EventLoopGroup) {
-        self.eventLoopGroup = eventLoopGroup
+    public init(eventLoopGroup: EventLoopGroup, preference: JobsEventLoopPreference) {
+        self.eventLoop = preference.delegate(for: eventLoopGroup)
         self.userInfo = [:]
     }
 }

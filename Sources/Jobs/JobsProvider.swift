@@ -46,7 +46,7 @@ public struct JobsProvider: Provider {
         }
         
         app.register(JobContext.self) { a in
-            return .init(eventLoopGroup: a.make())
+            return .init(eventLoopGroup: a.make(), preference: .indifferent)
         }
         
         app.register(extension: CommandConfiguration.self) { configuration, a in
