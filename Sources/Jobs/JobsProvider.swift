@@ -42,7 +42,8 @@ public struct JobsProvider: Provider {
                 configuration: a.make(),
                 context: a.make(),
                 logger: a.make(),
-                on: a.make()
+                on: a.make(),
+                preference: .indifferent
             )
         }
         

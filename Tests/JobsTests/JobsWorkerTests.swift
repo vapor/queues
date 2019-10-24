@@ -28,7 +28,8 @@ final class JobsWorkerTests: XCTestCase {
         let worker = ScheduledJobsWorker(configuration: config,
                                          context: context,
                                          logger: logger,
-                                         on: elg)
+                                         on: elg,
+                                         preference: .indifferent)
         try worker.start()
         
         XCTAssertEqual(worker.scheduledJobs.count, 1)
