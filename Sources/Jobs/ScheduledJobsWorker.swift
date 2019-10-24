@@ -5,7 +5,7 @@ import Vapor
 final class ScheduledJobsWorker {
     let configuration: JobsConfiguration
     let logger: Logger
-    let eventLoop: EventLoop
+    let eventLoopGroup: EventLoopGroup
     let context: JobContext
     
     var onShutdown: EventLoopFuture<Void> {
@@ -20,13 +20,13 @@ final class ScheduledJobsWorker {
         configuration: JobsConfiguration,
         context: JobContext,
         logger: Logger,
-        on eventLoop: EventLoop
+        on eventLoopGroup: EventLoopGroup
     ) {
         self.configuration = configuration
-        self.eventLoop = eventLoop
+        self.eventLoopGroup = eventLoopGroup
         self.context = context
         self.logger = logger
-        self.shutdownPromise = eventLoop.makePromise()
+        self.shutdownPromise = eventLoopGroup.next().makePromise()
         self.isShuttingDown = false
         self.scheduledJobs = []
     }
@@ -53,8 +53,8 @@ final class ScheduledJobsWorker {
     }
     
     private func run(job: AnyScheduledJob, date: Date) {
-        let initialDelay = TimeAmount.seconds(TimeAmount.Value(abs(date.timeIntervalSinceNow)))
-        eventLoop.scheduleRepeatedAsyncTask(
+        let initialDelay = TimeAmount.seconds(Int64(abs(date.timeIntervalSinceNow)))
+        eventLoopGroup.next().scheduleRepeatedAsyncTask(
             initialDelay: initialDelay,
             delay: .seconds(0)
         ) { task -> EventLoopFuture<Void> in

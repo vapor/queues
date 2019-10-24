@@ -13,10 +13,10 @@ struct JobDataOtherMock: JobData {}
 
 struct JobMock<T: JobData>: Job {
     func dequeue(_ context: JobContext, _ data: T) -> EventLoopFuture<Void> {
-        return context.eventLoop.makeSucceededFuture(())
+        return context.eventLoopGroup.next().makeSucceededFuture(())
     }
     
     func error(_ context: JobContext, _ error: Error, _ data: T) -> EventLoopFuture<Void> {
-        return context.eventLoop.makeSucceededFuture(())
+        return context.eventLoopGroup.next().makeSucceededFuture(())
     }
 }

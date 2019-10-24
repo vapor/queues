@@ -3,11 +3,14 @@ import PackageDescription
 
 let package = Package(
     name: "jobs",
+    platforms: [
+       .macOS(.v10_14)
+    ],
     products: [
         .library(name: "Jobs", targets: ["Jobs"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/vapor/vapor.git", from: "4.0.0-alpha.1.1")
+        .package(url: "https://github.com/vapor/vapor.git", from: "4.0.0-beta.1")
     ],
     targets: [
         .target(name: "Jobs", dependencies: ["Vapor"]),

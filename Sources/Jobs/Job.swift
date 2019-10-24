@@ -33,7 +33,7 @@ public extension Job {
     
     /// See `Job.error`
     func error(_ context: JobContext, _ error: Error, _ data: Data) -> EventLoopFuture<Void> {
-        return context.eventLoop.makeSucceededFuture(())
+        return context.eventLoopGroup.next().makeSucceededFuture(())
     }
     
     func error(_ context: JobContext, _ error: Error, _ storage: JobStorage) -> EventLoopFuture<Void> {
@@ -41,7 +41,7 @@ public extension Job {
             let data = try JSONDecoder().decode(Data.self, from: storage.data)
             return self.error(context, error, data)
         } catch {
-            return context.eventLoop.makeFailedFuture(error)
+            return context.eventLoopGroup.next().makeFailedFuture(error)
         }
     }
     
@@ -51,7 +51,7 @@ public extension Job {
             let data = try JSONDecoder().decode(Data.self, from: storage.data)
             return self.dequeue(context, data)
         } catch {
-            return context.eventLoop.makeFailedFuture(error)
+            return context.eventLoopGroup.next().makeFailedFuture(error)
         }
     }
 }

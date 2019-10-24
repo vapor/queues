@@ -11,7 +11,7 @@ import NIO
 
 struct DailyCleanup: ScheduledJob {
     func run(context: JobContext) -> EventLoopFuture<Void> {
-        return context.eventLoop.makeSucceededFuture(())
+        return context.eventLoopGroup.next().makeSucceededFuture(())
     }
 }
 

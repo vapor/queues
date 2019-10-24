@@ -12,45 +12,45 @@ public struct JobsProvider: Provider {
         self.commandKey = commandKey
     }
 
-    /// See `Provider`.`register(_ services:)`
-    public func register(_ s: inout Services) {
-        s.register(JobsService.self) { c in
-            return try JobsService(configuration: c.make(), driver: c.make())
+    /// See `Provider`.`register(_ app:)`
+    public func register(_ app: Application) {
+        app.register(JobsService.self) { a in
+            return JobsService(configuration: a.make(), driver: a.make())
         }
 
-        s.register(JobsConfiguration.self) { container in
+        app.register(JobsConfiguration.self) { _ in
             return JobsConfiguration()
         }
 
-        s.register(JobsCommand.self) { c in
-            return try .init(application: c.make())
+        app.register(JobsCommand.self) { a in
+            return .init(application: a.make())
         }
         
-        s.register(JobsWorker.self) { c in
-            return try .init(
-                configuration: c.make(),
-                driver: c.make(),
-                context: c.make(),
-                logger: c.make(),
-                on: c.eventLoop
+        app.register(JobsWorker.self) { a in
+            return .init(
+                configuration: a.make(),
+                driver: a.make(),
+                context: a.make(),
+                logger: a.make(),
+                on: a.make()
             )
         }
         
-        s.register(ScheduledJobsWorker.self) { c in
-            return try .init(
-                configuration: c.make(),
-                context: c.make(),
-                logger: c.make(),
-                on: c.eventLoop
+        app.register(ScheduledJobsWorker.self) { a in
+            return .init(
+                configuration: a.make(),
+                context: a.make(),
+                logger: a.make(),
+                on: a.make()
             )
         }
-
-        s.register(JobContext.self) { c in
-            return .init(eventLoop: c.eventLoop)
+        
+        app.register(JobContext.self) { a in
+            return .init(eventLoopGroup: a.make())
         }
-
-        s.extend(CommandConfiguration.self) { configuration, c in
-            try configuration.use(c.make(JobsCommand.self), as: self.commandKey)
+        
+        app.register(extension: CommandConfiguration.self) { configuration, a in
+            configuration.use(a.make(JobsCommand.self), as: self.commandKey)
         }
     }
 }
