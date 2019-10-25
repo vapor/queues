@@ -1,11 +1,17 @@
 import Foundation
 import NIO
 import Vapor
+import NIOConcurrencyHelpers
 
 final class JobsWorker {
     let configuration: JobsConfiguration
     let driver: JobsDriver
-    let context: JobContext
+    var context: JobContext {
+        return .init(
+            userInfo: self.configuration.userInfo,
+            on: self.eventLoop
+        )
+    }
     let logger: Logger
     let eventLoop: EventLoop
 
@@ -14,23 +20,21 @@ final class JobsWorker {
     }
 
     private let shutdownPromise: EventLoopPromise<Void>
-    private var isShuttingDown: Bool
+    private var isShuttingDown: Atomic<Bool>
     private var repeatedTask: RepeatedTask?
 
     init(
         configuration: JobsConfiguration,
         driver: JobsDriver,
-        context: JobContext,
         logger: Logger,
         on eventLoop: EventLoop
     ) {
         self.configuration = configuration
-        self.driver = driver
-        self.context = context
         self.eventLoop = eventLoop
+        self.driver = driver
         self.logger = logger
-        self.shutdownPromise = eventLoop.makePromise()
-        self.isShuttingDown = false
+        self.shutdownPromise = self.eventLoop.makePromise()
+        self.isShuttingDown = .init(value: false)
     }
 
     func start(on queue: JobsQueue) {
@@ -42,7 +46,7 @@ final class JobsWorker {
             // run task
             return self.run(on: queue).map {
                 //Check if shutting down
-                if self.isShuttingDown {
+                if self.isShuttingDown.load() {
                     task.cancel()
                     self.shutdownPromise.succeed(())
                 }
@@ -53,14 +57,14 @@ final class JobsWorker {
     }
 
     func shutdown() {
-        self.isShuttingDown = true
+        self.isShuttingDown.store(true)
     }
 
     private func run(on queue: JobsQueue) -> EventLoopFuture<Void> {
         let key = queue.makeKey(with: self.configuration.persistenceKey)
-        self.logger.info("Jobs worker running", metadata: ["key": .string(key)])
+        // self.logger.debug("Jobs worker running", metadata: ["key": .string(key)])
         
-        return self.driver.get(key: key).flatMap { jobStorage in
+        return self.driver.get(key: key, eventLoop: .delegate(on: self.eventLoop)).flatMap { jobStorage in
             //No job found, go to the next iteration
             guard let jobStorage = jobStorage else {
                 return self.eventLoop.makeSucceededFuture(())
@@ -70,7 +74,11 @@ final class JobsWorker {
             if let delay = jobStorage.delayUntil {
                 guard delay >= Date() else {
                     // The delay has not passed yet, requeue the job
-                    return self.driver.requeue(key: key, jobStorage: jobStorage)
+                    return self.driver.requeue(
+                        key: key,
+                        job: jobStorage,
+                        eventLoop: .delegate(on: self.eventLoop)
+                    )
                 }
             }
 
@@ -91,20 +99,23 @@ final class JobsWorker {
                 self.logger.error("Error: \(error)", metadata: ["job_id": .string(jobStorage.id)])
                 return job.error(self.context, error, jobStorage)
             }.whenComplete { _ in
-                self.driver.completed(key: key, jobStorage: jobStorage)
-                    .cascade(to: jobRunPromise)
+                self.driver.completed(
+                    key: key,
+                    job: jobStorage,
+                    eventLoop: .delegate(on: self.eventLoop)
+                ).cascade(to: jobRunPromise)
             }
 
             return jobRunPromise.futureResult
         }
     }
 
-    private func firstJobToSucceed(job: AnyJob,
-                                   jobContext: JobContext,
-                                   jobStorage: JobStorage,
-                                   tries: Int) -> EventLoopFuture<Void>
-    {
-        
+    private func firstJobToSucceed(
+        job: AnyJob,
+        jobContext: JobContext,
+        jobStorage: JobStorage,
+        tries: Int
+    ) -> EventLoopFuture<Void> {
         let futureJob = job.anyDequeue(jobContext, jobStorage)
         return futureJob.map { complete in
             return complete

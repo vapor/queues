@@ -12,45 +12,29 @@ public struct JobsProvider: Provider {
         self.commandKey = commandKey
     }
 
-    /// See `Provider`.`register(_ services:)`
-    public func register(_ s: inout Services) {
-        s.register(JobsService.self) { c in
-            return try JobsService(configuration: c.make(), driver: c.make())
+    /// See `Provider`.`register(_ app:)`
+    public func register(_ app: Application) {
+        app.register(JobsService.self) { app in
+            return ApplicationJobsService(
+                configuration: app.make(),
+                driver: app.make(),
+                logger: app.make(),
+                eventLoopPreference: .indifferent
+            )
         }
 
-        s.register(JobsConfiguration.self) { container in
+        app.register(JobsConfiguration.self) { _ in
             return JobsConfiguration()
         }
 
-        s.register(JobsCommand.self) { c in
-            return try .init(application: c.make())
-        }
+        app.register(singleton: JobsCommand.self, boot: { app in
+            return .init(application: app)
+        }, shutdown: { jobs in
+            jobs.shutdown()
+        })
         
-        s.register(JobsWorker.self) { c in
-            return try .init(
-                configuration: c.make(),
-                driver: c.make(),
-                context: c.make(),
-                logger: c.make(),
-                on: c.eventLoop
-            )
-        }
-        
-        s.register(ScheduledJobsWorker.self) { c in
-            return try .init(
-                configuration: c.make(),
-                context: c.make(),
-                logger: c.make(),
-                on: c.eventLoop
-            )
-        }
-
-        s.register(JobContext.self) { c in
-            return .init(eventLoop: c.eventLoop)
-        }
-
-        s.extend(CommandConfiguration.self) { configuration, c in
-            try configuration.use(c.make(JobsCommand.self), as: self.commandKey)
+        app.register(extension: CommandConfiguration.self) { configuration, a in
+            configuration.use(a.make(JobsCommand.self), as: self.commandKey)
         }
     }
 }

@@ -15,7 +15,8 @@ final class JobStorageTests: XCTestCase {
                                     maxRetryCount: 1,
                                     id: "identifier",
                                     jobName: "jobs",
-                                    delayUntil: nil)
+                                    delayUntil: nil,
+                                    queuedAt: Date())
         
         let stringRepresentation = jobStorage.stringValue()
         

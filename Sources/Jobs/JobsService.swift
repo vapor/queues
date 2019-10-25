@@ -1,26 +1,15 @@
 import Foundation
+import Logging
+import Vapor
 
-/// A `Service` used to dispatch `Jobs`
-public struct JobsService {
-    internal let configuration: JobsConfiguration
-    internal let driver: JobsDriver
+public protocol JobsService {
+    var logger: Logger { get }
+    var driver: JobsDriver { get }
+    var eventLoopPreference: JobsEventLoopPreference { get }
+    var configuration: JobsConfiguration { get }
+}
 
-    internal init(
-        configuration: JobsConfiguration,
-        driver: JobsDriver
-    ) {
-        self.configuration = configuration
-        self.driver = driver
-    }
-
-    /// Dispatches a job to the queue for future execution
-    ///
-    /// - Parameters:
-    ///   - jobData: The `JobData` to dispatch to the queue
-    ///   - maxRetryCount: The number of retries to attempt upon error before calling `Job`.`error()`
-    ///   - queue: The queue to run this job on
-    ///   - delay: A date to execute the job after
-    /// - Returns: A future `Void` value used to signify completion
+extension JobsService {
     public func dispatch<JobData>(
         _ jobData: JobData,
         maxRetryCount: Int = 0,
@@ -33,19 +22,72 @@ public struct JobsService {
         do {
             data = try JSONEncoder().encode(jobData)
         } catch {
-            return self.driver.eventLoop.makeFailedFuture(error)
+            return self.eventLoopPreference.delegate(
+                for: self.driver.eventLoopGroup
+            ).makeFailedFuture(error)
         }
+        let jobID = UUID().uuidString
         let jobStorage = JobStorage(
             key: self.configuration.persistenceKey,
             data: data,
             maxRetryCount: maxRetryCount,
-            id: UUID().uuidString,
+            id: jobID,
             jobName: JobData.jobName,
-            delayUntil: delayUntil
+            delayUntil: delayUntil,
+            queuedAt: Date()
         )
         return self.driver.set(
             key: queue.makeKey(with: self.configuration.persistenceKey),
-            jobStorage: jobStorage
-        ).map { _ in }
+            job: jobStorage,
+            eventLoop: self.eventLoopPreference
+        ).map { _ in
+            self.logger.info("Dispatched queue job", metadata: [
+                "job_id": .string("\(jobID)"),
+                "queue": .string(queue.name)
+            ])
+        }
+    }
+    
+    public func with(_ request: Request) -> JobsService {
+        return RequestSpecificJobsService(request: request, service: self, configuration: self.configuration)
+    }
+}
+
+struct ApplicationJobsService: JobsService {
+    let configuration: JobsConfiguration
+    let driver: JobsDriver
+    let logger: Logger
+    let eventLoopPreference: JobsEventLoopPreference
+}
+
+extension Request {
+    public var jobs: JobsService {
+        return self.application.make(JobsService.self).with(self)
+    }
+}
+
+
+private struct RequestSpecificJobsService: JobsService {
+    public let request: Request
+    public let service: JobsService
+    
+    var driver: JobsDriver {
+        return self.service.driver
+    }
+    
+    var logger: Logger {
+        return self.request.logger
+    }
+    
+    var eventLoopPreference: JobsEventLoopPreference {
+        return .delegate(on: self.request.eventLoop)
+    }
+    
+    public var configuration: JobsConfiguration
+    
+    init(request: Request, service: JobsService, configuration: JobsConfiguration) {
+        self.request = request
+        self.configuration = configuration
+        self.service = service
     }
 }

@@ -13,7 +13,7 @@ import Logging
 final class JobsWorkerTests: XCTestCase {
     
     func testScheduledJob() throws {
-        let el = MultiThreadedEventLoopGroup(numberOfThreads: 1).next()
+        let elg = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         let expectation = XCTestExpectation(description: "Waits for scheduled job to be completed")
         var config = JobsConfiguration()
         
@@ -23,23 +23,23 @@ final class JobsWorkerTests: XCTestCase {
             .hourly()
             .at(.init(minute + 1))
         
-        let context = JobContext(eventLoop: el)
         let logger = Logger(label: "com.vapor.codes.jobs.tests")
-        let worker = ScheduledJobsWorker(configuration: config,
-                                         context: context,
-                                         logger: logger,
-                                         on: el)
+        let worker = ScheduledJobsWorker(
+            configuration: config,
+            logger: logger,
+            on: elg.next()
+        )
         try worker.start()
         
         XCTAssertEqual(worker.scheduledJobs.count, 1)
         wait(for: [expectation], timeout: 61)
 
-        sleep(2)
-        
-        // Assert that the job gets rescheduled for next hour
-        XCTAssertEqual(worker.scheduledJobs.count, 2)
-        
-        worker.shutdown()
+        elg.next().scheduleTask(in: .seconds(2)) { () -> Void in
+            // Assert that the job gets rescheduled for next hour
+            XCTAssertEqual(worker.scheduledJobs.count, 2)
+            
+            worker.shutdown()
+        }
     }
 }
 
