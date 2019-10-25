@@ -54,7 +54,8 @@ extension JobsService {
                maxRetryCount: maxRetryCount,
                id: UUID().uuidString,
                jobName: JobData.jobName,
-               delayUntil: delayUntil
+               delayUntil: delayUntil,
+               queuedAt: Date()
            )
            return self.driver.set(
                key: queue.makeKey(with: self.configuration.persistenceKey),
