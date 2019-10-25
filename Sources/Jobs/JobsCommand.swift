@@ -26,21 +26,27 @@ public final class JobsCommand: Command {
     private var workers: [JobsWorker]?
     private var scheduledWorkers: [ScheduledJobsWorker]?
     private let scheduled: Bool
+    private let eventLoopGroup: EventLoopGroup
 
     /// Create a new `JobsCommand`
     init(application: Application, scheduled: Bool = false) {
         self.application = application
         self.scheduled = scheduled
+        self.eventLoopGroup = self.application.make()
     }
 
     public func run(using context: CommandContext, signature: JobsCommand.Signature) throws {
         let signalQueue = DispatchQueue(label: "vapor.jobs.command.SignalHandlingQueue")
         
+        // shutdown future
+        let runningPromise = self.application.make(EventLoopGroup.self).next().makePromise(of: Void.self)
+        self.application.running = .start(using: runningPromise)
+        
         //SIGTERM
         let termSignalSource = DispatchSource.makeSignalSource(signal: SIGTERM, queue: signalQueue)
         termSignalSource.setEventHandler {
             print("Shutting down remaining jobs.")
-            self.shutdown()
+            runningPromise.succeed(())
             termSignalSource.cancel()
         }
         signal(SIGTERM, SIG_IGN)
@@ -50,7 +56,7 @@ public final class JobsCommand: Command {
         let intSignalSource = DispatchSource.makeSignalSource(signal: SIGINT, queue: signalQueue)
         intSignalSource.setEventHandler {
             print("Shutting down remaining jobs.")
-            self.shutdown()
+            runningPromise.succeed(())
             intSignalSource.cancel()
         }
         signal(SIGINT, SIG_IGN)
@@ -58,23 +64,18 @@ public final class JobsCommand: Command {
         
         let isScheduledFromCli = signature.scheduledJobs ?? false
         
-        // shutdown future
-        let promise = self.application.make(EventLoopGroup.self).next().makePromise(of: Void.self)
-        self.application.running = .start(using: promise)
-        
         if isScheduledFromCli || self.scheduled {
             context.console.info("Starting scheduled jobs worker")
-            try self.startScheduledWorker().cascade(to: promise)
+            try self.startScheduledWorker()
         } else {
             let queue: JobsQueue = signature.queue
                 .flatMap { .init(name: $0) } ?? .default
             context.console.info("Starting jobs worker")
-            try self.startJobsWorker(on: queue).cascade(to: promise)
+            try self.startJobsWorker(on: queue)
         }
     }
     
-    private func startJobsWorker(on queue: JobsQueue) throws -> EventLoopFuture<Void> {
-        let eventLoopGroup = self.application.make(EventLoopGroup.self)
+    private func startJobsWorker(on queue: JobsQueue) throws {
         var workers: [JobsWorker] = []
         for eventLoop in eventLoopGroup.makeIterator() {
             let worker = JobsWorker(
@@ -88,14 +89,9 @@ public final class JobsCommand: Command {
         }
 
         self.workers = workers
-        return .andAllComplete(
-            workers.map { $0.onShutdown },
-            on: eventLoopGroup.next()
-        )
     }
     
-    private func startScheduledWorker() throws -> EventLoopFuture<Void> {
-        let eventLoopGroup = self.application.make(EventLoopGroup.self)
+    private func startScheduledWorker() throws {
         var scheduledWorkers: [ScheduledJobsWorker] = []
         for eventLoop in eventLoopGroup.makeIterator() {
             let worker = ScheduledJobsWorker(
@@ -108,23 +104,26 @@ public final class JobsCommand: Command {
         }
 
         self.scheduledWorkers = scheduledWorkers
-        return .andAllComplete(
-            scheduledWorkers.map { $0.onShutdown },
-            on: eventLoopGroup.next()
-        )
     }
 
-    private func shutdown() {
+    public func shutdown() {
+        var futures: [EventLoopFuture<Void>] = []
+        
         if let workers = workers {
             workers.forEach { worker in
                 worker.shutdown()
             }
+            futures += workers.map { $0.onShutdown }
         }
         
         if let scheduledWorkers = scheduledWorkers {
             scheduledWorkers.forEach { worker in
                 worker.shutdown()
             }
+            futures += scheduledWorkers.map { $0.onShutdown }
         }
+        
+        try! EventLoopFuture<Void>
+            .andAllComplete(futures, on: self.eventLoopGroup.next()).wait()
     }
 }

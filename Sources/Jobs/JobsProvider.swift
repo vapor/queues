@@ -27,9 +27,11 @@ public struct JobsProvider: Provider {
             return JobsConfiguration()
         }
 
-        app.register(JobsCommand.self) { app in
+        app.register(singleton: JobsCommand.self, boot: { app in
             return .init(application: app)
-        }
+        }, shutdown: { jobs in
+            jobs.shutdown()
+        })
         
         app.register(extension: CommandConfiguration.self) { configuration, a in
             configuration.use(a.make(JobsCommand.self), as: self.commandKey)
