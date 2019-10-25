@@ -26,20 +26,25 @@ extension JobsService {
                 for: self.driver.eventLoopGroup
             ).makeFailedFuture(error)
         }
+        let jobID = UUID().uuidString
         let jobStorage = JobStorage(
             key: self.configuration.persistenceKey,
             data: data,
             maxRetryCount: maxRetryCount,
-            id: UUID().uuidString,
+            id: jobID,
             jobName: JobData.jobName,
-            delayUntil: delayUntil
+            delayUntil: delayUntil,
+            queuedAt: Date()
         )
         return self.driver.set(
             key: queue.makeKey(with: self.configuration.persistenceKey),
             job: jobStorage,
             eventLoop: self.eventLoopPreference
         ).map { _ in
-            self.logger.info("Dispatched queue job", metadata: ["job_id": .string("\(jobId)"), "queue": .string(queue.name)])
+            self.logger.info("Dispatched queue job", metadata: [
+                "job_id": .string("\(jobID)"),
+                "queue": .string(queue.name)
+            ])
         }
     }
     
