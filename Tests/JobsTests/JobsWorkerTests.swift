@@ -23,13 +23,12 @@ final class JobsWorkerTests: XCTestCase {
             .hourly()
             .at(.init(minute + 1))
         
-        let context = JobContext(eventLoopGroup: elg, preference: .indifferent)
         let logger = Logger(label: "com.vapor.codes.jobs.tests")
-        let worker = ScheduledJobsWorker(configuration: config,
-                                         context: context,
-                                         logger: logger,
-                                         on: elg,
-                                         preference: .indifferent)
+        let worker = ScheduledJobsWorker(
+            configuration: config,
+            logger: logger,
+            on: elg.next()
+        )
         try worker.start()
         
         XCTAssertEqual(worker.scheduledJobs.count, 1)

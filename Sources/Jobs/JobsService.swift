@@ -3,38 +3,13 @@ import Logging
 import Vapor
 
 public protocol JobsService {
-    var driver: JobsDriver { get }
-    var preference: JobsEventLoopPreference { get }
-    var configuration: JobsConfiguration { get }
     var logger: Logger { get }
-    
-    /// Dispatches a job to the queue for future execution
-    ///
-    /// - Parameters:
-    ///   - jobData: The `JobData` to dispatch to the queue
-    ///   - maxRetryCount: The number of retries to attempt upon error before calling `Job`.`error()`
-    ///   - queue: The queue to run this job on
-    ///   - delay: A date to execute the job after
-    /// - Returns: A future `Void` value used to signify completion
-    func dispatch<JobData>(
-        _ jobData: JobData,
-        maxRetryCount: Int,
-        queue: JobsQueue,
-        delayUntil: Date?
-    ) -> EventLoopFuture<Void>
-        where JobData: Jobs.JobData
+    var driver: JobsDriver { get }
+    var eventLoopPreference: JobsEventLoopPreference { get }
+    var configuration: JobsConfiguration { get }
 }
 
 extension JobsService {
-    public var eventLoop: EventLoop {
-        switch self.preference {
-        case .indifferent:
-            return self.driver.eventLoop
-        case .delegate(let eventLoop):
-            return eventLoop
-        }
-    }
-    
     public func dispatch<JobData>(
         _ jobData: JobData,
         maxRetryCount: Int = 0,
@@ -47,24 +22,29 @@ extension JobsService {
         do {
             data = try JSONEncoder().encode(jobData)
         } catch {
-            return self.driver.eventLoop.makeFailedFuture(error)
+            return self.eventLoopPreference.delegate(
+                for: self.driver.eventLoopGroup
+            ).makeFailedFuture(error)
         }
-        
-        let jobId = UUID().uuidString
+        let jobID = UUID().uuidString
         let jobStorage = JobStorage(
             key: self.configuration.persistenceKey,
             data: data,
             maxRetryCount: maxRetryCount,
-            id: jobId,
+            id: jobID,
             jobName: JobData.jobName,
             delayUntil: delayUntil,
             queuedAt: Date()
         )
         return self.driver.set(
             key: queue.makeKey(with: self.configuration.persistenceKey),
-            jobStorage: jobStorage
+            job: jobStorage,
+            eventLoop: self.eventLoopPreference
         ).map { _ in
-            self.logger.info("Dispatched queue job", metadata: ["job_id": .string("\(jobId)"), "queue": .string(queue.name)])
+            self.logger.info("Dispatched queue job", metadata: [
+                "job_id": .string("\(jobID)"),
+                "queue": .string(queue.name)
+            ])
         }
     }
     
@@ -72,6 +52,20 @@ extension JobsService {
         return RequestSpecificJobsService(request: request, service: self, configuration: self.configuration)
     }
 }
+
+struct ApplicationJobsService: JobsService {
+    let configuration: JobsConfiguration
+    let driver: JobsDriver
+    let logger: Logger
+    let eventLoopPreference: JobsEventLoopPreference
+}
+
+extension Request {
+    public var jobs: JobsService {
+        return self.application.make(JobsService.self).with(self)
+    }
+}
+
 
 private struct RequestSpecificJobsService: JobsService {
     public let request: Request
@@ -85,7 +79,7 @@ private struct RequestSpecificJobsService: JobsService {
         return self.request.logger
     }
     
-    var preference: JobsEventLoopPreference {
+    var eventLoopPreference: JobsEventLoopPreference {
         return .delegate(on: self.request.eventLoop)
     }
     
@@ -95,25 +89,5 @@ private struct RequestSpecificJobsService: JobsService {
         self.request = request
         self.configuration = configuration
         self.service = service
-    }
-}
-
-public struct BasicJobsService: JobsService {
-    public var preference: JobsEventLoopPreference
-    public var logger: Logger {
-        return Logger(label: "com.vapor.codes.jobs")
-    }
-    
-    public var configuration: JobsConfiguration
-    public let driver: JobsDriver
-    
-    internal init(
-        configuration: JobsConfiguration,
-        driver: JobsDriver,
-        preference: JobsEventLoopPreference
-    ) {
-        self.configuration = configuration
-        self.driver = driver
-        self.preference = preference
     }
 }

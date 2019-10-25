@@ -1,34 +1,37 @@
 import Foundation
 import NIO
 import Vapor
+import NIOConcurrencyHelpers
 
 final class ScheduledJobsWorker {
     let configuration: JobsConfiguration
     let logger: Logger
     let eventLoop: EventLoop
-    let context: JobContext
+    var context: JobContext {
+        return .init(
+            userInfo: self.configuration.userInfo,
+            on: self.eventLoop
+        )
+    }
     
     var onShutdown: EventLoopFuture<Void> {
         return self.shutdownPromise.futureResult
     }
     
     private let shutdownPromise: EventLoopPromise<Void>
-    private var isShuttingDown: Bool
+    private var isShuttingDown: Atomic<Bool>
     internal var scheduledJobs: [(AnyScheduledJob, Date)]
     
     init(
         configuration: JobsConfiguration,
-        context: JobContext,
         logger: Logger,
-        on eventLoopGroup: EventLoopGroup,
-        preference: JobsEventLoopPreference
+        on eventLoop: EventLoop
     ) {
         self.configuration = configuration
-        self.eventLoop = preference.delegate(for: eventLoopGroup)
-        self.context = context
+        self.eventLoop = eventLoop
         self.logger = logger
         self.shutdownPromise = self.eventLoop.makePromise()
-        self.isShuttingDown = false
+        self.isShuttingDown = .init(value: false)
         self.scheduledJobs = []
     }
     
@@ -62,7 +65,7 @@ final class ScheduledJobsWorker {
             // Cancel no matter what
             task.cancel()
             
-            if self.isShuttingDown {
+            if self.isShuttingDown.load() {
                 self.shutdownPromise.succeed(())
             }
             
@@ -76,6 +79,6 @@ final class ScheduledJobsWorker {
     }
     
     func shutdown() {
-        self.isShuttingDown = true
+        self.isShuttingDown.store(true)
     }
 }
