@@ -14,11 +14,12 @@ public struct JobsProvider: Provider {
 
     /// See `Provider`.`register(_ app:)`
     public func register(_ app: Application) {
-        app.register(JobsService.self) { a in
-            return BasicJobsService(
-                configuration: a.make(),
-                driver: a.make(),
-                preference: .indifferent
+        app.register(JobsService.self) { app in
+            return ApplicationJobsService(
+                configuration: app.make(),
+                driver: app.make(),
+                logger: app.make(),
+                eventLoopPreference: .indifferent
             )
         }
 
@@ -26,43 +27,12 @@ public struct JobsProvider: Provider {
             return JobsConfiguration()
         }
 
-        app.register(JobsCommand.self) { a in
-            return .init(application: a.make(), preference: .indifferent)
-        }
-        
-        app.register(JobsWorker.self) { a in
-            return .init(
-                configuration: a.make(),
-                driver: a.make(),
-                context: a.make(),
-                logger: a.make(),
-                on: a.make(),
-                preference: .indifferent
-            )
-        }
-        
-        app.register(ScheduledJobsWorker.self) { a in
-            return .init(
-                configuration: a.make(),
-                context: a.make(),
-                logger: a.make(),
-                on: a.make(),
-                preference: .indifferent
-            )
-        }
-        
-        app.register(JobContext.self) { a in
-            return .init(eventLoopGroup: a.make(), preference: .indifferent)
+        app.register(JobsCommand.self) { app in
+            return .init(application: app)
         }
         
         app.register(extension: CommandConfiguration.self) { configuration, a in
             configuration.use(a.make(JobsCommand.self), as: self.commandKey)
         }
-    }
-}
-
-extension Request {
-    var queue: JobsService {
-        return self.application.make(JobsService.self).with(self)
     }
 }

@@ -20,7 +20,7 @@ public enum JobsEventLoopPreference {
     case delegate(on: EventLoop)
 
     /// Returns the delegate EventLoop given an EventLoopGroup.
-    internal func delegate(for eventLoopGroup: EventLoopGroup) -> EventLoop {
+    public func delegate(for eventLoopGroup: EventLoopGroup) -> EventLoop {
         switch self {
         case .indifferent:
             return eventLoopGroup.next()

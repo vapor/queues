@@ -26,13 +26,11 @@ public final class JobsCommand: Command {
     private var workers: [JobsWorker]?
     private var scheduledWorkers: [ScheduledJobsWorker]?
     private let scheduled: Bool
-    private let eventLoop: EventLoop
 
     /// Create a new `JobsCommand`
-    public init(application: Application, scheduled: Bool = false, preference: JobsEventLoopPreference) {
+    init(application: Application, scheduled: Bool = false) {
         self.application = application
         self.scheduled = scheduled
-        self.eventLoop = preference.delegate(for: application.make(EventLoopGroup.self))
     }
 
     public func run(using context: CommandContext, signature: JobsCommand.Signature) throws {
@@ -59,22 +57,32 @@ public final class JobsCommand: Command {
         intSignalSource.resume()
         
         let isScheduledFromCli = signature.scheduledJobs ?? false
+        
+        // shutdown future
+        let promise = self.application.make(EventLoopGroup.self).next().makePromise(of: Void.self)
+        self.application.running = .start(using: promise)
+        
         if isScheduledFromCli || self.scheduled {
             context.console.info("Starting scheduled jobs worker")
-            try self.startScheduledWorker().wait()
+            try self.startScheduledWorker().cascade(to: promise)
         } else {
             let queue: JobsQueue = signature.queue
                 .flatMap { .init(name: $0) } ?? .default
             context.console.info("Starting jobs worker")
-            try self.startJobsWorker(on: queue).wait()
+            try self.startJobsWorker(on: queue).cascade(to: promise)
         }
     }
     
     private func startJobsWorker(on queue: JobsQueue) throws -> EventLoopFuture<Void> {
         let eventLoopGroup = self.application.make(EventLoopGroup.self)
         var workers: [JobsWorker] = []
-        for _ in eventLoopGroup.makeIterator() {
-            let worker = self.application.make(JobsWorker.self)
+        for eventLoop in eventLoopGroup.makeIterator() {
+            let worker = JobsWorker(
+                configuration: self.application.make(),
+                driver: self.application.make(),
+                logger: self.application.make(),
+                on: eventLoop
+            )
             worker.start(on: queue)
             workers.append(worker)
         }
@@ -82,15 +90,19 @@ public final class JobsCommand: Command {
         self.workers = workers
         return .andAllComplete(
             workers.map { $0.onShutdown },
-            on: self.eventLoop
+            on: eventLoopGroup.next()
         )
     }
     
     private func startScheduledWorker() throws -> EventLoopFuture<Void> {
         let eventLoopGroup = self.application.make(EventLoopGroup.self)
         var scheduledWorkers: [ScheduledJobsWorker] = []
-        for _ in eventLoopGroup.makeIterator() {
-            let worker = self.application.make(ScheduledJobsWorker.self)
+        for eventLoop in eventLoopGroup.makeIterator() {
+            let worker = ScheduledJobsWorker(
+                configuration: self.application.make(),
+                logger: self.application.make(),
+                on: eventLoop
+            )
             try worker.start()
             scheduledWorkers.append(worker)
         }
@@ -98,7 +110,7 @@ public final class JobsCommand: Command {
         self.scheduledWorkers = scheduledWorkers
         return .andAllComplete(
             scheduledWorkers.map { $0.onShutdown },
-            on: self.eventLoop
+            on: eventLoopGroup.next()
         )
     }
 

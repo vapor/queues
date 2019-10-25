@@ -6,7 +6,12 @@ final class ScheduledJobsWorker {
     let configuration: JobsConfiguration
     let logger: Logger
     let eventLoop: EventLoop
-    let context: JobContext
+    var context: JobContext {
+        return .init(
+            userInfo: self.configuration.userInfo,
+            on: self.eventLoop
+        )
+    }
     
     var onShutdown: EventLoopFuture<Void> {
         return self.shutdownPromise.futureResult
@@ -18,14 +23,11 @@ final class ScheduledJobsWorker {
     
     init(
         configuration: JobsConfiguration,
-        context: JobContext,
         logger: Logger,
-        on eventLoopGroup: EventLoopGroup,
-        preference: JobsEventLoopPreference
+        on eventLoop: EventLoop
     ) {
         self.configuration = configuration
-        self.eventLoop = preference.delegate(for: eventLoopGroup)
-        self.context = context
+        self.eventLoop = eventLoop
         self.logger = logger
         self.shutdownPromise = self.eventLoop.makePromise()
         self.isShuttingDown = false
