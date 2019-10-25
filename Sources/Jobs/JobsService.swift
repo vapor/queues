@@ -34,12 +34,13 @@ extension JobsService {
             jobName: JobData.jobName,
             delayUntil: delayUntil
         )
-        self.logger.info("Dispatching job: \(jobData)")
         return self.driver.set(
             key: queue.makeKey(with: self.configuration.persistenceKey),
             job: jobStorage,
             eventLoop: self.eventLoopPreference
-        ).map { _ in }
+        ).map { _ in
+            self.logger.info("Dispatched queue job", metadata: ["job_id": .string("\(jobId)"), "queue": .string(queue.name)])
+        }
     }
     
     public func with(_ request: Request) -> JobsService {
