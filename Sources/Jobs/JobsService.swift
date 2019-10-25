@@ -6,6 +6,7 @@ public protocol JobsService {
     var driver: JobsDriver { get }
     var preference: JobsEventLoopPreference { get }
     var configuration: JobsConfiguration { get }
+    var logger: Logger { get }
     
     /// Dispatches a job to the queue for future execution
     ///
@@ -35,33 +36,37 @@ extension JobsService {
     }
     
     public func dispatch<JobData>(
-           _ jobData: JobData,
-           maxRetryCount: Int = 0,
-           queue: JobsQueue = .default,
-           delayUntil: Date? = nil
-       ) -> EventLoopFuture<Void>
-           where JobData: Jobs.JobData
-       {
-           let data: Data
-           do {
-               data = try JSONEncoder().encode(jobData)
-           } catch {
-               return self.driver.eventLoop.makeFailedFuture(error)
-           }
-           let jobStorage = JobStorage(
-               key: self.configuration.persistenceKey,
-               data: data,
-               maxRetryCount: maxRetryCount,
-               id: UUID().uuidString,
-               jobName: JobData.jobName,
-               delayUntil: delayUntil,
-               queuedAt: Date()
-           )
-           return self.driver.set(
-               key: queue.makeKey(with: self.configuration.persistenceKey),
-               jobStorage: jobStorage
-           ).map { _ in }
-       }
+        _ jobData: JobData,
+        maxRetryCount: Int = 0,
+        queue: JobsQueue = .default,
+        delayUntil: Date? = nil
+    ) -> EventLoopFuture<Void>
+        where JobData: Jobs.JobData
+    {
+        let data: Data
+        do {
+            data = try JSONEncoder().encode(jobData)
+        } catch {
+            return self.driver.eventLoop.makeFailedFuture(error)
+        }
+        
+        let jobId = UUID().uuidString
+        let jobStorage = JobStorage(
+            key: self.configuration.persistenceKey,
+            data: data,
+            maxRetryCount: maxRetryCount,
+            id: jobId,
+            jobName: JobData.jobName,
+            delayUntil: delayUntil,
+            queuedAt: Date()
+        )
+        return self.driver.set(
+            key: queue.makeKey(with: self.configuration.persistenceKey),
+            jobStorage: jobStorage
+        ).map { _ in
+            self.logger.info("Dispatched queue job", metadata: ["job_id": .string("\(jobId)"), "queue": .string(queue.name)])
+        }
+    }
     
     public func with(_ request: Request) -> JobsService {
         return RequestSpecificJobsService(request: request, service: self, configuration: self.configuration)
@@ -95,7 +100,7 @@ private struct RequestSpecificJobsService: JobsService {
 
 public struct BasicJobsService: JobsService {
     public var preference: JobsEventLoopPreference
-    var logger: Logger {
+    public var logger: Logger {
         return Logger(label: "com.vapor.codes.jobs")
     }
     
