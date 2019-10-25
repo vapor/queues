@@ -1,6 +1,7 @@
 import Foundation
 import NIO
 import Vapor
+import NIOConcurrencyHelpers
 
 final class ScheduledJobsWorker {
     let configuration: JobsConfiguration
@@ -18,7 +19,7 @@ final class ScheduledJobsWorker {
     }
     
     private let shutdownPromise: EventLoopPromise<Void>
-    private var isShuttingDown: Bool
+    private var isShuttingDown: Atomic<Bool>
     internal var scheduledJobs: [(AnyScheduledJob, Date)]
     
     init(
@@ -30,7 +31,7 @@ final class ScheduledJobsWorker {
         self.eventLoop = eventLoop
         self.logger = logger
         self.shutdownPromise = self.eventLoop.makePromise()
-        self.isShuttingDown = false
+        self.isShuttingDown = .init(value: false)
         self.scheduledJobs = []
     }
     
@@ -64,7 +65,7 @@ final class ScheduledJobsWorker {
             // Cancel no matter what
             task.cancel()
             
-            if self.isShuttingDown {
+            if self.isShuttingDown.load() {
                 self.shutdownPromise.succeed(())
             }
             
@@ -78,6 +79,6 @@ final class ScheduledJobsWorker {
     }
     
     func shutdown() {
-        self.isShuttingDown = true
+        self.isShuttingDown.store(true)
     }
 }

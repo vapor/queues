@@ -1,6 +1,7 @@
 import Foundation
 import NIO
 import Vapor
+import NIOConcurrencyHelpers
 
 final class JobsWorker {
     let configuration: JobsConfiguration
@@ -19,7 +20,7 @@ final class JobsWorker {
     }
 
     private let shutdownPromise: EventLoopPromise<Void>
-    private var isShuttingDown: Bool
+    private var isShuttingDown: Atomic<Bool>
     private var repeatedTask: RepeatedTask?
 
     init(
@@ -33,7 +34,7 @@ final class JobsWorker {
         self.driver = driver
         self.logger = logger
         self.shutdownPromise = self.eventLoop.makePromise()
-        self.isShuttingDown = false
+        self.isShuttingDown = .init(value: false)
     }
 
     func start(on queue: JobsQueue) {
@@ -45,7 +46,7 @@ final class JobsWorker {
             // run task
             return self.run(on: queue).map {
                 //Check if shutting down
-                if self.isShuttingDown {
+                if self.isShuttingDown.load() {
                     task.cancel()
                     self.shutdownPromise.succeed(())
                 }
@@ -56,7 +57,7 @@ final class JobsWorker {
     }
 
     func shutdown() {
-        self.isShuttingDown = true
+        self.isShuttingDown.store(true)
     }
 
     private func run(on queue: JobsQueue) -> EventLoopFuture<Void> {
