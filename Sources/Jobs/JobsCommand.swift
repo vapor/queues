@@ -120,6 +120,7 @@ public class JobsCommand: Command {
                 if let delay = jobStorage.delayUntil {
                     guard delay >= Date() else {
                         // The delay has not passed yet, requeue the job
+                        console.info("Requeing Job job_id=[\(jobStorage.id)]", newLine: true)
                         return queueService.persistenceLayer.requeue(key: key, jobStorage: jobStorage)
                     }
                 }
