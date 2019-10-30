@@ -119,13 +119,12 @@ public class JobsCommand: Command {
                 // If the job has a delay, we must check to make sure we can execute
                 if let delay = jobStorage.delayUntil {
                     if delay >= Date() {
-                        console.info("Proceeding with delayed Job job_id=[\(jobStorage.id)]", newLine: true)
-                    } else {
                         // The delay has not passed yet, requeue the job
                         console.info("Requeing Job job_id=[\(jobStorage.id)] until \(delay)", newLine: true)
                         return queueService.persistenceLayer.requeue(key: key, jobStorage: jobStorage)
+                    } else {
+                        console.info("Proceeding with delayed Job job_id=[\(jobStorage.id)]", newLine: true)
                     }
-                    
                 }
 
                 guard let job = config.make(for: jobStorage.jobName) else {
