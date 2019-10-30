@@ -11,6 +11,9 @@ public struct JobStorage: Codable {
     
     /// The maxRetryCount for the `Job`.
     var maxRetryCount: Int
+
+    /// A date to execute this job after
+    var delayUntil: Date?
     
     /// A unique ID for the job
     public internal(set) var id: String
@@ -19,12 +22,13 @@ public struct JobStorage: Codable {
     var jobName: String
     
     /// Creates a new `JobStorage` holding object
-    public init(key: String, data: Data, maxRetryCount: Int, id: String, jobName: String) {
+    public init(key: String, data: Data, maxRetryCount: Int, id: String, jobName: String, delayUntil: Date?) {
         self.key = key
         self.data = data
         self.maxRetryCount = maxRetryCount
         self.id = id
         self.jobName = jobName
+        self.delayUntil = delayUntil
     }
     
     /// Returns a string representation of the JobStorage object

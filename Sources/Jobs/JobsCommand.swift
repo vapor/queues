@@ -101,7 +101,10 @@ public class JobsCommand: Command {
         let key = queue.makeKey(with: queueService.persistenceKey)
         let config = try container.make(JobsConfig.self)
         
-        _ = eventLoop.scheduleRepeatedTask(initialDelay: .seconds(0), delay: queueService.refreshInterval) { task -> EventLoopFuture<Void> in
+        _ = eventLoop.scheduleRepeatedTask(
+            initialDelay: .seconds(0),
+            delay: queueService.refreshInterval
+        ) { task -> EventLoopFuture<Void> in
             //Check if shutting down
             
             if self.isShuttingDown {
@@ -112,6 +115,15 @@ public class JobsCommand: Command {
             return queueService.persistenceLayer.get(key: key).flatMap { jobStorage in
                 //No job found, go to the next iteration
                 guard let jobStorage = jobStorage else { return eventLoop.future() }
+
+                // If the job has a delay, we must check to make sure we can execute
+                if let delay = jobStorage.delayUntil {
+                    guard delay >= Date() else {
+                        // The delay has not passed yet, requeue the job
+                        return queueService.persistenceLayer.requeue(key: key, jobStorage: jobStorage)
+                    }
+                }
+
                 guard let job = config.make(for: jobStorage.jobName) else {
                     return eventLoop.future(error: Abort(.internalServerError, reason: "Please register \(jobStorage.jobName)"))
                 }
