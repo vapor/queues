@@ -19,7 +19,7 @@ public struct QueueService: Service {
     ///   - jobData: The `JobData` to dispatch to the queue
     ///   - maxRetryCount: The number of retries to attempt upon error before calling `Job`.`error()`
     ///   - queue: The queue to run this job on
-    ///   - delay: A date to execute the job after
+    ///   - delayUntil: A date to execute the job after
     /// - Returns: A future `Void` value used to signify completion
     public func dispatch<J: JobData>(
         jobData: J,
