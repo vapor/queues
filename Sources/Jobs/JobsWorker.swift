@@ -70,16 +70,13 @@ final class JobsWorker {
                 return self.eventLoop.makeSucceededFuture(())
             }
 
-            // If the job has a delay, we must check to make sure we can execute
-            if let delay = jobStorage.delayUntil {
-                guard delay >= Date() else {
-                    // The delay has not passed yet, requeue the job
-                    return self.driver.requeue(
-                        key: key,
-                        job: jobStorage,
-                        eventLoop: .delegate(on: self.eventLoop)
-                    )
-                }
+            // If the job has a delay, we must check to make sure we can execute. If the delay has not passed yet, requeue the job
+            if let delay = jobStorage.delayUntil, delay >= Date() {
+                return self.driver.requeue(
+                    key: key,
+                    job: jobStorage,
+                    eventLoop: .delegate(on: self.eventLoop)
+                )
             }
 
             guard let job = self.configuration.make(for: jobStorage.jobName) else {
