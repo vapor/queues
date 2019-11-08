@@ -38,3 +38,37 @@ public struct JobsProvider: Provider {
         }
     }
 }
+
+public struct ApplicationJobs {
+    private let application: Application
+    
+    public init(for application: Application) {
+        self.application = application
+    }
+    
+    public func add<J>(_ job: J) where J: Job {
+        application.register(extension: JobsConfiguration.self) { jobs, app in
+            jobs.add(job)
+        }
+    }
+    
+    public func driver(_ driver: JobsDriver) {
+        application.register(instance: driver)
+    }
+    
+    public func schedule<J>(_ job: J) -> ScheduleBuilder
+        where J: ScheduledJob
+    {
+        let builder = ScheduleBuilder()
+        application.register(extension: JobsConfiguration.self) { jobs, app in
+            _ = jobs.schedule(job, builder: builder)
+        }
+        return builder
+    }
+}
+
+extension Application {
+    public var jobs: ApplicationJobs {
+        return ApplicationJobs(for: self)
+    }
+}

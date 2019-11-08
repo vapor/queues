@@ -1,6 +1,7 @@
 import Jobs
 import Vapor
 import XCTest
+@testable import Jobs
 
 final class JobsTests: XCTestCase {
     func testVaporIntegration() throws {
@@ -21,6 +22,13 @@ final class JobsTests: XCTestCase {
         try FooJob.dequeuePromise!.futureResult.wait()
     }
     
+    func testVaporScheduledJob() throws {
+        let app = try self.startServer()
+        defer { app.shutdown() }
+        app.jobs.schedule(Cleanup()).hourly().at(30)
+        XCTAssertEqual(app.make(JobsConfiguration.self).scheduledStorage.count, 1)
+    }
+    
     private func startServer() throws -> Application {
         let app = self.setupApplication(.init(name: "worker", arguments: ["vapor", "serve"]))
         try app.start()
@@ -36,12 +44,9 @@ final class JobsTests: XCTestCase {
     private func setupApplication(_ env: Environment) -> Application {
         let app = Application(environment: env)
         app.provider(JobsProvider())
-        app.register(JobsDriver.self) { app in
-            return TestDriver(on: app.make())
-        }
-        app.register(extension: JobsConfiguration.self) { jobs, app in
-            jobs.add(FooJob())
-        }
+        app.jobs.driver(TestDriver(on: app.make()))
+        app.jobs.add(FooJob())
+        
         app.get("foo") { req in
             return req.jobs.dispatch(FooJob.Data(foo: "bar"))
                 .map { "done" }
