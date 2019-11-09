@@ -54,6 +54,7 @@ extension JobsWorkerTests {
     // to regenerate.
     static let __allTests__JobsWorkerTests = [
         ("testScheduledJob", testScheduledJob),
+        ("testScheduledJobAt", testScheduledJobAt),
     ]
 }
 

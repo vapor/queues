@@ -61,7 +61,7 @@ final class JobsWorkerTests: XCTestCase {
         
         try elg.next().scheduleTask(in: .seconds(1)) { () -> Void in
             // Test that job was not rescheduled
-            XCTAssertEqual(worker.scheduledJobs.count, 1)
+            XCTAssertEqual(worker.scheduledJobs.count, 0)
             worker.shutdown()
         }.futureResult.wait()
     }

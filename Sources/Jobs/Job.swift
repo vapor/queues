@@ -89,7 +89,7 @@ public protocol ScheduledJob {
     func run(context: JobContext) -> EventLoopFuture<Void>
 }
 
-struct AnyScheduledJob {
+class AnyScheduledJob {
     let job: ScheduledJob
     let scheduler: ScheduleBuilder?
     let date: Date?

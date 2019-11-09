@@ -81,8 +81,16 @@ final class ScheduledJobsWorker {
                         self.scheduledJobs.append((job, nextDate))
                         self.run(job: job, date: nextDate)
                     }
+                } else {
+                    guard let index = self.scheduledJobs.firstIndex(where: { $0.0 === job }) else { return }
+                    self.scheduledJobs.remove(at: index)
+                    if self.scheduledJobs.first(where: { $0.0.scheduler != nil }) == nil {
+                        // We do not have any scheduled jobs, check for one-off jobs
+                        if self.scheduledJobs.filter({ $0.0.date != nil }).count == 0 {
+                            self.shutdownPromise.succeed(())
+                        }
+                    }
                 }
-                
             }.transform(to: ())
         }
     }
