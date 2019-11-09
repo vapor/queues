@@ -7,7 +7,7 @@ public protocol JobsDriver {
     /// The event loop to be run on
     var eventLoopGroup: EventLoopGroup { get }
     
-    /// Returns a `JobData` wrapper for a specified key.
+    /// Returns a storage wrapper for a specified key.
     ///
     /// - Parameters:
     ///   - key: The key that the data is stored under.

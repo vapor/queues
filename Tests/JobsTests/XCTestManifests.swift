@@ -33,6 +33,7 @@ extension JobsConfigTests {
     static let __allTests__JobsConfigTests = [
         ("testAddingAlreadyRegistratedJobsAreIgnored", testAddingAlreadyRegistratedJobsAreIgnored),
         ("testAddingJobs", testAddingJobs),
+        ("testAddingJobsWithTheSameDataType", testAddingJobsWithTheSameDataType),
         ("testScheduledJob", testScheduledJob),
     ]
 }

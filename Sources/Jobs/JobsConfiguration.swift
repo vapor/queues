@@ -38,7 +38,7 @@ public struct JobsConfiguration {
     mutating public func add<J>(_ job: J)
         where J: Job
     {
-        let key = String(describing: J.Data.self)
+        let key = J.jobName
         if let existing = storage[key] {
             self.logger.warning("A job is already registered with key \(key): \(existing)")
         }

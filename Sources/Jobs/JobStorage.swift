@@ -5,7 +5,7 @@ public struct JobStorage: Codable {
     /// The persistence key for the backing store.
     var key: String
     
-    /// The `JobData` to be encoded.
+    /// The job data to be encoded.
     var data: Data
     
     /// The maxRetryCount for the `Job`.

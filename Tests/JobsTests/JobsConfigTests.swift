@@ -21,7 +21,7 @@ final class JobsConfigTests: XCTestCase {
         config.add(JobMock<JobDataMock>())
         
         XCTAssertEqual(config.storage.count, 1)
-        XCTAssertEqual(config.storage.first?.key, "JobDataMock")
+        XCTAssertEqual(config.storage.first?.key, "JobMock<JobDataMock>")
     }
     
     func testAddingAlreadyRegistratedJobsAreIgnored() {
@@ -30,12 +30,39 @@ final class JobsConfigTests: XCTestCase {
         config.add(JobMock<JobDataMock>())
         
         XCTAssertEqual(config.storage.count, 1)
-        XCTAssertNotNil(config.storage["JobDataMock"])
+        XCTAssertNotNil(config.storage["JobMock<JobDataMock>"])
         
         config.add(JobMock<JobDataOtherMock>())
         
         XCTAssertEqual(config.storage.count, 2)
-        XCTAssertNotNil(config.storage["JobDataOtherMock"])
+        XCTAssertNotNil(config.storage["JobMock<JobDataOtherMock>"])
+    }
+    
+    // https://github.com/vapor/jobs/issues/38
+    func testAddingJobsWithTheSameDataType() {
+        struct JobOne: Job {
+            func dequeue(_ context: JobContext, _ data: [String : String]) -> EventLoopFuture<Void> {
+                fatalError()
+            }
+            
+            typealias Data = [String: String]
+        }
+        
+        struct JobTwo: Job {
+            func dequeue(_ context: JobContext, _ data: [String : String]) -> EventLoopFuture<Void> {
+                fatalError()
+            }
+            
+            typealias Data = [String: String]
+        }
+        
+        var config = JobsConfiguration()
+        config.add(JobOne())
+        config.add(JobTwo())
+        
+        XCTAssertEqual(config.storage.count, 2)
+        XCTAssertNotNil(config.storage["JobOne"])
+        XCTAssertNotNil(config.storage["JobTwo"])
     }
     
     func testScheduledJob() throws {
