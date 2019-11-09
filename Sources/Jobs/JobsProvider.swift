@@ -65,6 +65,12 @@ public struct ApplicationJobs {
         }
         return builder
     }
+    
+    public func schedule<J>(_ job: J, at date: Date) where J: ScheduledJob {
+        application.register(extension: JobsConfiguration.self) { jobs, app in
+            jobs.schedule(job, at: date)
+        }
+    }
 }
 
 extension Application {

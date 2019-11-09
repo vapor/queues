@@ -91,5 +91,18 @@ public protocol ScheduledJob {
 
 struct AnyScheduledJob {
     let job: ScheduledJob
-    let scheduler: ScheduleBuilder
+    let scheduler: ScheduleBuilder?
+    let date: Date?
+    
+    init(job: ScheduledJob, scheduler: ScheduleBuilder) {
+        self.job = job
+        self.scheduler = scheduler
+        self.date = nil
+    }
+    
+    init(job: ScheduledJob, at date: Date) {
+        self.job = job
+        self.scheduler = nil
+        self.date = date
+    }
 }

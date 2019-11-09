@@ -11,17 +11,17 @@ import Logging
 @testable import Jobs
 
 final class JobsWorkerTests: XCTestCase {
-    
+
     func testScheduledJob() throws {
         let elg = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         let expectation = XCTestExpectation(description: "Waits for scheduled job to be completed")
         var config = JobsConfiguration()
         
-        guard let minute = Date().minute() else { XCTFail("Can't get date minute"); return }
+        guard let second = Date().second() else { XCTFail("Can't get date second"); return }
         
         config.schedule(DailyCleanupScheduledJob(expectation: expectation))
-            .hourly()
-            .at(.init(minute + 1))
+            .everyMinute()
+            .at(.init(second + 2))
         
         let logger = Logger(label: "com.vapor.codes.jobs.tests")
         let worker = ScheduledJobsWorker(
@@ -32,14 +32,38 @@ final class JobsWorkerTests: XCTestCase {
         try worker.start()
         
         XCTAssertEqual(worker.scheduledJobs.count, 1)
-        wait(for: [expectation], timeout: 61)
+        wait(for: [expectation], timeout: 3)
 
-        elg.next().scheduleTask(in: .seconds(2)) { () -> Void in
-            // Assert that the job gets rescheduled for next hour
+        try elg.next().scheduleTask(in: .seconds(1)) { () -> Void in
+            // Test that job was rescheduled
             XCTAssertEqual(worker.scheduledJobs.count, 2)
-            
             worker.shutdown()
-        }
+        }.futureResult.wait()
+    }
+    
+    func testScheduledJobAt() throws {
+        let elg = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+        let expectation = XCTestExpectation(description: "Waits for scheduled job to be completed")
+        var config = JobsConfiguration()
+        
+        config.schedule(DailyCleanupScheduledJob(expectation: expectation), at: Date().addingTimeInterval(5))
+        
+        let logger = Logger(label: "com.vapor.codes.jobs.tests")
+        let worker = ScheduledJobsWorker(
+            configuration: config,
+            logger: logger,
+            on: elg.next()
+        )
+        try worker.start()
+        
+        XCTAssertEqual(worker.scheduledJobs.count, 1)
+        wait(for: [expectation], timeout: 6)
+        
+        try elg.next().scheduleTask(in: .seconds(1)) { () -> Void in
+            // Test that job was not rescheduled
+            XCTAssertEqual(worker.scheduledJobs.count, 1)
+            worker.shutdown()
+        }.futureResult.wait()
     }
 }
 
