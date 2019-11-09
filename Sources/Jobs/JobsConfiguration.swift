@@ -55,10 +55,10 @@ public struct JobsConfiguration {
     ///     .at(.noon)
     ///
     /// - Parameter job: The `ScheduledJob` to be scheduled.
-    mutating public func schedule<J>(_ job: J) -> ScheduleBuilder
+    mutating public func schedule<J>(_ job: J, builder: ScheduleBuilder? = nil) -> ScheduleBuilder
         where J: ScheduledJob
     {
-        let scheduler = ScheduleBuilder()
+        let scheduler = builder ?? ScheduleBuilder()
         let storage = AnyScheduledJob(job: job, scheduler: scheduler)
         self.scheduledStorage.append(storage)
         return scheduler

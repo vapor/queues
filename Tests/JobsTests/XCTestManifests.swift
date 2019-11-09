@@ -43,6 +43,7 @@ extension JobsTests {
     // to regenerate.
     static let __allTests__JobsTests = [
         ("testVaporIntegration", testVaporIntegration),
+        ("testVaporScheduledJob", testVaporScheduledJob),
     ]
 }
 
