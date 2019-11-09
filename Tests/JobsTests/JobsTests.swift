@@ -48,7 +48,7 @@ final class JobsTests: XCTestCase {
         app.jobs.add(FooJob())
         
         app.get("foo") { req in
-            return req.jobs.dispatch(FooJob.Data(foo: "bar"))
+            return req.jobs.dispatch(FooJob.self, .init(foo: "bar"))
                 .map { "done" }
         }
         return app
@@ -111,7 +111,7 @@ final class TestDriver: JobsDriver {
 struct FooJob: Job {
     static var dequeuePromise: EventLoopPromise<Void>?
     
-    struct Data: JobData {
+    struct Data: Codable {
         var foo: String
     }
     

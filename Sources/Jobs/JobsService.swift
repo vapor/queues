@@ -10,13 +10,14 @@ public protocol JobsService {
 }
 
 extension JobsService {
-    public func dispatch<JobData>(
-        _ jobData: JobData,
+    public func dispatch<Job>(
+        _ job: Job.Type,
+        _ jobData: Job.Data,
         maxRetryCount: Int = 0,
         queue: JobsQueue = .default,
         delayUntil: Date? = nil
     ) -> EventLoopFuture<Void>
-        where JobData: Jobs.JobData
+        where Job: Jobs.Job
     {
         let data: Data
         do {
@@ -32,7 +33,7 @@ extension JobsService {
             data: data,
             maxRetryCount: maxRetryCount,
             id: jobID,
-            jobName: JobData.jobName,
+            jobName: Job.jobName,
             delayUntil: delayUntil,
             queuedAt: Date()
         )

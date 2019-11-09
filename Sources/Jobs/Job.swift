@@ -5,13 +5,13 @@ import Vapor
 /// A task that can be queued for future execution.
 public protocol Job: AnyJob {
     /// The data associated with a job
-    associatedtype Data: JobData
+    associatedtype Data: Codable
     
     /// Called when it's this Job's turn to be dequeued.
     ///
     /// - Parameters:
     ///   - context: The JobContext. Can be used to store and retrieve services
-    ///   - data: The `JobData` for this handler
+    ///   - data: The data for this handler
     /// - Returns: A future `Void` value used to signify completion
     func dequeue(_ context: JobContext, _ data: Data) -> EventLoopFuture<Void>
 
@@ -28,7 +28,7 @@ public protocol Job: AnyJob {
 public extension Job {
     /// The jobName of the Job
     static var jobName: String {
-        return Data.jobName
+        return String(describing: Self.self)
     }
     
     /// See `Job.error`
