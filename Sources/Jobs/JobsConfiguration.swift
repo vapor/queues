@@ -55,13 +55,12 @@ public struct JobsConfiguration {
     ///     .at(.noon)
     ///
     /// - Parameter job: The `ScheduledJob` to be scheduled.
-    mutating public func schedule<J>(_ job: J, builder: ScheduleBuilder? = nil) -> ScheduleBuilder
+    mutating internal func schedule<J>(_ job: J, builder: ScheduleBuilder = ScheduleBuilder()) -> ScheduleBuilder
         where J: ScheduledJob
     {
-        let scheduler = builder ?? ScheduleBuilder()
-        let storage = AnyScheduledJob(job: job, scheduler: scheduler)
+        let storage = AnyScheduledJob(job: job, scheduler: builder)
         self.scheduledStorage.append(storage)
-        return scheduler
+        return builder
     }
     
     /// Returns the `AnyJob` for the string it was registered under

@@ -179,6 +179,26 @@ final class SchedulerTests: XCTestCase {
         let nextDate = try config.scheduledStorage.first?.scheduler.resolveNextDateThatSatisifiesSchedule(date: date1)
         XCTAssertEqual(nextDate, date2)
     }
+    
+    func testScheduleEvaluationEveryMinute() throws {
+        var config = JobsConfiguration()
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        
+        // hourly
+        config.schedule(Cleanup())
+            .everyMinute()
+            .at(30)
+        
+        // Fri, Jan 1, 2019 00:00:00
+        let date1 = dateFormatter.date(from: "2019-01-01T00:00:00")!
+        
+        // Jan 1, 2019 0:00:30
+        let date2 = dateFormatter.date(from: "2019-01-01T0:00:30")!
+        
+        let nextDate = try config.scheduledStorage.first?.scheduler.resolveNextDateThatSatisifiesSchedule(date: date1)
+        XCTAssertEqual(nextDate, date2)
+    }
 }
 
 final class Cleanup: ScheduledJob {

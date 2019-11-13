@@ -54,6 +54,7 @@ extension JobsWorkerTests {
     // to regenerate.
     static let __allTests__JobsWorkerTests = [
         ("testScheduledJob", testScheduledJob),
+        ("testScheduledJobAt", testScheduledJobAt),
     ]
 }
 
@@ -104,6 +105,7 @@ extension SchedulerTests {
     static let __allTests__SchedulerTests = [
         ("testConfiguration", testConfiguration),
         ("testScheduleEvaluationDaily", testScheduleEvaluationDaily),
+        ("testScheduleEvaluationEveryMinute", testScheduleEvaluationEveryMinute),
         ("testScheduleEvaluationHourly", testScheduleEvaluationHourly),
         ("testScheduleEvaluationMonthly", testScheduleEvaluationMonthly),
         ("testScheduleEvaluationWeekly", testScheduleEvaluationWeekly),

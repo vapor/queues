@@ -38,7 +38,9 @@ final class ScheduledJobsWorker {
     func start() throws {
         let scheduledJobsStartDates = configuration
             .scheduledStorage
-            .map { ($0, try? $0.scheduler.resolveNextDateThatSatisifiesSchedule(date: Date())) }
+            .map {
+                return ($0, try? $0.scheduler.resolveNextDateThatSatisifiesSchedule(date: Date()))
+        }
         
         var counter = 0
         for job in scheduledJobsStartDates {
@@ -70,9 +72,20 @@ final class ScheduledJobsWorker {
             }
             
             return job.job.run(context: self.context).always { _ in
-                if let nextDate = try? job.scheduler.resolveNextDateThatSatisifiesSchedule(date: date) {
-                    self.scheduledJobs.append((job, nextDate))
-                    self.run(job: job, date: nextDate)
+                if job.scheduler.date != nil {
+                    guard let index = self.scheduledJobs.firstIndex(where: { $0.0 === job }) else { return }
+                    self.scheduledJobs.remove(at: index)
+                    if self.scheduledJobs.first(where: { $0.0.scheduler.date != nil }) == nil {
+                        // We do not have any scheduled jobs, check for one-off jobs
+                        if self.scheduledJobs.filter({ $0.0.scheduler.date != nil }).count == 0 {
+                            self.shutdownPromise.succeed(())
+                        }
+                    }
+                } else {
+                    if let nextDate = try? job.scheduler.resolveNextDateThatSatisifiesSchedule(date: date) {
+                        self.scheduledJobs.append((job, nextDate))
+                        self.run(job: job, date: nextDate)
+                    }
                 }
             }.transform(to: ())
         }

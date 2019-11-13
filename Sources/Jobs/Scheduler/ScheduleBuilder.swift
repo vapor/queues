@@ -224,6 +224,32 @@ public final class ScheduleBuilder {
             self.init(value)
         }
     }
+    
+    /// Describes a second numeral
+    public struct Second: ExpressibleByIntegerLiteral, CustomStringConvertible {
+        let number: Int
+
+        /// The readable second, zero padded.
+        public var description: String {
+            switch self.number {
+            case 0..<10:
+                return "0" + self.number.description
+            default:
+                return self.number.description
+            }
+        }
+
+        init(_ number: Int) {
+            assert(number >= 0, "Second cannot preceed 0")
+            assert(number < 60, "Second cannot exceed 60")
+            self.number = number
+        }
+
+        /// Takes an integerLiteral and creates a `Second`. Must be `>= 0 && < 60`
+        public init(integerLiteral value: Int) {
+            self.init(value)
+        }
+    }
 
     // MARK: Builders
 
@@ -299,9 +325,24 @@ public final class ScheduleBuilder {
             self.builder.minute = minute
         }
     }
+    
+    /// An object to build a `EveryMinute` scheduled job
+    public struct EveryMinute {
+        let builder: ScheduleBuilder
+        
+        /// The second to run the job at
+        /// - Parameter second: A `Second` to run the job at
+        public func at(_ second: Second) {
+            self.builder.second = second
+        }
+    }
 
     /// returns the next date that satisfies the schedule
     internal func resolveNextDateThatSatisifiesSchedule(date: Date) throws -> Date {
+        if let oneTimeDate = self.date {
+            return oneTimeDate
+        }
+        
         var monthConstraint: MonthRecurrenceRuleConstraint?
         if let monthValue = month?.rawValue {
             monthConstraint = try MonthRecurrenceRuleConstraint.atMonth(monthValue)
@@ -337,8 +378,8 @@ public final class ScheduleBuilder {
         if let minuteValue = minute?.number {
             minuteConstraint = try MinuteRecurrenceRuleConstraint.atMinute(minuteValue)
         }
-
-        let secondConstraint = try SecondRecurrenceRuleConstraint.atSecond(0)
+        
+        let secondConstraint = try SecondRecurrenceRuleConstraint.atSecond(second.number)
         let recurrenceRule = try RecurrenceRule(yearConstraint: nil,
                                                 monthConstraint: monthConstraint,
                                                 dayOfMonthConstraint: dayOfMonthConstraint,
@@ -351,17 +392,26 @@ public final class ScheduleBuilder {
     }
 
     // MARK: Properties
-
+    
+    /// Date to perform task (one-off job)
+    var date: Date?
+    
     var month: Month?
     var day: Day?
     var dayOfWeek: DayOfWeek?
     var time: Time?
     var minute: Minute?
+    var second: Second = Second(0)
 
     init() { }
 
     // MARK: Helpers
-
+    
+    /// Schedules a job at a specific date
+    public func at(_ date: Date) -> Void {
+        self.date = date
+    }
+    
     /// Creates a yearly scheduled job for further building
     public func yearly() -> Yearly {
         return Yearly(builder: self)
@@ -385,5 +435,9 @@ public final class ScheduleBuilder {
     /// Creates a hourly scheduled job for further building
     public func hourly() -> Hourly {
         return Hourly(builder: self)
+    }
+    
+    public func everyMinute() -> EveryMinute {
+        return EveryMinute(builder: self)
     }
 }
