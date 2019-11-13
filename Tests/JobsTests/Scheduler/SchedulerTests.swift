@@ -66,7 +66,7 @@ final class SchedulerTests: XCTestCase {
         // May 31, 2019 12:00:00
         let date2 = dateFormatter.date(from: "2019-05-23T12:00:00")!
 
-        let nextDate = try config.scheduledStorage.first?.scheduler!.resolveNextDateThatSatisifiesSchedule(date: date1)
+        let nextDate = try config.scheduledStorage.first?.scheduler.resolveNextDateThatSatisifiesSchedule(date: date1)
         XCTAssertEqual(nextDate, date2)
     }
 
@@ -87,7 +87,7 @@ final class SchedulerTests: XCTestCase {
         // Jan 15, 2019 24:00:00
         let date2 = dateFormatter.date(from: "2019-01-15T00:00:00")!
 
-        let nextDate = try config.scheduledStorage.first?.scheduler!.resolveNextDateThatSatisifiesSchedule(date: date1)
+        let nextDate = try config.scheduledStorage.first?.scheduler.resolveNextDateThatSatisifiesSchedule(date: date1)
         XCTAssertEqual(nextDate, date2)
     }
 
@@ -108,7 +108,7 @@ final class SchedulerTests: XCTestCase {
         // Mon Jan 7, 2019 3:13:00
         let date2 = dateFormatter.date(from: "2019-01-07T3:13:00")!
 
-        let nextDate = try config.scheduledStorage.first?.scheduler!.resolveNextDateThatSatisifiesSchedule(date: date1)
+        let nextDate = try config.scheduledStorage.first?.scheduler.resolveNextDateThatSatisifiesSchedule(date: date1)
         XCTAssertEqual(nextDate, date2)
     }
 
@@ -128,7 +128,7 @@ final class SchedulerTests: XCTestCase {
         // Jan 1, 2019 17:23:00
         let date2 = dateFormatter.date(from: "2019-01-01T17:23:00")!
 
-        let nextDate = try config.scheduledStorage.first?.scheduler!.resolveNextDateThatSatisifiesSchedule(date: date1)
+        let nextDate = try config.scheduledStorage.first?.scheduler.resolveNextDateThatSatisifiesSchedule(date: date1)
         XCTAssertEqual(nextDate, date2)
 
         // daily 2
@@ -142,7 +142,7 @@ final class SchedulerTests: XCTestCase {
         // Jan 1, 2019 17:23:00
         let date4 = dateFormatter.date(from: "2019-01-01T17:23:00")!
 
-        let nextDate2 = try config.scheduledStorage[1].scheduler!.resolveNextDateThatSatisifiesSchedule(date: date3)
+        let nextDate2 = try config.scheduledStorage[1].scheduler.resolveNextDateThatSatisifiesSchedule(date: date3)
         XCTAssertEqual(nextDate2, date4)
 
         // daily 3
@@ -156,7 +156,7 @@ final class SchedulerTests: XCTestCase {
         // Jan 1, 2019 17:23:00
         let date6 = dateFormatter.date(from: "2019-01-01T17:23:00")!
 
-        let nextDate3 = try config.scheduledStorage[2].scheduler!.resolveNextDateThatSatisifiesSchedule(date: date5)
+        let nextDate3 = try config.scheduledStorage[2].scheduler.resolveNextDateThatSatisifiesSchedule(date: date5)
         XCTAssertEqual(nextDate3, date6)
     }
 
@@ -176,7 +176,27 @@ final class SchedulerTests: XCTestCase {
         // Jan 1, 2019 0:30:00
         let date2 = dateFormatter.date(from: "2019-01-01T0:30:00")!
 
-        let nextDate = try config.scheduledStorage.first?.scheduler!.resolveNextDateThatSatisifiesSchedule(date: date1)
+        let nextDate = try config.scheduledStorage.first?.scheduler.resolveNextDateThatSatisifiesSchedule(date: date1)
+        XCTAssertEqual(nextDate, date2)
+    }
+    
+    func testScheduleEvaluationEveryMinute() throws {
+        var config = JobsConfiguration()
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        
+        // hourly
+        config.schedule(Cleanup())
+            .everyMinute()
+            .at(30)
+        
+        // Fri, Jan 1, 2019 00:00:00
+        let date1 = dateFormatter.date(from: "2019-01-01T00:00:00")!
+        
+        // Jan 1, 2019 0:00:30
+        let date2 = dateFormatter.date(from: "2019-01-01T0:00:30")!
+        
+        let nextDate = try config.scheduledStorage.first?.scheduler.resolveNextDateThatSatisifiesSchedule(date: date1)
         XCTAssertEqual(nextDate, date2)
     }
 }

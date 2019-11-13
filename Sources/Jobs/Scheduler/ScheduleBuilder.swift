@@ -339,6 +339,10 @@ public final class ScheduleBuilder {
 
     /// returns the next date that satisfies the schedule
     internal func resolveNextDateThatSatisifiesSchedule(date: Date) throws -> Date {
+        if let oneTimeDate = self.date {
+            return oneTimeDate
+        }
+        
         var monthConstraint: MonthRecurrenceRuleConstraint?
         if let monthValue = month?.rawValue {
             monthConstraint = try MonthRecurrenceRuleConstraint.atMonth(monthValue)
@@ -388,7 +392,10 @@ public final class ScheduleBuilder {
     }
 
     // MARK: Properties
-
+    
+    /// Date to perform task (one-off job)
+    var date: Date?
+    
     var month: Month?
     var day: Day?
     var dayOfWeek: DayOfWeek?
@@ -399,7 +406,12 @@ public final class ScheduleBuilder {
     init() { }
 
     // MARK: Helpers
-
+    
+    /// Schedules a job at a specific date
+    public func at(_ date: Date) -> Void {
+        self.date = date
+    }
+    
     /// Creates a yearly scheduled job for further building
     public func yearly() -> Yearly {
         return Yearly(builder: self)

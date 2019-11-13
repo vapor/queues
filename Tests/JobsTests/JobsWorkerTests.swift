@@ -46,7 +46,7 @@ final class JobsWorkerTests: XCTestCase {
         let expectation = XCTestExpectation(description: "Waits for scheduled job to be completed")
         var config = JobsConfiguration()
         
-        config.schedule(DailyCleanupScheduledJob(expectation: expectation), at: Date().addingTimeInterval(5))
+        config.schedule(DailyCleanupScheduledJob(expectation: expectation)).at(Date().addingTimeInterval(5))
         
         let logger = Logger(label: "com.vapor.codes.jobs.tests")
         let worker = ScheduledJobsWorker(

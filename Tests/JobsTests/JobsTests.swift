@@ -26,7 +26,8 @@ final class JobsTests: XCTestCase {
         let app = try self.startServer()
         defer { app.shutdown() }
         app.jobs.schedule(Cleanup()).hourly().at(30)
-        app.jobs.schedule(Cleanup(), at: Date() + 5)
+        app.jobs.schedule(Cleanup()).at(Date() + 5)
+    
         XCTAssertEqual(app.make(JobsConfiguration.self).scheduledStorage.count, 2)
     }
     

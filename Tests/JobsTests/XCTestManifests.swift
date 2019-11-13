@@ -105,6 +105,7 @@ extension SchedulerTests {
     static let __allTests__SchedulerTests = [
         ("testConfiguration", testConfiguration),
         ("testScheduleEvaluationDaily", testScheduleEvaluationDaily),
+        ("testScheduleEvaluationEveryMinute", testScheduleEvaluationEveryMinute),
         ("testScheduleEvaluationHourly", testScheduleEvaluationHourly),
         ("testScheduleEvaluationMonthly", testScheduleEvaluationMonthly),
         ("testScheduleEvaluationWeekly", testScheduleEvaluationWeekly),

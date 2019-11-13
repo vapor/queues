@@ -63,10 +63,6 @@ public struct JobsConfiguration {
         return builder
     }
     
-    mutating internal func schedule<J>(_ job: J, at date: Date) where J: ScheduledJob {
-        self.scheduledStorage.append(AnyScheduledJob(job: job, at: date))
-    }
-    
     /// Returns the `AnyJob` for the string it was registered under
     ///
     /// - Parameter key: The key of the job
