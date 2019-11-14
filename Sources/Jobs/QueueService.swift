@@ -33,7 +33,8 @@ public struct QueueService: Service {
                                     maxRetryCount: maxRetryCount,
                                     id: UUID().uuidString,
                                     jobName: J.jobName,
-                                    delayUntil: delayUntil)
+                                    delayUntil: delayUntil,
+                                    queuedAt: Date())
         
         return persistenceLayer.set(key: queue.makeKey(with: persistenceKey), jobStorage: jobStorage).transform(to: ())
     }
