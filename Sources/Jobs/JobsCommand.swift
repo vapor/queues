@@ -99,7 +99,7 @@ public class JobsCommand: Command {
         let queueService = try container.make(QueueService.self)
         let jobContext = try container.make(JobContext.self)
         let key = queue.makeKey(with: queueService.persistenceKey)
-        let config = try container.make(JobsConfig.self)
+        let config = try container.make(JobsConfiguration.self)
         
         _ = eventLoop.scheduleRepeatedTask(
             initialDelay: .seconds(0),
