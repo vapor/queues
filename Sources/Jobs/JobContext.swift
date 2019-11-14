@@ -10,7 +10,7 @@ public struct JobContext: Service {
     public var eventLoop: EventLoop
     
     /// Creates an empty `JobContext`
-    public init(eventLoop: EventLoop) {
+    public init(userInfo: [AnyHashable: Any] = [:], on eventLoop: EventLoop) {
         self.eventLoop = eventLoop
         self.userInfo = [:]
     }
