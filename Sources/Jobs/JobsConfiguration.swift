@@ -2,7 +2,7 @@ import Foundation
 import Vapor
 
 /// A `Service` to configure `Job`s
-public struct JobsConfiguration: Service {
+public class JobsConfiguration: Service {
     /// Type storage
     internal var storage: [String: AnyJob]
 
@@ -30,7 +30,7 @@ public struct JobsConfiguration: Service {
     /// This must be called on all `Job` objects before they can be run in a queue.
     ///
     /// - Parameter job: The `Job` to add.
-    mutating public func add<J>(_ job: J)
+    public func add<J>(_ job: J)
         where J: Job
     {
         let key = J.jobName
@@ -49,7 +49,8 @@ public struct JobsConfiguration: Service {
     ///     .at(.noon)
     ///
     /// - Parameter job: The `ScheduledJob` to be scheduled.
-    mutating internal func schedule<J>(_ job: J, builder: ScheduleBuilder = ScheduleBuilder()) -> ScheduleBuilder
+    @discardableResult
+    internal func schedule<J>(_ job: J, builder: ScheduleBuilder = ScheduleBuilder()) -> ScheduleBuilder
         where J: ScheduledJob
     {
         let storage = AnyScheduledJob(job: job, scheduler: builder)

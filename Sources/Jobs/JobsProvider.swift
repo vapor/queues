@@ -3,41 +3,62 @@ import Vapor
 
 /// A provider used to setup the `Jobs` package
 public struct JobsProvider: Provider {
-    
-    /// The amount of time the queue should wait in between each completed job
-    let refreshInterval: TimeAmount
-    
-    /// The base key that should be used in the persistence layer
-    let persistenceKey: String
-    
-    
+    /// The key to use for calling the command. Defaults to `jobs`
+    public var commandKey: String
+
     /// Initializes the `Jobs` package
-    ///
-    /// - Parameters:
-    ///   - refreshInterval: The amount of time the queue should wait in between each completed job
-    ///   - persistenceKey: The base key that should be used in the persistence layer
-    public init(refreshInterval: TimeAmount = .seconds(1),
-                persistenceKey: String = "vapor_jobs")
-    {
-        self.refreshInterval = refreshInterval
-        self.persistenceKey = persistenceKey
+    public init(commandKey: String = "jobs") {
+        self.commandKey = commandKey
     }
-    
-    
+
     /// See `Provider`.`register(_ services:)`
     public func register(_ services: inout Services) throws {
-        services.register { container -> QueueService in
-            let persistenceLayer = try container.make(JobsPersistenceLayer.self)
-            
-            return QueueService(refreshInterval: self.refreshInterval,
-                                persistenceLayer: persistenceLayer,
-                                persistenceKey: self.persistenceKey)
+        services.register(JobsConfiguration())
+
+        services.register(JobsService.self) { container in
+            return ApplicationJobsService(
+                configuration: try container.make(),
+                driver: try container.make(),
+                eventLoopPreference: .indifferent
+            )
+        }
+
+        services.register(JobsCommand.self) { container in
+            return try JobsCommand(container: container)
         }
     }
-    
-    
+
     /// See `Provider`.`didBoot(_ container:)`
-    public func didBoot(_ container: Container) throws -> EventLoopFuture<Void> {
-        return container.future()
+    public func didBoot(_ container: Container) throws -> Future<Void> {
+        return .done(on: container)
     }
 }
+
+public struct ApplicationJobs {
+    private let container: Container
+
+    public init(for container: Container) {
+        self.container = container
+    }
+
+    public func add<J>(_ job: J) throws where J: Job {
+        let jobs = try container.make(JobsConfiguration.self)
+        jobs.add(job)
+    }
+
+    public func schedule<J>(_ job: J) throws -> ScheduleBuilder
+        where J: ScheduledJob
+    {
+        let builder = ScheduleBuilder()
+        let jobs = try container.make(JobsConfiguration.self)
+        jobs.schedule(job, builder: builder)
+        return builder
+    }
+}
+
+extension Application {
+    public var jobs: ApplicationJobs {
+        return ApplicationJobs(for: self)
+    }
+}
+

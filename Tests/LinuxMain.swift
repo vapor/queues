@@ -3,5 +3,6 @@ import XCTest
 import JobsTests
 
 var tests = [XCTestCaseEntry]()
-tests += JobsTests.allTests()
+tests += JobsTests.__allTests()
+
 XCTMain(tests)
