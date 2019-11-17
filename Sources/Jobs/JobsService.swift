@@ -49,10 +49,10 @@ extension JobsService {
     }
 }
 
-struct ApplicationJobsService: JobsService {
-    let configuration: JobsConfiguration
-    let driver: JobsDriver
-    let eventLoopPreference: JobsEventLoopPreference
+public struct ApplicationJobsService: JobsService {
+    public let configuration: JobsConfiguration
+    public let driver: JobsDriver
+    public let eventLoopPreference: JobsEventLoopPreference
 }
 
 extension Request {

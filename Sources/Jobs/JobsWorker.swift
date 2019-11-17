@@ -22,7 +22,7 @@ public final class JobsWorker {
     private var isShuttingDown: Atomic<Bool>
     private var repeatedTask: RepeatedTask?
 
-    init(
+    public init(
         configuration: JobsConfiguration,
         driver: JobsDriver,
         on eventLoop: EventLoop
@@ -34,7 +34,7 @@ public final class JobsWorker {
         self.isShuttingDown = .init(value: false)
     }
 
-    func start(on queue: JobsQueue) {
+    public func start(on queue: JobsQueue) {
         // Schedule the repeating task
         self.repeatedTask = eventLoop.scheduleRepeatedTask(
             initialDelay: .seconds(0),
@@ -53,7 +53,7 @@ public final class JobsWorker {
         }
     }
 
-    func shutdown() {
+    public func shutdown() {
         self.isShuttingDown.store(true)
     }
 

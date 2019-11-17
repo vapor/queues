@@ -40,7 +40,7 @@ public class JobsCommand: Command, Service {
     private var _lock: NSLock
 
     /// Create a new `JobsCommand`
-    init(container: Container, scheduled: Bool = false) throws {
+    public init(container: Container, scheduled: Bool = false) throws {
         self.container = container
         self.scheduled = scheduled
         self._lock = NSLock()

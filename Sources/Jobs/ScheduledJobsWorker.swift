@@ -21,7 +21,7 @@ public final class ScheduledJobsWorker {
     private var isShuttingDown: Atomic<Bool>
     internal var scheduledJobs: [(AnyScheduledJob, Date)]
     
-    init(
+    public init(
         configuration: JobsConfiguration,
         on eventLoop: EventLoop
     ) {
@@ -32,7 +32,7 @@ public final class ScheduledJobsWorker {
         self.scheduledJobs = []
     }
     
-    func start() throws {
+    public func start() throws {
         let scheduledJobsStartDates = configuration
             .scheduledStorage
             .map {
@@ -88,7 +88,7 @@ public final class ScheduledJobsWorker {
         }
     }
     
-    func shutdown() {
+    public func shutdown() {
         self.isShuttingDown.store(true)
     }
 }
