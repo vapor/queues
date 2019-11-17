@@ -33,11 +33,7 @@ public class JobsConfiguration: Service {
     public func add<J>(_ job: J)
         where J: Job
     {
-        let key = J.jobName
-        if let existing = storage[key] {
-            print("WARNING: A job is already registered with key \(key): \(existing)")
-        }
-        self.storage[key] = job
+        self.storage[J.jobName] = job
     }
 
     /// Schedules a new job for execution at a later date.

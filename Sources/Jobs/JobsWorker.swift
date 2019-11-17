@@ -12,6 +12,7 @@ public final class JobsWorker {
             on: self.eventLoop
         )
     }
+    let logger: Logger
     let eventLoop: EventLoop
 
     var onShutdown: EventLoopFuture<Void> {
@@ -25,11 +26,13 @@ public final class JobsWorker {
     public init(
         configuration: JobsConfiguration,
         driver: JobsDriver,
+        logger: Logger,
         on eventLoop: EventLoop
     ) {
         self.configuration = configuration
         self.eventLoop = eventLoop
         self.driver = driver
+        self.logger = logger
         self.shutdownPromise = self.eventLoop.newPromise()
         self.isShuttingDown = .init(value: false)
     }
@@ -48,7 +51,7 @@ public final class JobsWorker {
                     self.shutdownPromise.succeed()
                 }
             }.mapIfError { error in
-                print("ERROR: Job run failed: \(error)")
+                self.logger.error("Job run failed: \(error)")
             }
         }
     }
@@ -77,11 +80,11 @@ public final class JobsWorker {
 
             guard let job = self.configuration.make(for: jobStorage.jobName) else {
                 let error = Abort(.internalServerError)
-                print("ERROR: No job named \(jobStorage.jobName) is registered")
+                self.logger.error("No job named \(jobStorage.jobName) is registered")
                 return self.eventLoop.newFailedFuture(error: error)
             }
 
-            print("INFO: Dequeing Job with job_id: \(jobStorage.id)")
+            self.logger.info("Dequeing Job with job_id: \(jobStorage.id)")
             let jobRunPromise = self.eventLoop.newPromise(of: Void.self)
             self.firstJobToSucceed(
                 job: job,
@@ -89,7 +92,7 @@ public final class JobsWorker {
                 jobStorage: jobStorage,
                 tries: jobStorage.maxRetryCount)
             .thenIfError { error in
-                print("ERROR: \(error) for job_id: \(jobStorage.id)")
+                self.logger.error("\(error) for job_id: \(jobStorage.id)")
                 return job.error(self.context, error, jobStorage)
             }.whenComplete {
                 self.driver.completed(

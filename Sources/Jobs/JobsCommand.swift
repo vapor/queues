@@ -1,4 +1,5 @@
 import Foundation
+import Console
 import Vapor
 import NIO
 
@@ -53,7 +54,7 @@ public class JobsCommand: Command, Service {
         //SIGTERM
         let termSignalSource = DispatchSource.makeSignalSource(signal: SIGTERM, queue: signalQueue)
         termSignalSource.setEventHandler {
-            print("Shutting down remaining jobs.")
+            context.console.info("Shutting down remaining jobs.")
             self.isShuttingDown = true
             termSignalSource.cancel()
         }
@@ -63,7 +64,7 @@ public class JobsCommand: Command, Service {
         //SIGINT
         let intSignalSource = DispatchSource.makeSignalSource(signal: SIGINT, queue: signalQueue)
         intSignalSource.setEventHandler {
-            print("Shutting down remaining jobs.")
+            context.console.info("Shutting down remaining jobs.")
             self.isShuttingDown = true
             intSignalSource.cancel()
         }
@@ -99,6 +100,7 @@ public class JobsCommand: Command, Service {
                 let worker = JobsWorker(
                     configuration: try self.container.make(),
                     driver: try self.container.make(),
+                    logger: try self.container.make(),
                     on: eventLoop
                 )
                 worker.start(on: queue)

@@ -2,6 +2,7 @@ import Foundation
 import Vapor
 
 public protocol JobsService: Service {
+    var logger: Logger { get }
     var driver: JobsDriver { get }
     var eventLoopPreference: JobsEventLoopPreference { get }
     var configuration: JobsConfiguration { get }
@@ -40,7 +41,7 @@ extension JobsService {
             job: jobStorage,
             eventLoop: self.eventLoopPreference
         ).map { _ in
-            print("INFO: Dispatched queue job\n\tjob_id: \(jobID)\n\tqueue: \(queue.name)")
+            self.logger.info("Dispatched queue job\n\tjob_id: \(jobID)\n\tqueue: \(queue.name)")
         }
     }
     
@@ -52,15 +53,18 @@ extension JobsService {
 public struct ApplicationJobsService: JobsService {
     public let configuration: JobsConfiguration
     public let driver: JobsDriver
+    public let logger: Logger
     public let eventLoopPreference: JobsEventLoopPreference
 
     public init(
         configuration: JobsConfiguration,
         driver: JobsDriver,
+        logger: Logger,
         eventLoopPreference: JobsEventLoopPreference
     ) {
         self.configuration = configuration
         self.driver = driver
+        self.logger = logger
         self.eventLoopPreference = eventLoopPreference
     }
 }
@@ -75,17 +79,21 @@ extension Request {
 private struct RequestSpecificJobsService: JobsService {
     public let request: Request
     public let service: JobsService
-    
+
     var driver: JobsDriver {
         return self.service.driver
+    }
+
+    var logger: Logger {
+        return try! self.request.make(Logger.self)
     }
 
     var eventLoopPreference: JobsEventLoopPreference {
         return .delegate(on: self.request.eventLoop)
     }
-    
+
     public var configuration: JobsConfiguration
-    
+
     init(request: Request, service: JobsService, configuration: JobsConfiguration) {
         self.request = request
         self.configuration = configuration

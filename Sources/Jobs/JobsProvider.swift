@@ -19,6 +19,7 @@ public struct JobsProvider: Provider {
             return ApplicationJobsService(
                 configuration: try container.make(),
                 driver: try container.make(),
+                logger: try container.make(),
                 eventLoopPreference: .indifferent
             )
         }
