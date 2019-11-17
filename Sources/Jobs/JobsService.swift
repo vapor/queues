@@ -53,6 +53,16 @@ public struct ApplicationJobsService: JobsService {
     public let configuration: JobsConfiguration
     public let driver: JobsDriver
     public let eventLoopPreference: JobsEventLoopPreference
+
+    public init(
+        configuration: JobsConfiguration,
+        driver: JobsDriver,
+        eventLoopPreference: JobsEventLoopPreference
+    ) {
+        self.configuration = configuration
+        self.driver = driver
+        self.eventLoopPreference = eventLoopPreference
+    }
 }
 
 extension Request {
