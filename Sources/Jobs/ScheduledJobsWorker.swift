@@ -3,7 +3,7 @@ import NIO
 import Vapor
 import NIOConcurrencyHelpers
 
-final class ScheduledJobsWorker {
+public final class ScheduledJobsWorker {
     let configuration: JobsConfiguration
     let eventLoop: EventLoop
     var context: JobContext {

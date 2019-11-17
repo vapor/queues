@@ -3,7 +3,7 @@ import NIO
 import Vapor
 import NIOConcurrencyHelpers
 
-final class JobsWorker {
+public final class JobsWorker {
     let configuration: JobsConfiguration
     let driver: JobsDriver
     var context: JobContext {
