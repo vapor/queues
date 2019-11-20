@@ -71,6 +71,7 @@ public final class JobsWorker {
 
             // If the job has a delay, we must check to make sure we can execute. If the delay has not passed yet, requeue the job
             if let delay = jobStorage.delayUntil, delay >= Date() {
+                self.logger.info("Requeing delayed Job with job_id: \(jobStorage.id) until \(delay)")
                 return self.driver.requeue(
                     key: key,
                     job: jobStorage,
