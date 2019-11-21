@@ -10,10 +10,10 @@ final class JobsTests: XCTestCase {
         let worker = try self.startWorker()
         defer { worker.shutdown() }
         
-        FooJob.dequeuePromise = server.make(EventLoopGroup.self)
+        FooJob.dequeuePromise = server.eventLoopGroup
             .next().makePromise(of: Void.self)
         
-        let task = server.make(EventLoopGroup.self).next().scheduleTask(in: .seconds(5)) {
+        let task = server.eventLoopGroup.next().scheduleTask(in: .seconds(5)) {
             return server.client.get("http://localhost:8080/foo")
         }
         let res = try task.futureResult.wait().wait()
@@ -28,7 +28,7 @@ final class JobsTests: XCTestCase {
         app.jobs.schedule(Cleanup()).hourly().at(30)
         app.jobs.schedule(Cleanup()).at(Date() + 5)
     
-        XCTAssertEqual(app.make(JobsConfiguration.self).scheduledStorage.count, 2)
+        XCTAssertEqual(app.jobs.configuration.scheduledStorage.count, 2)
     }
     
     private func startServer() throws -> Application {
@@ -44,9 +44,9 @@ final class JobsTests: XCTestCase {
     }
     
     private func setupApplication(_ env: Environment) -> Application {
-        let app = Application(environment: env)
-        app.provider(JobsProvider())
-        app.jobs.driver(TestDriver(on: app.make()))
+        let app = Application(env)
+        app.use(Jobs.self)
+        app.jobs.use(TestDriver(on: app.eventLoopGroup))
         app.jobs.add(FooJob())
         
         app.get("foo") { req in

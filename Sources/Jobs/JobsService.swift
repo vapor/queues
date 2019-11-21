@@ -10,14 +10,14 @@ public protocol JobsService {
 }
 
 extension JobsService {
-    public func dispatch<Job>(
-        _ job: Job.Type,
-        _ jobData: Job.Data,
+    public func dispatch<J>(
+        _ job: J.Type,
+        _ jobData: J.Data,
         maxRetryCount: Int = 0,
         queue: JobsQueue = .default,
         delayUntil: Date? = nil
     ) -> EventLoopFuture<Void>
-        where Job: Jobs.Job
+        where J: Job
     {
         let data: Data
         do {
@@ -33,7 +33,7 @@ extension JobsService {
             data: data,
             maxRetryCount: maxRetryCount,
             id: jobID,
-            jobName: Job.jobName,
+            jobName: J.jobName,
             delayUntil: delayUntil,
             queuedAt: Date()
         )
@@ -48,47 +48,5 @@ extension JobsService {
             ])
         }
     }
-    
-    public func with(_ request: Request) -> JobsService {
-        return RequestSpecificJobsService(request: request, service: self, configuration: self.configuration)
-    }
 }
 
-struct ApplicationJobsService: JobsService {
-    let configuration: JobsConfiguration
-    let driver: JobsDriver
-    let logger: Logger
-    let eventLoopPreference: JobsEventLoopPreference
-}
-
-extension Request {
-    public var jobs: JobsService {
-        return self.application.make(JobsService.self).with(self)
-    }
-}
-
-
-private struct RequestSpecificJobsService: JobsService {
-    public let request: Request
-    public let service: JobsService
-    
-    var driver: JobsDriver {
-        return self.service.driver
-    }
-    
-    var logger: Logger {
-        return self.request.logger
-    }
-    
-    var eventLoopPreference: JobsEventLoopPreference {
-        return .delegate(on: self.request.eventLoop)
-    }
-    
-    public var configuration: JobsConfiguration
-    
-    init(request: Request, service: JobsService, configuration: JobsConfiguration) {
-        self.request = request
-        self.configuration = configuration
-        self.service = service
-    }
-}

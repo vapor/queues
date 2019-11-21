@@ -26,20 +26,22 @@ public final class JobsCommand: Command {
     private var workers: [JobsWorker]?
     private var scheduledWorkers: [ScheduledJobsWorker]?
     private let scheduled: Bool
-    private let eventLoopGroup: EventLoopGroup
+    
+    private var eventLoopGroup: EventLoopGroup {
+        self.application.eventLoopGroup
+    }
 
     /// Create a new `JobsCommand`
     init(application: Application, scheduled: Bool = false) {
         self.application = application
         self.scheduled = scheduled
-        self.eventLoopGroup = self.application.make()
     }
 
     public func run(using context: CommandContext, signature: JobsCommand.Signature) throws {
         let signalQueue = DispatchQueue(label: "vapor.jobs.command.SignalHandlingQueue")
         
         // shutdown future
-        let runningPromise = self.application.make(EventLoopGroup.self).next().makePromise(of: Void.self)
+        let runningPromise = self.application.eventLoopGroup.next().makePromise(of: Void.self)
         self.application.running = .start(using: runningPromise)
         
         //SIGTERM
@@ -78,12 +80,7 @@ public final class JobsCommand: Command {
     private func startJobsWorker(on queue: JobsQueue) throws {
         var workers: [JobsWorker] = []
         for eventLoop in eventLoopGroup.makeIterator() {
-            let worker = JobsWorker(
-                configuration: self.application.make(),
-                driver: self.application.make(),
-                logger: self.application.make(),
-                on: eventLoop
-            )
+            let worker = self.application.jobs.worker(on: eventLoop)
             worker.start(on: queue)
             workers.append(worker)
         }
@@ -94,11 +91,7 @@ public final class JobsCommand: Command {
     private func startScheduledWorker() throws {
         var scheduledWorkers: [ScheduledJobsWorker] = []
         for eventLoop in eventLoopGroup.makeIterator() {
-            let worker = ScheduledJobsWorker(
-                configuration: self.application.make(),
-                logger: self.application.make(),
-                on: eventLoop
-            )
+            let worker = self.application.jobs.scheduledWorker(on: eventLoop)
             try worker.start()
             scheduledWorkers.append(worker)
         }
