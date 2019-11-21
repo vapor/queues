@@ -46,7 +46,7 @@ final class JobsTests: XCTestCase {
     private func setupApplication(_ env: Environment) -> Application {
         let app = Application(env)
         app.use(Jobs.self)
-        app.jobs.use(TestDriver(on: app.eventLoopGroup))
+        app.jobs.use(TestDriver())
         app.jobs.add(FooJob())
         
         app.get("foo") { req in
@@ -63,50 +63,52 @@ extension ByteBuffer {
     }
 }
 
-var storage: [String: JobStorage] = [:]
+var storage: [String: JobData] = [:]
 var lock = Lock()
 
-final class TestDriver: JobsDriver {
-    var eventLoopGroup: EventLoopGroup
-    
-    init(on eventLoopGroup: EventLoopGroup) {
-        self.eventLoopGroup = eventLoopGroup
+struct TestDriver: JobsDriver {
+    func makeJobsService(with context: JobsContext) -> JobsService {
+        TestService(context: context)
     }
     
-    func get(key: String, eventLoop: JobsEventLoopPreference) -> EventLoopFuture<JobStorage?> {
+    func shutdown() {
+        // nothing
+    }
+}
+
+struct TestService: JobsService {
+    let context: JobsContext
+    
+    func get(key: String) -> EventLoopFuture<JobData?> {
         lock.lock()
         defer { lock.unlock() }
-        let job: JobStorage?
+        let job: JobData?
         if let existing = storage[key] {
             job = existing
             storage[key] = nil
         } else {
             job = nil
         }
-        return eventLoop.delegate(for: self.eventLoopGroup)
-            .makeSucceededFuture(job)
+        return self.eventLoop.makeSucceededFuture(job)
     }
     
-    func set(key: String, job: JobStorage, eventLoop: JobsEventLoopPreference) -> EventLoopFuture<Void> {
+    func set(key: String, job: JobData) -> EventLoopFuture<Void> {
         lock.lock()
         defer { lock.unlock() }
         storage[key] = job
-        return eventLoop.delegate(for: self.eventLoopGroup)
-            .makeSucceededFuture(())
+        return self.eventLoop.makeSucceededFuture(())
     }
     
-    func completed(key: String, job: JobStorage, eventLoop: JobsEventLoopPreference) -> EventLoopFuture<Void> {
-        return eventLoop.delegate(for: self.eventLoopGroup)
-            .makeSucceededFuture(())
+    func completed(key: String, job: JobData) -> EventLoopFuture<Void> {
+        return self.eventLoop.makeSucceededFuture(())
     }
     
     func processingKey(key: String) -> String {
         return key
     }
     
-    func requeue(key: String, job: JobStorage, eventLoop: JobsEventLoopPreference) -> EventLoopFuture<Void> {
-        return eventLoop.delegate(for: self.eventLoopGroup)
-            .makeSucceededFuture(())
+    func requeue(key: String, job: JobData) -> EventLoopFuture<Void> {
+        return self.eventLoop.makeSucceededFuture(())
     }
 }
 

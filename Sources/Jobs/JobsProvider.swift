@@ -3,12 +3,23 @@ import Vapor
 import NIO
 
 extension Request {
-    public var jobs: JobsService {
-        return RequestSpecificJobsService(
-            request: self,
-            service: self.application.jobs.service,
-            configuration: self.application.jobs.configuration
+    public var jobs: JobsQueue {
+        self.jobs(.default)
+    }
+    
+    public func jobs(_ queue: JobsQueueName) -> JobsQueue {
+        self.application.jobs.queue(
+            queue,
+            logger: self.logger,
+            on: self.eventLoop
         )
+    }
+}
+
+public struct JobsDriverFactory {
+    let factory: (Jobs) -> JobsDriver
+    public init(_ factory: @escaping (Jobs) -> JobsDriver) {
+        self.factory = factory
     }
 }
 
@@ -18,19 +29,28 @@ public final class Jobs: Provider {
     public var configuration: JobsConfiguration
     let command: JobsCommand
     var driver: JobsDriver?
+
+    public var queue: JobsQueue {
+        self.queue(.default)
+    }
     
-    public var service: JobsService {
-        return ApplicationJobsService(
-            configuration: self.configuration,
-            driver: self.driver!,
-            logger: self.application.logger,
-            eventLoopPreference: .indifferent
+    public func queue(_ name: JobsQueueName, logger: Logger? = nil, on eventLoop: EventLoop? = nil) -> JobsQueue {
+        guard let driver = self.driver else {
+            fatalError("No Jobs driver configured.")
+        }
+        return driver.makeQueue(
+            with: .init(
+                queueName: name,
+                configuration: self.configuration,
+                logger: logger ?? self.application.logger,
+                on: eventLoop ?? self.application.eventLoopGroup.next()
+            )
         )
     }
-
+    
     public init(_ application: Application) {
         self.application = application
-        self.configuration = .init()
+        self.configuration = .init(logger: application.logger)
         self.command = .init(application: application)
         self.application.commands.use(self.command, as: "jobs")
     }
@@ -40,7 +60,11 @@ public final class Jobs: Provider {
         self.configuration.add(job)
     }
     
-    public func use(_ driver: JobsDriver) {
+    public func use(_ driver: JobsDriverFactory) {
+        self.driver = driver.factory(self)
+    }
+    
+    public func use(custom driver: JobsDriver) {
         self.driver = driver
     }
     
@@ -52,13 +76,8 @@ public final class Jobs: Provider {
         return builder
     }
     
-    func worker(on eventLoop: EventLoop) -> JobsWorker {
-        .init(
-            configuration: self.configuration,
-            driver: self.driver!,
-            logger: self.application.logger,
-            on: eventLoop
-        )
+    func worker(queueName: JobsQueueName, on eventLoop: EventLoop) -> JobsWorker {
+        .init(queue: self.queue(queueName, on: eventLoop))
     }
     
     func scheduledWorker(on eventLoop: EventLoop) -> ScheduledJobsWorker {
@@ -68,47 +87,17 @@ public final class Jobs: Provider {
             on: eventLoop
         )
     }
-    
+
     public func shutdown() {
         self.command.shutdown()
+        if let driver = self.driver {
+            driver.shutdown()
+        }
     }
 }
 
 extension Application {
     public var jobs: Jobs {
         self.providers.require(Jobs.self)
-    }
-}
-
-private struct ApplicationJobsService: JobsService {
-    let configuration: JobsConfiguration
-    let driver: JobsDriver
-    let logger: Logger
-    let eventLoopPreference: JobsEventLoopPreference
-}
-
-
-private struct RequestSpecificJobsService: JobsService {
-    public let request: Request
-    public let service: JobsService
-    
-    var driver: JobsDriver {
-        return self.service.driver
-    }
-    
-    var logger: Logger {
-        return self.request.logger
-    }
-    
-    var eventLoopPreference: JobsEventLoopPreference {
-        return .delegate(on: self.request.eventLoop)
-    }
-    
-    public var configuration: JobsConfiguration
-    
-    init(request: Request, service: JobsService, configuration: JobsConfiguration) {
-        self.request = request
-        self.configuration = configuration
-        self.service = service
     }
 }

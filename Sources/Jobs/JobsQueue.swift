@@ -1,27 +1,65 @@
-import Foundation
-import Vapor
-import NIO
+/// A type that can store and retrieve jobs from a persistence layer
+public protocol JobsQueue {
+    var context: JobContext { get }
+    
+    func get(_ id: JobIdentifier) -> EventLoopFuture<JobData>
+    func set(_ id: JobIdentifier, to storage: JobData) -> EventLoopFuture<Void>
+    func clear(_ id: JobIdentifier) -> EventLoopFuture<Void>
 
-/// A specific queue that jobs are run on.
-public struct JobsQueue {
-    /// The default queue that jobs are run on
-    public static let `default` = JobsQueue(name: "default")
+    func pop() -> EventLoopFuture<JobIdentifier?>
+    func push(_ id: JobIdentifier) -> EventLoopFuture<Void>
+}
 
-    /// The name of the queue
-    public let name: String
-
-    /// Creates a new `QueueType`
-    ///
-    /// - Parameter name: The name of the `QueueType`
-    public init(name: String) {
-        self.name = name
+extension JobsQueue {
+    public var eventLoop: EventLoop {
+        self.context.eventLoop
     }
-
-    /// Makes the name of the queue
-    ///
-    /// - Parameter persistanceKey: The base persistence key
-    /// - Returns: A string of the queue's fully qualified name
-    public func makeKey(with persistanceKey: String) -> String {
-        return persistanceKey + "[\(self.name)]"
+    
+    public var logger: Logger {
+        self.context.logger
+    }
+    
+    public var configuration: JobsConfiguration {
+        self.context.configuration
+    }
+    
+    public var queueName: JobsQueueName {
+        self.context.queueName
+    }
+    
+    public var key: String {
+        self.queueName.makeKey(with: self.configuration.persistenceKey)
+    }
+    
+    public func dispatch<J>(
+        _ job: J.Type,
+        _ payload: J.Payload,
+        maxRetryCount: Int = 0,
+        delayUntil: Date? = nil
+    ) -> EventLoopFuture<Void>
+        where J: Job
+    {
+        let bytes: [UInt8]
+        do {
+            bytes = try J.serializePayload(payload)
+        } catch {
+            return self.eventLoop.makeFailedFuture(error)
+        }
+        let id = JobIdentifier()
+        let storage = JobData(
+            payload: bytes,
+            maxRetryCount: maxRetryCount,
+            jobName: J.name,
+            delayUntil: delayUntil,
+            queuedAt: Date()
+        )
+        return self.set(id, to: storage).flatMap {
+            self.push(id)
+        }.map { _ in
+            self.logger.info("Dispatched queue job", metadata: [
+                "job_id": .string("\(id)"),
+                "queue": .string(self.queueName.string)
+            ])
+        }
     }
 }

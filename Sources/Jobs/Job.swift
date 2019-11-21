@@ -5,7 +5,7 @@ import Vapor
 /// A task that can be queued for future execution.
 public protocol Job: AnyJob {
     /// The data associated with a job
-    associatedtype Data: Codable
+    associatedtype Payload
     
     /// Called when it's this Job's turn to be dequeued.
     ///
@@ -13,7 +13,10 @@ public protocol Job: AnyJob {
     ///   - context: The JobContext. Can be used to store and retrieve services
     ///   - data: The data for this handler
     /// - Returns: A future `Void` value used to signify completion
-    func dequeue(_ context: JobContext, _ data: Data) -> EventLoopFuture<Void>
+    func dequeue(
+        _ context: JobContext,
+        _ payload: Payload
+    ) -> EventLoopFuture<Void>
 
     
     /// Called when there is an error at any stage of the Job's execution.
@@ -22,34 +25,51 @@ public protocol Job: AnyJob {
     ///   - context: The JobContext. Can be used to store and retrieve services
     ///   - error: The error returned by the job.
     /// - Returns: A future `Void` value used to signify completion
-    func error(_ context: JobContext, _ error: Error, _ data: Data) -> EventLoopFuture<Void>
+    func error(
+        _ context: JobContext,
+        _ error: Error,
+        _ payload: Payload
+    ) -> EventLoopFuture<Void>
+    
+    static func serializePayload(_ payload: Payload) throws -> [UInt8]
+    static func parsePayload(_ bytes: [UInt8]) throws -> Payload
 }
 
-public extension Job {
+extension Job where Payload: Codable {
+    public static func serializePayload(_ payload: Payload) throws -> [UInt8] {
+        try .init(JSONEncoder().encode(payload))
+    }
+    
+    public static func parsePayload(_ bytes: [UInt8]) throws -> Payload {
+        try JSONDecoder().decode(Payload.self, from: .init(bytes))
+    }
+}
+
+extension Job {
     /// The jobName of the Job
-    static var jobName: String {
+    public static var name: String {
         return String(describing: Self.self)
     }
     
-    /// See `Job.error`
-    func error(_ context: JobContext, _ error: Error, _ data: Data) -> EventLoopFuture<Void> {
-        return context.eventLoop.makeSucceededFuture(())
+    public func error(
+        _ context: JobContext,
+        _ error: Error,
+        _ payload: Payload
+    ) -> EventLoopFuture<Void> {
+        context.eventLoop.makeSucceededFuture(())
     }
     
-    func error(_ context: JobContext, _ error: Error, _ storage: JobStorage) -> EventLoopFuture<Void> {
+    public func _error(_ context: JobContext, _ error: Error, payload: [UInt8]) -> EventLoopFuture<Void> {
         do {
-            let data = try JSONDecoder().decode(Data.self, from: storage.data)
-            return self.error(context, error, data)
+            return try self.error(context, error, Self.parsePayload(payload))
         } catch {
             return context.eventLoop.makeFailedFuture(error)
         }
     }
     
-    /// See `AnyJob.anyDequeue`
-    func anyDequeue(_ context: JobContext, _ storage: JobStorage) -> EventLoopFuture<Void> {
+    public func _dequeue(_ context: JobContext, payload: [UInt8]) -> EventLoopFuture<Void> {
         do {
-            let data = try JSONDecoder().decode(Data.self, from: storage.data)
-            return self.dequeue(context, data)
+            return try self.dequeue(context, Self.parsePayload(payload))
         } catch {
             return context.eventLoop.makeFailedFuture(error)
         }
@@ -59,7 +79,7 @@ public extension Job {
 /// A type-erased version of `Job`
 public protocol AnyJob {
     /// The name of the `Job`
-    static var jobName: String { get }
+    static var name: String { get }
 
     /// Dequeues the `Job`
     ///
@@ -67,7 +87,7 @@ public protocol AnyJob {
     ///   - context: The context for the job
     ///   - storage: The `JobStorage` metadata object
     /// - Returns: A future void, signifying completion
-    func anyDequeue(_ context: JobContext, _ storage: JobStorage) -> EventLoopFuture<Void>
+    func _dequeue(_ context: JobContext, payload: [UInt8]) -> EventLoopFuture<Void>
 
     /// Handles errors thrown from `anyDequeue`
     ///
@@ -76,25 +96,5 @@ public protocol AnyJob {
     ///   - error: The error thrown
     ///   - storage: The JobStorage
     /// - Returns: A future void, signifying completion
-    func error(_ context: JobContext, _ error: Error, _ storage: JobStorage) -> EventLoopFuture<Void>
-}
-
-// MARK: Scheduled
-
-/// Describes a job that can be scheduled and repeated
-public protocol ScheduledJob {
-
-    /// The method called when the job is run
-    /// - Parameter context: A `JobContext` that can be used
-    func run(context: JobContext) -> EventLoopFuture<Void>
-}
-
-class AnyScheduledJob {
-    let job: ScheduledJob
-    let scheduler: ScheduleBuilder
-    
-    init(job: ScheduledJob, scheduler: ScheduleBuilder) {
-        self.job = job
-        self.scheduler = scheduler
-    }
+    func _error(_ context: JobContext, _ error: Error, payload: [UInt8]) -> EventLoopFuture<Void>
 }

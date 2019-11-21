@@ -7,9 +7,12 @@ final class ScheduledJobsWorker {
     let configuration: JobsConfiguration
     let logger: Logger
     let eventLoop: EventLoop
+    
     var context: JobContext {
-        return .init(
-            userInfo: self.configuration.userInfo,
+        .init(
+            queueName: JobsQueueName(string: "scheduled"),
+            configuration: self.configuration,
+            logger: self.logger,
             on: self.eventLoop
         )
     }
@@ -37,7 +40,7 @@ final class ScheduledJobsWorker {
     
     func start() throws {
         let scheduledJobsStartDates = configuration
-            .scheduledStorage
+            .scheduledJobs
             .map {
                 return ($0, try? $0.scheduler.resolveNextDateThatSatisifiesSchedule(date: Date()))
         }

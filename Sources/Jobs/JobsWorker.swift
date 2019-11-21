@@ -1,126 +1,70 @@
-import Foundation
-import NIO
-import Vapor
-import NIOConcurrencyHelpers
-
-final class JobsWorker {
-    let configuration: JobsConfiguration
-    let driver: JobsDriver
-    var context: JobContext {
-        return .init(
-            userInfo: self.configuration.userInfo,
-            on: self.eventLoop
-        )
+extension JobsQueue {
+    public var worker: JobsWorker {
+        .init(queue: self)
     }
-    let logger: Logger
-    let eventLoop: EventLoop
+}
 
-    var onShutdown: EventLoopFuture<Void> {
-        return self.shutdownPromise.futureResult
+public struct JobsWorker {
+    let queue: JobsQueue
+
+    init(queue: JobsQueue) {
+        self.queue = queue
     }
 
-    private let shutdownPromise: EventLoopPromise<Void>
-    private var isShuttingDown: Atomic<Bool>
-    private var repeatedTask: RepeatedTask?
-
-    init(
-        configuration: JobsConfiguration,
-        driver: JobsDriver,
-        logger: Logger,
-        on eventLoop: EventLoop
-    ) {
-        self.configuration = configuration
-        self.eventLoop = eventLoop
-        self.driver = driver
-        self.logger = logger
-        self.shutdownPromise = self.eventLoop.makePromise()
-        self.isShuttingDown = .init(value: false)
-    }
-
-    func start(on queue: JobsQueue) {
-        // Schedule the repeating task
-        self.repeatedTask = eventLoop.scheduleRepeatedAsyncTask(
-            initialDelay: .seconds(0),
-            delay: self.configuration.refreshInterval
-        ) { task in
-            // run task
-            return self.run(on: queue).map {
-                //Check if shutting down
-                if self.isShuttingDown.load() {
-                    task.cancel()
-                    self.shutdownPromise.succeed(())
-                }
-            }.recover { error in
-                self.logger.error("Job run failed: \(error)")
-            }
-        }
-    }
-
-    func shutdown() {
-        self.isShuttingDown.store(true)
-    }
-
-    private func run(on queue: JobsQueue) -> EventLoopFuture<Void> {
-        let key = queue.makeKey(with: self.configuration.persistenceKey)
-        // self.logger.debug("Jobs worker running", metadata: ["key": .string(key)])
-        
-        return self.driver.get(key: key, eventLoop: .delegate(on: self.eventLoop)).flatMap { jobStorage in
+    public func run() -> EventLoopFuture<Void> {
+        self.queue.pop().flatMap { id in
             //No job found, go to the next iteration
-            guard let jobStorage = jobStorage else {
-                return self.eventLoop.makeSucceededFuture(())
+            guard let id = id else {
+                return self.queue.eventLoop.makeSucceededFuture(())
             }
+            return self.queue.get(id).flatMap { data in
+                // If the job has a delay, we must check to make sure we can execute.
+                // If the delay has not passed yet, requeue the job
+                if let delay = data.delayUntil, delay >= Date() {
+                    return self.queue.push(id)
+                }
 
-            // If the job has a delay, we must check to make sure we can execute. If the delay has not passed yet, requeue the job
-            if let delay = jobStorage.delayUntil, delay >= Date() {
-                return self.driver.requeue(
-                    key: key,
-                    job: jobStorage,
-                    eventLoop: .delegate(on: self.eventLoop)
-                )
+                guard let job = self.queue.configuration.jobs[data.jobName] else {
+                    self.queue.logger.error("No job named \(data.jobName) is registered")
+                    return self.queue.eventLoop.makeSucceededFuture(())
+                }
+
+                self.queue.logger.info("Dequeing Job", metadata: ["job_id": .string(id.string)])
+                var logger = self.queue.logger
+                logger[metadataKey: "job_id"] = .string(id.string)
+                return self.run(
+                    job: job,
+                    payload: data.payload,
+                    logger: logger,
+                    remainingTries: data.maxRetryCount
+                ).flatMap {
+                    self.queue.clear(id)
+                }
             }
-
-            guard let job = self.configuration.make(for: jobStorage.jobName) else {
-                let error = Abort(.internalServerError)
-                self.logger.error("No job named \(jobStorage.jobName) is registered")
-                return self.eventLoop.makeFailedFuture(error)
-            }
-
-            self.logger.info("Dequeing Job", metadata: ["job_id": .string(jobStorage.id)])
-            let jobRunPromise = self.eventLoop.makePromise(of: Void.self)
-            self.firstJobToSucceed(
-                job: job,
-                jobContext: self.context,
-                jobStorage: jobStorage,
-                tries: jobStorage.maxRetryCount)
-            .flatMapError { error in
-                self.logger.error("Error: \(error)", metadata: ["job_id": .string(jobStorage.id)])
-                return job.error(self.context, error, jobStorage)
-            }.whenComplete { _ in
-                self.driver.completed(
-                    key: key,
-                    job: jobStorage,
-                    eventLoop: .delegate(on: self.eventLoop)
-                ).cascade(to: jobRunPromise)
-            }
-
-            return jobRunPromise.futureResult
         }
     }
 
-    private func firstJobToSucceed(
+    private func run(
         job: AnyJob,
-        jobContext: JobContext,
-        jobStorage: JobStorage,
-        tries: Int
+        payload: [UInt8],
+        logger: Logger,
+        remainingTries: Int
     ) -> EventLoopFuture<Void> {
-        let futureJob = job.anyDequeue(jobContext, jobStorage)
+        let futureJob = job._dequeue(self.queue.context, payload: payload)
         return futureJob.map { complete in
             return complete
         }.flatMapError { error in
-            if tries == 0 {
-                return self.eventLoop.makeFailedFuture(error)
+            if remainingTries == 0 {
+                logger.error("Job failed: \(error)")
+                return job._error(self.queue.context, error, payload: payload)
             } else {
-                return self.firstJobToSucceed(job: job, jobContext: jobContext, jobStorage: jobStorage, tries: tries - 1)
+                logger.error("Retrying job: \(error)")
+                return self.run(
+                    job: job,
+                    payload: payload,
+                    logger: logger,
+                    remainingTries: remainingTries - 1
+                )
             }
         }
     }

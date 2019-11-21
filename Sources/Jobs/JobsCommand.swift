@@ -1,5 +1,6 @@
-import Foundation
 import Vapor
+import class NIOConcurrencyHelpers.Atomic
+import class NIO.RepeatedTask
 
 /// The command to start the Queue job
 public final class JobsCommand: Command {
@@ -23,9 +24,13 @@ public final class JobsCommand: Command {
     }
     
     private let application: Application
-    private var workers: [JobsWorker]?
+    private var jobTasks: [RepeatedTask]?
     private var scheduledWorkers: [ScheduledJobsWorker]?
     private let scheduled: Bool
+    private var signalSources: [DispatchSourceSignal]
+    private var didShutdown: Bool
+    
+    let isShuttingDown: Atomic<Bool>
     
     private var eventLoopGroup: EventLoopGroup {
         self.application.eventLoopGroup
@@ -35,57 +40,64 @@ public final class JobsCommand: Command {
     init(application: Application, scheduled: Bool = false) {
         self.application = application
         self.scheduled = scheduled
+        self.isShuttingDown = .init(value: false)
+        self.signalSources = []
+        self.didShutdown = false
     }
 
     public func run(using context: CommandContext, signature: JobsCommand.Signature) throws {
-        let signalQueue = DispatchQueue(label: "vapor.jobs.command.SignalHandlingQueue")
-        
         // shutdown future
-        let runningPromise = self.application.eventLoopGroup.next().makePromise(of: Void.self)
-        self.application.running = .start(using: runningPromise)
+        let promise = self.application.eventLoopGroup.next().makePromise(of: Void.self)
+        self.application.running = .start(using: promise)
         
-        //SIGTERM
-        let termSignalSource = DispatchSource.makeSignalSource(signal: SIGTERM, queue: signalQueue)
-        termSignalSource.setEventHandler {
-            print("Shutting down remaining jobs.")
-            runningPromise.succeed(())
-            termSignalSource.cancel()
+        // setup signal sources for shutdown
+        let signalQueue = DispatchQueue(label: "codes.vapor.jobs.command")
+        func makeSignalSource(_ code: Int32) {
+            let source = DispatchSource.makeSignalSource(signal: code, queue: signalQueue)
+            source.setEventHandler {
+                print() // clear ^C
+                promise.succeed(())
+            }
+            source.resume()
+            self.signalSources.append(source)
+            signal(code, SIG_IGN)
         }
-        signal(SIGTERM, SIG_IGN)
-        termSignalSource.resume()
+        makeSignalSource(SIGTERM)
+        makeSignalSource(SIGINT)
         
-        //SIGINT
-        let intSignalSource = DispatchSource.makeSignalSource(signal: SIGINT, queue: signalQueue)
-        intSignalSource.setEventHandler {
-            print("Shutting down remaining jobs.")
-            runningPromise.succeed(())
-            intSignalSource.cancel()
-        }
-        signal(SIGINT, SIG_IGN)
-        intSignalSource.resume()
-        
-        let isScheduledFromCli = signature.scheduledJobs ?? false
-        
-        if isScheduledFromCli || self.scheduled {
+        if self.scheduled == true {
             context.console.info("Starting scheduled jobs worker")
             try self.startScheduledWorker()
         } else {
-            let queue: JobsQueue = signature.queue
-                .flatMap { .init(name: $0) } ?? .default
-            context.console.info("Starting jobs worker")
-            try self.startJobsWorker(on: queue)
+            let queue: JobsQueueName = signature.queue
+                .flatMap { .init(string: $0) } ?? .default
+            context.console.info("Starting jobs worker (queue: \(queue.string))")
+            try self.startJobs(on: queue)
         }
     }
     
-    private func startJobsWorker(on queue: JobsQueue) throws {
-        var workers: [JobsWorker] = []
+    private func startJobs(on queueName: JobsQueueName) throws {
+        assert(self.jobTasks == nil)
+        var tasks: [RepeatedTask] = []
         for eventLoop in eventLoopGroup.makeIterator() {
-            let worker = self.application.jobs.worker(on: eventLoop)
-            worker.start(on: queue)
-            workers.append(worker)
+            let worker = self.application.jobs.worker(queueName: queueName, on: eventLoop)
+            let task = eventLoop.scheduleRepeatedAsyncTask(
+                initialDelay: .seconds(0),
+                delay: worker.queue.configuration.refreshInterval
+            ) { task in
+                // run task
+                return worker.run().map {
+                    //Check if shutting down
+                    if self.isShuttingDown.load() {
+                        task.cancel()
+                    }
+                }.recover { error in
+                    worker.queue.logger.error("Job run failed: \(error)")
+                }
+            }
+            tasks.append(task)
         }
-
-        self.workers = workers
+        self.jobTasks = tasks
     }
     
     private func startScheduledWorker() throws {
@@ -100,23 +112,35 @@ public final class JobsCommand: Command {
     }
 
     public func shutdown() {
+        self.didShutdown = true
+        
+        // stop running in case shutting downf rom signal
+        self.application.running?.stop()
+        
+        // clear signal sources
+        self.signalSources.forEach { $0.cancel() } // clear refs
+        self.signalSources = []
+        
+        // wait for all running tasks to finish
         var futures: [EventLoopFuture<Void>] = []
-        
-        if let workers = workers {
-            workers.forEach { worker in
-                worker.shutdown()
+        if let tasks = self.jobTasks {
+            tasks.forEach {
+                let promise = self.eventLoopGroup.next().makePromise(of: Void.self)
+                $0.cancel(promise: promise)
+                futures.append(promise.futureResult)
             }
-            futures += workers.map { $0.onShutdown }
         }
-        
         if let scheduledWorkers = scheduledWorkers {
             scheduledWorkers.forEach { worker in
                 worker.shutdown()
             }
             futures += scheduledWorkers.map { $0.onShutdown }
         }
-        
         try! EventLoopFuture<Void>
             .andAllComplete(futures, on: self.eventLoopGroup.next()).wait()
+    }
+    
+    deinit {
+        assert(self.didShutdown, "JobsCommand did not shutdown before deinit")
     }
 }
