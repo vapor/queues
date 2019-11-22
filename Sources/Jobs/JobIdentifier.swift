@@ -1,6 +1,6 @@
 import struct Foundation.UUID
 
-public struct JobIdentifier {
+public struct JobIdentifier: Hashable, Equatable {
     public let string: String
     
     public init(string: String) {

@@ -1,10 +1,10 @@
 extension JobsQueue {
-    public var worker: JobsWorker {
+    public var worker: JobsQueueWorker {
         .init(queue: self)
     }
 }
 
-public struct JobsWorker {
+public struct JobsQueueWorker {
     let queue: JobsQueue
 
     init(queue: JobsQueue) {

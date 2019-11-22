@@ -3,7 +3,7 @@ public protocol JobsQueue {
     var context: JobContext { get }
     
     func get(_ id: JobIdentifier) -> EventLoopFuture<JobData>
-    func set(_ id: JobIdentifier, to storage: JobData) -> EventLoopFuture<Void>
+    func set(_ id: JobIdentifier, to data: JobData) -> EventLoopFuture<Void>
     func clear(_ id: JobIdentifier) -> EventLoopFuture<Void>
 
     func pop() -> EventLoopFuture<JobIdentifier?>

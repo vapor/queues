@@ -75,18 +75,6 @@ public final class Jobs: Provider {
         _ = self.configuration.schedule(job, builder: builder)
         return builder
     }
-    
-    func worker(queueName: JobsQueueName, on eventLoop: EventLoop) -> JobsWorker {
-        .init(queue: self.queue(queueName, on: eventLoop))
-    }
-    
-    func scheduledWorker(on eventLoop: EventLoop) -> ScheduledJobsWorker {
-        .init(
-            configuration: self.configuration,
-            logger: self.application.logger,
-            on: eventLoop
-        )
-    }
 
     public func shutdown() {
         self.command.shutdown()
