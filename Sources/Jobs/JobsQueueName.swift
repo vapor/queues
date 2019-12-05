@@ -1,0 +1,23 @@
+/// A specific queue that jobs are run on.
+public struct JobsQueueName {
+    /// The default queue that jobs are run on
+    public static let `default` = JobsQueueName(string: "default")
+
+    /// The name of the queue
+    public let string: String
+
+    /// Creates a new `QueueType`
+    ///
+    /// - Parameter name: The name of the `QueueType`
+    public init(string: String) {
+        self.string = string
+    }
+
+    /// Makes the name of the queue
+    ///
+    /// - Parameter persistanceKey: The base persistence key
+    /// - Returns: A string of the queue's fully qualified name
+    public func makeKey(with persistanceKey: String) -> String {
+        return persistanceKey + "[\(self.string)]"
+    }
+}

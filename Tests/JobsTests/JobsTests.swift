@@ -1,59 +1,85 @@
 import Jobs
 import Vapor
-import XCTest
+import XCTVapor
 @testable import Jobs
 
 final class JobsTests: XCTestCase {
     func testVaporIntegration() throws {
-        let server = try self.startServer()
-        defer { server.shutdown() }
-        let worker = try self.startWorker()
-        defer { worker.shutdown() }
-        
-        FooJob.dequeuePromise = server.make(EventLoopGroup.self)
-            .next().makePromise(of: Void.self)
-        
-        let task = server.make(EventLoopGroup.self).next().scheduleTask(in: .seconds(5)) {
-            return server.client.get("http://localhost:8080/foo")
-        }
-        let res = try task.futureResult.wait().wait()
-        XCTAssertEqual(res.body?.string, "done")
-        
-        try FooJob.dequeuePromise!.futureResult.wait()
-    }
-    
-    func testVaporScheduledJob() throws {
-        let app = try self.startServer()
+        let app = Application(.testing)
         defer { app.shutdown() }
-        app.jobs.schedule(Cleanup()).hourly().at(30)
-        app.jobs.schedule(Cleanup()).at(Date() + 5)
-    
-        XCTAssertEqual(app.make(JobsConfiguration.self).scheduledStorage.count, 2)
-    }
-    
-    private func startServer() throws -> Application {
-        let app = self.setupApplication(.init(name: "worker", arguments: ["vapor", "serve"]))
-        try app.start()
-        return app
-    }
-    
-    private func startWorker() throws -> Application {
-        let app = self.setupApplication(.init(name: "worker", arguments: ["vapor", "jobs"]))
-        try app.start()
-        return app
-    }
-    
-    private func setupApplication(_ env: Environment) -> Application {
-        let app = Application(environment: env)
-        app.provider(JobsProvider())
-        app.jobs.driver(TestDriver(on: app.make()))
-        app.jobs.add(FooJob())
+        app.use(Jobs.self)
+        app.jobs.use(custom: TestDriver())
+        
+        let promise = app.eventLoopGroup.next().makePromise(of: String.self)
+        app.jobs.add(Foo(promise: promise))
         
         app.get("foo") { req in
-            return req.jobs.dispatch(FooJob.self, .init(foo: "bar"))
+            req.jobs.dispatch(Foo.self, .init(foo: "bar"))
                 .map { "done" }
         }
-        return app
+        
+        try app.testable().test(.GET, "foo") { res in
+            XCTAssertEqual(res.status, .ok)
+            XCTAssertEqual(res.body.string, "done")
+        }
+        
+        XCTAssertEqual(TestQueue.queue.count, 1)
+        XCTAssertEqual(TestQueue.jobs.count, 1)
+        let job = TestQueue.jobs[TestQueue.queue[0]]!
+        XCTAssertEqual(job.jobName, "Foo")
+        XCTAssertEqual(job.maxRetryCount, 0)
+        
+        try app.jobs.queue.worker.run().wait()
+        XCTAssertEqual(TestQueue.queue.count, 0)
+        XCTAssertEqual(TestQueue.jobs.count, 0)
+        
+        try XCTAssertEqual(promise.futureResult.wait(), "bar")
+    }
+
+    func testScheduleBuilderAPI() throws {
+        let app = Application(.testing)
+        defer { app.shutdown() }
+        
+        app.use(Jobs.self)
+        
+        // yearly
+        app.jobs.schedule(Cleanup())
+            .yearly()
+            .in(.may)
+            .on(23)
+            .at(.noon)
+
+        // monthly
+        app.jobs.schedule(Cleanup())
+            .monthly()
+            .on(15)
+            .at(.midnight)
+
+        // weekly
+        app.jobs.schedule(Cleanup())
+            .weekly()
+            .on(.monday)
+            .at("3:13am")
+
+        // daily
+        app.jobs.schedule(Cleanup())
+            .daily()
+            .at("5:23pm")
+
+        // daily 2
+        app.jobs.schedule(Cleanup())
+            .daily()
+            .at(5, 23, .pm)
+
+        // daily 3
+        app.jobs.schedule(Cleanup())
+            .daily()
+            .at(17, 23)
+
+        // hourly
+        app.jobs.schedule(Cleanup())
+            .hourly()
+            .at(30)
     }
 }
 
@@ -63,67 +89,71 @@ extension ByteBuffer {
     }
 }
 
-var storage: [String: JobStorage] = [:]
-var lock = Lock()
-
-final class TestDriver: JobsDriver {
-    var eventLoopGroup: EventLoopGroup
-    
-    init(on eventLoopGroup: EventLoopGroup) {
-        self.eventLoopGroup = eventLoopGroup
+struct TestDriver: JobsDriver {
+    func makeQueue(with context: JobContext) -> JobsQueue {
+        TestQueue(context: context)
     }
     
-    func get(key: String, eventLoop: JobsEventLoopPreference) -> EventLoopFuture<JobStorage?> {
-        lock.lock()
-        defer { lock.unlock() }
-        let job: JobStorage?
-        if let existing = storage[key] {
-            job = existing
-            storage[key] = nil
-        } else {
-            job = nil
-        }
-        return eventLoop.delegate(for: self.eventLoopGroup)
-            .makeSucceededFuture(job)
-    }
-    
-    func set(key: String, job: JobStorage, eventLoop: JobsEventLoopPreference) -> EventLoopFuture<Void> {
-        lock.lock()
-        defer { lock.unlock() }
-        storage[key] = job
-        return eventLoop.delegate(for: self.eventLoopGroup)
-            .makeSucceededFuture(())
-    }
-    
-    func completed(key: String, job: JobStorage, eventLoop: JobsEventLoopPreference) -> EventLoopFuture<Void> {
-        return eventLoop.delegate(for: self.eventLoopGroup)
-            .makeSucceededFuture(())
-    }
-    
-    func processingKey(key: String) -> String {
-        return key
-    }
-    
-    func requeue(key: String, job: JobStorage, eventLoop: JobsEventLoopPreference) -> EventLoopFuture<Void> {
-        return eventLoop.delegate(for: self.eventLoopGroup)
-            .makeSucceededFuture(())
+    func shutdown() {
+        // nothing
     }
 }
 
-struct FooJob: Job {
-    static var dequeuePromise: EventLoopPromise<Void>?
+struct TestQueue: JobsQueue {
+    static var queue: [JobIdentifier] = []
+    static var jobs: [JobIdentifier: JobData] = [:]
+    static var lock: Lock = .init()
+    
+    let context: JobContext
+    
+    func get(_ id: JobIdentifier) -> EventLoopFuture<JobData> {
+        TestQueue.lock.lock()
+        defer { TestQueue.lock.unlock() }
+        return self.context.eventLoop.makeSucceededFuture(TestQueue.jobs[id]!)
+    }
+    
+    func set(_ id: JobIdentifier, to data: JobData) -> EventLoopFuture<Void> {
+        TestQueue.lock.lock()
+        defer { TestQueue.lock.unlock() }
+        TestQueue.jobs[id] = data
+        return self.context.eventLoop.makeSucceededFuture(())
+    }
+    
+    func clear(_ id: JobIdentifier) -> EventLoopFuture<Void> {
+        TestQueue.lock.lock()
+        defer { TestQueue.lock.unlock() }
+        TestQueue.jobs[id] = nil
+        return self.context.eventLoop.makeSucceededFuture(())
+    }
+    
+    func pop() -> EventLoopFuture<JobIdentifier?> {
+        TestQueue.lock.lock()
+        defer { TestQueue.lock.unlock() }
+        return self.context.eventLoop.makeSucceededFuture(TestQueue.queue.popLast())
+    }
+    
+    func push(_ id: JobIdentifier) -> EventLoopFuture<Void> {
+        TestQueue.lock.lock()
+        defer { TestQueue.lock.unlock() }
+        TestQueue.queue.append(id)
+        return self.context.eventLoop.makeSucceededFuture(())
+    }
+}
+
+struct Foo: Job {
+    let promise: EventLoopPromise<String>
     
     struct Data: Codable {
         var foo: String
     }
     
     func dequeue(_ context: JobContext, _ data: Data) -> EventLoopFuture<Void> {
-        Self.dequeuePromise!.succeed(())
+        self.promise.succeed(data.foo)
         return context.eventLoop.makeSucceededFuture(())
     }
     
     func error(_ context: JobContext, _ error: Error, _ data: Data) -> EventLoopFuture<Void> {
-        Self.dequeuePromise!.fail(error)
+        self.promise.fail(error)
         return context.eventLoop.makeSucceededFuture(())
     }
 }

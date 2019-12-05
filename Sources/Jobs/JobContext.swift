@@ -1,16 +1,18 @@
-import Foundation
-import Vapor
-
-/// A simple wrapper to hold job context and services.
 public struct JobContext {
-    /// Storage for the wrapper.
-    public var userInfo: [AnyHashable: Any]
-    
+    public let queueName: JobsQueueName
+    public let configuration: JobsConfiguration
+    public let logger: Logger
     public let eventLoop: EventLoop
     
-    /// Creates an empty `JobContext`
-    public init(userInfo: [AnyHashable: Any] = [:], on eventLoop: EventLoop) {
+    public init(
+        queueName: JobsQueueName,
+        configuration: JobsConfiguration,
+        logger: Logger,
+        on eventLoop: EventLoop
+    ) {
+        self.queueName = queueName
+        self.configuration = configuration
+        self.logger = logger
         self.eventLoop = eventLoop
-        self.userInfo = [:]
     }
 }

@@ -1,9 +1,8 @@
-import Foundation
+import struct Foundation.DateComponents
+import struct Foundation.Calendar
 
 /// An object that can be used to build a scheduled job
 public final class ScheduleBuilder {
-    // MARK: Data Structures
-
     /// Months of the year
     public enum Month: Int {
         case january = 1
@@ -32,7 +31,7 @@ public final class ScheduleBuilder {
     }
 
     /// Describes a day of the week
-    public enum DayOfWeek: Int {
+    public enum Weekday: Int {
         case sunday = 1
         case monday = 2
         case tuesday = 3
@@ -283,8 +282,8 @@ public final class ScheduleBuilder {
 
         /// The day of week to run the job on
         /// - Parameter dayOfWeek: A `DayOfWeek` to run the job on
-        public func on(_ dayOfWeek: DayOfWeek) -> Daily {
-            self.builder.dayOfWeek = dayOfWeek
+        public func on(_ weekday: Weekday) -> Daily {
+            self.builder.weekday = weekday
             return self.builder.daily()
         }
     }
@@ -327,7 +326,7 @@ public final class ScheduleBuilder {
     }
     
     /// An object to build a `EveryMinute` scheduled job
-    public struct EveryMinute {
+    public struct Minutely {
         let builder: ScheduleBuilder
         
         /// The second to run the job at
@@ -336,74 +335,57 @@ public final class ScheduleBuilder {
             self.builder.second = second
         }
     }
-
-    /// returns the next date that satisfies the schedule
-    internal func resolveNextDateThatSatisifiesSchedule(date: Date) throws -> Date {
-        if let oneTimeDate = self.date {
-            return oneTimeDate
+    
+    public func nextDate(current: Date = .init()) -> Date? {
+        if let date = self.date, date > current {
+            return date
         }
         
-        var monthConstraint: MonthRecurrenceRuleConstraint?
-        if let monthValue = month?.rawValue {
-            monthConstraint = try MonthRecurrenceRuleConstraint.atMonth(monthValue)
+        var components = DateComponents()
+        if let second = self.second {
+            components.second = second.number
         }
-
-        var dayOfMonthConstraint: DayOfMonthRecurrenceRuleConstraint?
-        if let dayValue = day {
-            switch dayValue {
+        if let minute = self.minute {
+            components.minute = minute.number
+        }
+        if let time = self.time {
+            components.minute = time.minute.number
+            components.hour = time.hour.number
+        }
+        if let weekday = self.weekday {
+            components.weekday = weekday.rawValue
+        }
+        if let day = self.day {
+            switch day {
             case .first:
-                dayOfMonthConstraint = try DayOfMonthRecurrenceRuleConstraint.atDayOfMonth(1)
+                components.day = 1
             case .last:
-                dayOfMonthConstraint = try DayOfMonthRecurrenceRuleConstraint.atLastDayOfMonth()
-            case .exact(let exactValue):
-                dayOfMonthConstraint = try DayOfMonthRecurrenceRuleConstraint.atDayOfMonth(exactValue)
+                fatalError("Last day of the month is not yet supported.")
+            case .exact(let exact):
+                components.day = exact
             }
         }
-
-        var dayOfWeekConstraint: DayOfWeekRecurrenceRuleConstraint?
-        if let dayOfWeek = dayOfWeek {
-            dayOfWeekConstraint = try DayOfWeekRecurrenceRuleConstraint.atDayOfWeek(dayOfWeek.rawValue)
+        if let month = self.month {
+            components.month = month.rawValue
         }
-
-        var hourConstraint: HourRecurrenceRuleConstraint?
-        if let hourValue = time?.hour.number {
-            hourConstraint = try HourRecurrenceRuleConstraint.atHour(hourValue)
-        }
-
-        var minuteConstraint: MinuteRecurrenceRuleConstraint?
-        if let timeMinuteValue = time?.minute.number {
-            minuteConstraint = try MinuteRecurrenceRuleConstraint.atMinute(timeMinuteValue)
-        }
-
-        if let minuteValue = minute?.number {
-            minuteConstraint = try MinuteRecurrenceRuleConstraint.atMinute(minuteValue)
-        }
-        
-        let secondConstraint = try SecondRecurrenceRuleConstraint.atSecond(second.number)
-        let recurrenceRule = try RecurrenceRule(yearConstraint: nil,
-                                                monthConstraint: monthConstraint,
-                                                dayOfMonthConstraint: dayOfMonthConstraint,
-                                                dayOfWeekConstraint: dayOfWeekConstraint,
-                                                hourConstraint: hourConstraint,
-                                                minuteConstraint: minuteConstraint,
-                                                secondConstraint: secondConstraint)
-
-        return try recurrenceRule.resolveNextDateThatSatisfiesRule(currentDate: date)
+        return Calendar.current.nextDate(
+            after: current,
+            matching: components,
+            matchingPolicy: .strict
+        )
     }
-
-    // MARK: Properties
     
     /// Date to perform task (one-off job)
     var date: Date?
-    
     var month: Month?
     var day: Day?
-    var dayOfWeek: DayOfWeek?
+    var weekday: Weekday?
     var time: Time?
     var minute: Minute?
-    var second: Second = Second(0)
+    var second: Second?
+    var millisecond: Int?
 
-    init() { }
+    public init() { }
 
     // MARK: Helpers
     
@@ -437,7 +419,13 @@ public final class ScheduleBuilder {
         return Hourly(builder: self)
     }
     
-    public func everyMinute() -> EveryMinute {
-        return EveryMinute(builder: self)
+    @discardableResult
+    public func minutely() -> Minutely {
+        return Minutely(builder: self)
+    }
+    
+    public func everySecond() {
+        self.millisecond = 0
     }
 }
+

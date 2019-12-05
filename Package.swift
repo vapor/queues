@@ -10,7 +10,7 @@ let package = Package(
         .library(name: "Jobs", targets: ["Jobs"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/vapor/vapor.git", from: "4.0.0-beta.1")
+        .package(url: "https://github.com/vapor/vapor.git", .branch("master"))
     ],
     targets: [
         .target(name: "Jobs", dependencies: ["Vapor"]),
