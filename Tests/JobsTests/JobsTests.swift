@@ -7,7 +7,6 @@ final class JobsTests: XCTestCase {
     func testVaporIntegration() throws {
         let app = Application(.testing)
         defer { app.shutdown() }
-        app.use(Jobs.self)
         app.jobs.use(custom: TestDriver())
         
         let promise = app.eventLoopGroup.next().makePromise(of: String.self)
@@ -39,8 +38,6 @@ final class JobsTests: XCTestCase {
     func testScheduleBuilderAPI() throws {
         let app = Application(.testing)
         defer { app.shutdown() }
-        
-        app.use(Jobs.self)
         
         // yearly
         app.jobs.schedule(Cleanup())
