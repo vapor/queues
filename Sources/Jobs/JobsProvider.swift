@@ -16,76 +16,110 @@ extension Request {
     }
 }
 
-public struct JobsDriverFactory {
-    let factory: (Jobs) -> JobsDriver
-    public init(_ factory: @escaping (Jobs) -> JobsDriver) {
-        self.factory = factory
-    }
-}
-
-public final class Jobs: Provider {
-    public var application: Application
-    
-    public var configuration: JobsConfiguration
-    let command: JobsCommand
-    var driver: JobsDriver?
-
-    public var queue: JobsQueue {
-        self.queue(.default)
-    }
-    
-    public func queue(_ name: JobsQueueName, logger: Logger? = nil, on eventLoop: EventLoop? = nil) -> JobsQueue {
-        guard let driver = self.driver else {
-            fatalError("No Jobs driver configured.")
-        }
-        return driver.makeQueue(
-            with: .init(
-                queueName: name,
-                configuration: self.configuration,
-                logger: logger ?? self.application.logger,
-                on: eventLoop ?? self.application.eventLoopGroup.next()
-            )
-        )
-    }
-    
-    public init(_ application: Application) {
-        self.application = application
-        self.configuration = .init(logger: application.logger)
-        self.command = .init(application: application)
-        self.application.commands.use(self.command, as: "jobs")
-    }
-    
-    
-    public func add<J>(_ job: J) where J: Job {
-        self.configuration.add(job)
-    }
-    
-    public func use(_ driver: JobsDriverFactory) {
-        self.driver = driver.factory(self)
-    }
-    
-    public func use(custom driver: JobsDriver) {
-        self.driver = driver
-    }
-    
-    public func schedule<J>(_ job: J) -> ScheduleBuilder
-        where J: ScheduledJob
-    {
-        let builder = ScheduleBuilder()
-        _ = self.configuration.schedule(job, builder: builder)
-        return builder
-    }
-
-    public func shutdown() {
-        self.command.shutdown()
-        if let driver = self.driver {
-            driver.shutdown()
-        }
-    }
-}
-
 extension Application {
     public var jobs: Jobs {
-        self.providers.require(Jobs.self)
+        .init(application: self)
+    }
+    
+    public struct Jobs {
+        public struct Provider {
+            let run: (Application) -> ()
+
+            public init(_ run: @escaping (Application) -> ()) {
+                self.run = run
+            }
+        }
+
+        final class Storage {
+            public var configuration: JobsConfiguration
+            let command: JobsCommand
+            var driver: JobsDriver?
+
+            public init(_ application: Application) {
+                self.configuration = .init(logger: application.logger)
+                self.command = .init(application: application)
+                application.commands.use(self.command, as: "jobs")
+            }
+
+        }
+
+        struct Key: StorageKey {
+            typealias Value = Storage
+        }
+
+        struct Lifecycle: LifecycleHandler {
+            func shutdown(_ application: Application) {
+                print("shutdown")
+                application.jobs.storage.command.shutdown()
+                if let driver = application.jobs.storage.driver {
+                    driver.shutdown()
+                }
+            }
+        }
+
+        public var configuration: JobsConfiguration {
+            get { self.storage.configuration }
+            nonmutating set { self.storage.configuration = newValue }
+        }
+
+        public var queue: JobsQueue {
+            self.queue(.default)
+        }
+
+        public var driver: JobsDriver {
+            guard let driver = self.storage.driver else {
+                fatalError("No Jobs driver configured. Configure with app.jobs.use(...)")
+            }
+            return driver
+        }
+
+        var storage: Storage {
+            if self.application.storage[Key.self] == nil {
+                self.initialize()
+            }
+            return self.application.storage[Key.self]!
+        }
+
+        let application: Application
+
+        public func queue(
+            _ name: JobsQueueName,
+            logger: Logger? = nil,
+            on eventLoop: EventLoop? = nil
+        ) -> JobsQueue {
+            return self.driver.makeQueue(
+                with: .init(
+                    queueName: name,
+                    configuration: self.configuration,
+                    logger: logger ?? self.application.logger,
+                    on: eventLoop ?? self.application.eventLoopGroup.next()
+                )
+            )
+        }
+
+        public func add<J>(_ job: J) where J: Job {
+            self.configuration.add(job)
+        }
+
+        public func use(_ provider: Provider) {
+            provider.run(self.application)
+        }
+
+        public func use(custom driver: JobsDriver) {
+            self.storage.driver = driver
+        }
+
+        public func schedule<J>(_ job: J) -> ScheduleBuilder
+            where J: ScheduledJob
+        {
+            let builder = ScheduleBuilder()
+            _ = self.storage.configuration.schedule(job, builder: builder)
+            return builder
+        }
+
+        func initialize() {
+            self.application.lifecycle.use(Lifecycle())
+            self.application.storage[Key.self] = .init(application)
+        }
     }
 }
