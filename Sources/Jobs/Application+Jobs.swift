@@ -2,20 +2,6 @@ import Foundation
 import Vapor
 import NIO
 
-extension Request {
-    public var jobs: JobsQueue {
-        self.jobs(.default)
-    }
-    
-    public func jobs(_ queue: JobsQueueName) -> JobsQueue {
-        self.application.jobs.queue(
-            queue,
-            logger: self.logger,
-            on: self.eventLoop
-        )
-    }
-}
-
 extension Application {
     public var jobs: Jobs {
         .init(application: self)
@@ -49,7 +35,6 @@ extension Application {
 
         struct Lifecycle: LifecycleHandler {
             func shutdown(_ application: Application) {
-                print("shutdown")
                 application.jobs.storage.command.shutdown()
                 if let driver = application.jobs.storage.driver {
                     driver.shutdown()

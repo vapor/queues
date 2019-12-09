@@ -1,5 +1,5 @@
 import Vapor
-import class NIOConcurrencyHelpers.Atomic
+import class NIOConcurrencyHelpers.NIOAtomic
 import class NIO.RepeatedTask
 
 /// The command to start the Queue job
@@ -31,7 +31,7 @@ public final class JobsCommand: Command {
     private var didShutdown: Bool
     
     
-    let isShuttingDown: Atomic<Bool>
+    let isShuttingDown: NIOAtomic<Bool>
     
     private var eventLoopGroup: EventLoopGroup {
         self.application.eventLoopGroup
@@ -42,7 +42,7 @@ public final class JobsCommand: Command {
         self.application = application
         self.jobTasks = []
         self.scheduledTasks = [:]
-        self.isShuttingDown = .init(value: false)
+        self.isShuttingDown = .makeAtomic(value: false)
         self.signalSources = []
         self.didShutdown = false
         self.lock = .init()
