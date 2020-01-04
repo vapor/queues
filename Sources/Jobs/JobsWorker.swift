@@ -10,7 +10,8 @@ public struct JobsQueueWorker {
     init(queue: JobsQueue) {
         self.queue = queue
     }
-
+    
+    /// Logic to run the queue
     public func run() -> EventLoopFuture<Void> {
         self.queue.pop().flatMap { id in
             //No job found, go to the next iteration

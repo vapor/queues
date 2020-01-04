@@ -419,11 +419,13 @@ public final class ScheduleBuilder {
         return Hourly(builder: self)
     }
     
+    /// Creates a minutely scheduled job for further building
     @discardableResult
     public func minutely() -> Minutely {
         return Minutely(builder: self)
     }
     
+    /// Runs a job every second
     public func everySecond() {
         self.millisecond = 0
     }

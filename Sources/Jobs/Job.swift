@@ -8,23 +8,19 @@ public protocol Job: AnyJob {
     associatedtype Payload
     
     /// Called when it's this Job's turn to be dequeued.
-    ///
     /// - Parameters:
     ///   - context: The JobContext. Can be used to store and retrieve services
-    ///   - data: The data for this handler
-    /// - Returns: A future `Void` value used to signify completion
+    ///   - payload: The data for this handler
     func dequeue(
         _ context: JobContext,
         _ payload: Payload
     ) -> EventLoopFuture<Void>
-
     
     /// Called when there is an error at any stage of the Job's execution.
-    ///
     /// - Parameters:
     ///   - context: The JobContext. Can be used to store and retrieve services
     ///   - error: The error returned by the job.
-    /// - Returns: A future `Void` value used to signify completion
+    ///   - payload: The typed payload for the job
     func error(
         _ context: JobContext,
         _ error: Error,
@@ -36,10 +32,15 @@ public protocol Job: AnyJob {
 }
 
 extension Job where Payload: Codable {
+    
+    /// Serialize a payload into Data
+    /// - Parameter payload: The payload
     public static func serializePayload(_ payload: Payload) throws -> [UInt8] {
         try .init(JSONEncoder().encode(payload))
     }
     
+    /// Parse bytes into the payload
+    /// - Parameter bytes: The Payload
     public static func parsePayload(_ bytes: [UInt8]) throws -> Payload {
         try JSONDecoder().decode(Payload.self, from: .init(bytes))
     }
@@ -51,6 +52,7 @@ extension Job {
         return String(describing: Self.self)
     }
     
+    /// See `Job`.`error`
     public func error(
         _ context: JobContext,
         _ error: Error,
@@ -80,21 +82,6 @@ extension Job {
 public protocol AnyJob {
     /// The name of the `Job`
     static var name: String { get }
-
-    /// Dequeues the `Job`
-    ///
-    /// - Parameters:
-    ///   - context: The context for the job
-    ///   - storage: The `JobStorage` metadata object
-    /// - Returns: A future void, signifying completion
     func _dequeue(_ context: JobContext, payload: [UInt8]) -> EventLoopFuture<Void>
-
-    /// Handles errors thrown from `anyDequeue`
-    ///
-    /// - Parameters:
-    ///   - context: The context for the job
-    ///   - error: The error thrown
-    ///   - storage: The JobStorage
-    /// - Returns: A future void, signifying completion
     func _error(_ context: JobContext, _ error: Error, payload: [UInt8]) -> EventLoopFuture<Void>
 }

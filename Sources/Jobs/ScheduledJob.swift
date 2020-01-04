@@ -21,6 +21,7 @@ class AnyScheduledJob {
         self.scheduler = scheduler
     }
 }
+
 extension AnyScheduledJob {
     struct Task {
         let task: RepeatedTask
