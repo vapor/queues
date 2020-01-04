@@ -38,7 +38,7 @@ public final class JobsCommand: Command {
     }
 
     /// Create a new `JobsCommand`
-    init(application: Application, scheduled: Bool = false) {
+    public init(application: Application, scheduled: Bool = false) {
         self.application = application
         self.jobTasks = []
         self.scheduledTasks = [:]
@@ -47,7 +47,11 @@ public final class JobsCommand: Command {
         self.didShutdown = false
         self.lock = .init()
     }
-
+    
+    /// Runs the command
+    /// - Parameters:
+    ///   - context: A `CommandContext` for the command to run on
+    ///   - signature: The signature of the command
     public func run(using context: CommandContext, signature: JobsCommand.Signature) throws {
         // shutdown future
         let promise = self.application.eventLoopGroup.next().makePromise(of: Void.self)
@@ -79,7 +83,9 @@ public final class JobsCommand: Command {
         }
     }
     
-    private func startJobs(on queueName: JobsQueueName) throws {
+    /// Starts an in-process jobs worker for queued tasks
+    /// - Parameter queueName: The queue to run the jobs on
+    public func startJobs(on queueName: JobsQueueName) throws {
         for eventLoop in eventLoopGroup.makeIterator() {
             let worker = self.application.jobs.queue(queueName).worker
             let task = eventLoop.scheduleRepeatedAsyncTask(
@@ -100,7 +106,8 @@ public final class JobsCommand: Command {
         }
     }
     
-    private func startScheduledJobs() throws {
+    /// Starts the scheduled jobs in-process
+    public func startScheduledJobs() throws {
         self.application.jobs.configuration.scheduledJobs
             .forEach { self.schedule($0) }
     }
@@ -116,6 +123,7 @@ public final class JobsCommand: Command {
             logger: self.application.logger,
             on: self.eventLoopGroup.next()
         )
+        
         if let task = job.schedule(context: context) {
             self.lock.withLock {
                 self.scheduledTasks[job.job.name] = task
@@ -125,7 +133,8 @@ public final class JobsCommand: Command {
             }
         }
     }
-
+    
+    /// Shuts down the jobs worker
     public func shutdown() {
         self.didShutdown = true
         

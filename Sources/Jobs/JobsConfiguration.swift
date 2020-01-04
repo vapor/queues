@@ -6,7 +6,10 @@ public struct JobsConfiguration {
     /// The key that stores the data about a job. Defaults to `vapor_jobs`
     public var persistenceKey: String
     
+    /// A logger
     public let logger: Logger
+    
+    // Arbitrary user info to be stored
     public var userInfo: [AnyHashable: Any]
     
     var jobs: [String: AnyJob]

@@ -3,6 +3,8 @@ import Vapor
 import NIO
 
 extension Application {
+    
+    /// The `Jobs` object
     public var jobs: Jobs {
         .init(application: self)
     }
@@ -67,6 +69,11 @@ extension Application {
 
         let application: Application
 
+        /// Returns a `JobsQueue`
+        /// - Parameters:
+        ///   - name: The name of the queue
+        ///   - logger: A logger object
+        ///   - eventLoop: The event loop to run on
         public func queue(
             _ name: JobsQueueName,
             logger: Logger? = nil,
@@ -81,19 +88,27 @@ extension Application {
                 )
             )
         }
-
+        
+        /// Adds a new queued job
+        /// - Parameter job: The job to add
         public func add<J>(_ job: J) where J: Job {
             self.configuration.add(job)
         }
 
+        /// Choose which provider to use
+        /// - Parameter provider: The provider
         public func use(_ provider: Provider) {
             provider.run(self.application)
         }
 
+        /// Choose which driver to use
+        /// - Parameter driver: The driver
         public func use(custom driver: JobsDriver) {
             self.storage.driver = driver
         }
 
+        /// Schedule a new job
+        /// - Parameter job: The job to schedule
         public func schedule<J>(_ job: J) -> ScheduleBuilder
             where J: ScheduledJob
         {
