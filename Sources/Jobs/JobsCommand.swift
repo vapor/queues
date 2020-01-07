@@ -108,6 +108,7 @@ public final class JobsCommand: Command {
     
     /// Starts the scheduled jobs in-process
     public func startScheduledJobs() throws {
+        precondition(!self.application.jobs.configuration.scheduledJobs.isEmpty, "Must schedule at least one job before calling startScheduledJobs")
         self.application.jobs.configuration.scheduledJobs
             .forEach { self.schedule($0) }
     }
