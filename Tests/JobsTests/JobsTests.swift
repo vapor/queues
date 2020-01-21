@@ -85,10 +85,11 @@ final class JobsTests: XCTestCase {
         
         XCTAssertEqual(TestingScheduledJob.count, 0)
         app.jobs.schedule(TestingScheduledJob()).everySecond()
+        try JobsCommand(application: app, scheduled: true).startScheduledJobs()
         
         let promise = app.eventLoopGroup.next().makePromise(of: Void.self)
         app.eventLoopGroup.next().scheduleTask(in: .seconds(5)) { () -> Void in
-            XCTAssert(TestingScheduledJob.count > 1)
+            XCTAssert(TestingScheduledJob.count > 4)
             promise.succeed(())
         }
         
