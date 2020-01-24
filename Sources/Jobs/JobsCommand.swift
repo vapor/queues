@@ -108,6 +108,11 @@ public final class JobsCommand: Command {
     
     /// Starts the scheduled jobs in-process
     public func startScheduledJobs() throws {
+        guard !self.application.jobs.configuration.scheduledJobs.isEmpty else {
+            self.application.logger.warning("No scheduled jobs exist, exiting scheduled jobs worker.")
+            return
+        }
+        
         self.application.jobs.configuration.scheduledJobs
             .forEach { self.schedule($0) }
     }
