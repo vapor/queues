@@ -342,6 +342,9 @@ public final class ScheduleBuilder {
         }
         
         var components = DateComponents()
+        if let milliseconds = millisecond {
+            components.nanosecond = milliseconds
+        }
         if let second = self.second {
             components.second = second.number
         }

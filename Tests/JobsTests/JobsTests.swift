@@ -78,6 +78,32 @@ final class JobsTests: XCTestCase {
             .hourly()
             .at(30)
     }
+    
+    func testRepeatingScheduledJob() throws {
+        let app = Application(.testing)
+        defer { app.shutdown() }
+        
+        XCTAssertEqual(TestingScheduledJob.count, 0)
+        app.jobs.schedule(TestingScheduledJob()).everySecond()
+        try JobsCommand(application: app, scheduled: true).startScheduledJobs()
+        
+        let promise = app.eventLoopGroup.next().makePromise(of: Void.self)
+        app.eventLoopGroup.next().scheduleTask(in: .seconds(5)) { () -> Void in
+            XCTAssert(TestingScheduledJob.count > 4)
+            promise.succeed(())
+        }
+        
+        try promise.futureResult.wait()
+    }
+}
+
+struct TestingScheduledJob: ScheduledJob {
+    static var count = 0
+    
+    func run(context: JobContext) -> EventLoopFuture<Void> {
+        TestingScheduledJob.count += 1
+        return context.eventLoop.future()
+    }
 }
 
 extension ByteBuffer {
