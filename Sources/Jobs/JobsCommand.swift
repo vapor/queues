@@ -87,7 +87,7 @@ public final class JobsCommand: Command {
     /// - Parameter queueName: The queue to run the jobs on
     public func startJobs(on queueName: JobsQueueName) throws {
         for eventLoop in eventLoopGroup.makeIterator() {
-            let worker = self.application.jobs.queue(queueName).worker
+            let worker = self.application.jobs.queue(queueName, on: eventLoop).worker
             let task = eventLoop.scheduleRepeatedAsyncTask(
                 initialDelay: .seconds(0),
                 delay: worker.queue.configuration.refreshInterval
