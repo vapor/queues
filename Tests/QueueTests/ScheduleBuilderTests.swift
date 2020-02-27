@@ -1,4 +1,4 @@
-import Jobs
+import Queues
 import XCTest
 
 final class ScheduleBuilderTests: XCTestCase {

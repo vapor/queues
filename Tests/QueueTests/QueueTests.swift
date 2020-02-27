@@ -1,9 +1,9 @@
-import Jobs
+import Queues
 import Vapor
 import XCTVapor
-@testable import Jobs
+@testable import Vapor
 
-final class JobsTests: XCTestCase {
+final class QueueTests: XCTestCase {
     func testVaporIntegration() throws {
         let app = Application(.testing)
         defer { app.shutdown() }
