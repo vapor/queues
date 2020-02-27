@@ -3,7 +3,7 @@ import class NIOConcurrencyHelpers.NIOAtomic
 import class NIO.RepeatedTask
 
 /// The command to start the Queue job
-public final class JobsCommand: Command {
+public final class QueueCommand: Command {
     /// See `Command.signature`
     public let signature = Signature()
     
@@ -14,13 +14,13 @@ public final class JobsCommand: Command {
         @Option(name: "queue", help: "Specifies a single queue to run")
         var queue: String?
         
-        @Flag(name: "scheduled", help: "Runs the scheduled jobs")
+        @Flag(name: "scheduled", help: "Runs the scheduled queue jobs")
         var scheduled: Bool
     }
     
     /// See `Command.help`
     public var help: String {
-        return "Starts the Vapor Jobs worker"
+        return "Starts the Vapor Queues worker"
     }
     
     private let application: Application
@@ -30,14 +30,13 @@ public final class JobsCommand: Command {
     private var signalSources: [DispatchSourceSignal]
     private var didShutdown: Bool
     
-    
     let isShuttingDown: NIOAtomic<Bool>
     
     private var eventLoopGroup: EventLoopGroup {
         self.application.eventLoopGroup
     }
 
-    /// Create a new `JobsCommand`
+    /// Create a new `QueueCommand`
     public init(application: Application, scheduled: Bool = false) {
         self.application = application
         self.jobTasks = []
@@ -52,7 +51,7 @@ public final class JobsCommand: Command {
     /// - Parameters:
     ///   - context: A `CommandContext` for the command to run on
     ///   - signature: The signature of the command
-    public func run(using context: CommandContext, signature: JobsCommand.Signature) throws {
+    public func run(using context: CommandContext, signature: QueueCommand.Signature) throws {
         // shutdown future
         let promise = self.application.eventLoopGroup.next().makePromise(of: Void.self)
         self.application.running = .start(using: promise)
@@ -87,7 +86,7 @@ public final class JobsCommand: Command {
     /// - Parameter queueName: The queue to run the jobs on
     public func startJobs(on queueName: JobsQueueName) throws {
         for eventLoop in eventLoopGroup.makeIterator() {
-            let worker = self.application.jobs.queue(queueName, on: eventLoop).worker
+            let worker = self.application.queues.queue(queueName, on: eventLoop).worker
             let task = eventLoop.scheduleRepeatedAsyncTask(
                 initialDelay: .seconds(0),
                 delay: worker.queue.configuration.refreshInterval
@@ -108,12 +107,12 @@ public final class JobsCommand: Command {
     
     /// Starts the scheduled jobs in-process
     public func startScheduledJobs() throws {
-        guard !self.application.jobs.configuration.scheduledJobs.isEmpty else {
+        guard !self.application.queues.configuration.scheduledJobs.isEmpty else {
             self.application.logger.warning("No scheduled jobs exist, exiting scheduled jobs worker.")
             return
         }
         
-        self.application.jobs.configuration.scheduledJobs
+        self.application.queues.configuration.scheduledJobs
             .forEach { self.schedule($0) }
     }
     
@@ -124,7 +123,7 @@ public final class JobsCommand: Command {
         
         let context = JobContext(
             queueName: JobsQueueName(string: "scheduled"),
-            configuration: self.application.jobs.configuration,
+            configuration: self.application.queues.configuration,
             application: self.application,
             logger: self.application.logger,
             on: self.eventLoopGroup.next()

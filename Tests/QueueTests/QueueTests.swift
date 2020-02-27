@@ -7,10 +7,10 @@ final class QueueTests: XCTestCase {
     func testVaporIntegration() throws {
         let app = Application(.testing)
         defer { app.shutdown() }
-        app.jobs.use(custom: TestDriver())
+        app.queues.use(custom: TestDriver())
         
         let promise = app.eventLoopGroup.next().makePromise(of: String.self)
-        app.jobs.add(Foo(promise: promise))
+        app.queues.add(Foo(promise: promise))
         
         app.get("foo") { req in
             req.jobs.dispatch(Foo.self, .init(foo: "bar"))
@@ -28,7 +28,7 @@ final class QueueTests: XCTestCase {
         XCTAssertEqual(job.jobName, "Foo")
         XCTAssertEqual(job.maxRetryCount, 0)
         
-        try app.jobs.queue.worker.run().wait()
+        try app.queues.queue.worker.run().wait()
         XCTAssertEqual(TestQueue.queue.count, 0)
         XCTAssertEqual(TestQueue.jobs.count, 0)
         
@@ -40,41 +40,41 @@ final class QueueTests: XCTestCase {
         defer { app.shutdown() }
         
         // yearly
-        app.jobs.schedule(Cleanup())
+        app.queues.schedule(Cleanup())
             .yearly()
             .in(.may)
             .on(23)
             .at(.noon)
 
         // monthly
-        app.jobs.schedule(Cleanup())
+        app.queues.schedule(Cleanup())
             .monthly()
             .on(15)
             .at(.midnight)
 
         // weekly
-        app.jobs.schedule(Cleanup())
+        app.queues.schedule(Cleanup())
             .weekly()
             .on(.monday)
             .at("3:13am")
 
         // daily
-        app.jobs.schedule(Cleanup())
+        app.queues.schedule(Cleanup())
             .daily()
             .at("5:23pm")
 
         // daily 2
-        app.jobs.schedule(Cleanup())
+        app.queues.schedule(Cleanup())
             .daily()
             .at(5, 23, .pm)
 
         // daily 3
-        app.jobs.schedule(Cleanup())
+        app.queues.schedule(Cleanup())
             .daily()
             .at(17, 23)
 
         // hourly
-        app.jobs.schedule(Cleanup())
+        app.queues.schedule(Cleanup())
             .hourly()
             .at(30)
     }
@@ -84,8 +84,8 @@ final class QueueTests: XCTestCase {
         defer { app.shutdown() }
         
         XCTAssertEqual(TestingScheduledJob.count, 0)
-        app.jobs.schedule(TestingScheduledJob()).everySecond()
-        try JobsCommand(application: app, scheduled: true).startScheduledJobs()
+        app.queues.schedule(TestingScheduledJob()).everySecond()
+        try app.queues.startScheduledJobs()
         
         let promise = app.eventLoopGroup.next().makePromise(of: Void.self)
         app.eventLoopGroup.next().scheduleTask(in: .seconds(5)) { () -> Void in
@@ -112,7 +112,7 @@ extension ByteBuffer {
     }
 }
 
-struct TestDriver: JobsDriver {
+struct TestDriver: QueuesDriver {
     func makeQueue(with context: JobContext) -> JobsQueue {
         TestQueue(context: context)
     }

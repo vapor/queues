@@ -12,7 +12,7 @@ extension Request {
     /// A jobs queue for a specific queue name
     /// - Parameter queue: The queue name
     public func jobs(_ queue: JobsQueueName) -> JobsQueue {
-        self.application.jobs.queue(
+        self.application.queues.queue(
             queue,
             logger: self.logger,
             on: self.eventLoop

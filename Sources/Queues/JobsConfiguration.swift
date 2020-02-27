@@ -1,9 +1,9 @@
-/// A `Service` to configure `Job`s
-public struct JobsConfiguration {
+/// A `Service` to configure `Queues`s
+public struct QueuesConfiguration {
     /// The number of seconds to wait before checking for the next job. Defaults to `1`
     public var refreshInterval: TimeAmount
 
-    /// The key that stores the data about a job. Defaults to `vapor_jobs`
+    /// The key that stores the data about a job. Defaults to `vapor_queues`
     public var persistenceKey: String
     
     /// A logger
@@ -18,8 +18,8 @@ public struct JobsConfiguration {
     /// Creates an empty `JobsConfig`
     public init(
         refreshInterval: TimeAmount = .seconds(1),
-        persistenceKey: String = "vapor_jobs",
-        logger: Logger = .init(label: "codes.vapor.jobs")
+        persistenceKey: String = "vapor_queues",
+        logger: Logger = .init(label: "codes.vapor.queues")
     ) {
         self.jobs = [:]
         self.scheduledJobs = []

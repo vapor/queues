@@ -7,7 +7,7 @@ public struct JobContext {
     public let queueName: JobsQueueName
     
     /// The configuration object
-    public let configuration: JobsConfiguration
+    public let configuration: QueuesConfiguration
     
     /// The application object
     public let application: Application
@@ -27,7 +27,7 @@ public struct JobContext {
     ///   - eventLoop: An event loop to run the process on
     public init(
         queueName: JobsQueueName,
-        configuration: JobsConfiguration,
+        configuration: QueuesConfiguration,
         application: Application,
         logger: Logger,
         on eventLoop: EventLoop

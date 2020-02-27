@@ -1,5 +1,5 @@
-/// A new driver for Jobs
-public protocol JobsDriver {
+/// A new driver for Queues
+public protocol QueuesDriver {
     
     /// Makes the queue worker
     /// - Parameter context: The context of the job

@@ -9,7 +9,7 @@ import Foundation
 import NIO
 
 /// Determines which event loop the jobs worker uses while executing jobs.
-public enum JobsEventLoopPreference {
+public enum QueuesEventLoopPreference {
     /// The caller accepts connections and callbacks on any EventLoop.
     case indifferent
     
