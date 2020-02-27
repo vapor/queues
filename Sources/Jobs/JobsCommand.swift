@@ -125,6 +125,7 @@ public final class JobsCommand: Command {
         let context = JobContext(
             queueName: JobsQueueName(string: "scheduled"),
             configuration: self.application.jobs.configuration,
+            application: self.application,
             logger: self.application.logger,
             on: self.eventLoopGroup.next()
         )

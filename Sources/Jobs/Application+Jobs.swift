@@ -83,6 +83,7 @@ extension Application {
                 with: .init(
                     queueName: name,
                     configuration: self.configuration,
+                    application: self.application,
                     logger: logger ?? self.application.logger,
                     on: eventLoop ?? self.application.eventLoopGroup.next()
                 )
@@ -117,6 +118,17 @@ extension Application {
             return builder
         }
 
+        /// Starts an in-process worker to dequeue and run jobs
+        /// - Parameter queue: The queue to run the jobs on. Defaults to `default`
+        public func startInProcessJobs(on queue: JobsQueueName = .default) throws {
+            try JobsCommand(application: application, scheduled: false).startJobs(on: queue)
+        }
+        
+        /// Starts an in-process worker to run scheduled jobs
+        public func startScheduledJobs() throws {
+            try JobsCommand(application: application, scheduled: true).startScheduledJobs()
+        }
+        
         func initialize() {
             self.application.lifecycle.use(Lifecycle())
             self.application.storage[Key.self] = .init(application)
