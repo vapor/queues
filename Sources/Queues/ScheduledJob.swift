@@ -5,7 +5,7 @@ public protocol ScheduledJob {
     var name: String { get }
     /// The method called when the job is run
     /// - Parameter context: A `JobContext` that can be used
-    func run(context: JobContext) -> EventLoopFuture<Void>
+    func run(context: QueueContext) -> EventLoopFuture<Void>
 }
 
 extension ScheduledJob {
@@ -28,7 +28,7 @@ extension AnyScheduledJob {
         let done: EventLoopFuture<Void>
     }
 
-    func schedule(context: JobContext) -> Task? {
+    func schedule(context: QueueContext) -> Task? {
         guard let date = self.scheduler.nextDate() else {
             context.logger.debug("No date scheduled for \(self.job.name)")
             return nil

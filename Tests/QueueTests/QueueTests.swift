@@ -13,7 +13,7 @@ final class QueueTests: XCTestCase {
         app.queues.add(Foo(promise: promise))
         
         app.get("foo") { req in
-            req.jobs.dispatch(Foo.self, .init(foo: "bar"))
+            req.queue.dispatch(Foo.self, .init(foo: "bar"))
                 .map { "done" }
         }
         
@@ -100,7 +100,7 @@ final class QueueTests: XCTestCase {
 struct TestingScheduledJob: ScheduledJob {
     static var count = 0
     
-    func run(context: JobContext) -> EventLoopFuture<Void> {
+    func run(context: QueueContext) -> EventLoopFuture<Void> {
         TestingScheduledJob.count += 1
         return context.eventLoop.future()
     }
@@ -113,7 +113,7 @@ extension ByteBuffer {
 }
 
 struct TestDriver: QueuesDriver {
-    func makeQueue(with context: JobContext) -> JobsQueue {
+    func makeQueue(with context: QueueContext) -> Queue {
         TestQueue(context: context)
     }
     
@@ -122,12 +122,12 @@ struct TestDriver: QueuesDriver {
     }
 }
 
-struct TestQueue: JobsQueue {
+struct TestQueue: Queue {
     static var queue: [JobIdentifier] = []
     static var jobs: [JobIdentifier: JobData] = [:]
     static var lock: Lock = .init()
     
-    let context: JobContext
+    let context: QueueContext
     
     func get(_ id: JobIdentifier) -> EventLoopFuture<JobData> {
         TestQueue.lock.lock()
@@ -170,12 +170,12 @@ struct Foo: Job {
         var foo: String
     }
     
-    func dequeue(_ context: JobContext, _ data: Data) -> EventLoopFuture<Void> {
+    func dequeue(_ context: QueueContext, _ data: Data) -> EventLoopFuture<Void> {
         self.promise.succeed(data.foo)
         return context.eventLoop.makeSucceededFuture(())
     }
     
-    func error(_ context: JobContext, _ error: Error, _ data: Data) -> EventLoopFuture<Void> {
+    func error(_ context: QueueContext, _ error: Error, _ data: Data) -> EventLoopFuture<Void> {
         self.promise.fail(error)
         return context.eventLoop.makeSucceededFuture(())
     }

@@ -12,7 +12,7 @@ public protocol Job: AnyJob {
     ///   - context: The JobContext. Can be used to store and retrieve services
     ///   - payload: The data for this handler
     func dequeue(
-        _ context: JobContext,
+        _ context: QueueContext,
         _ payload: Payload
     ) -> EventLoopFuture<Void>
     
@@ -22,7 +22,7 @@ public protocol Job: AnyJob {
     ///   - error: The error returned by the job.
     ///   - payload: The typed payload for the job
     func error(
-        _ context: JobContext,
+        _ context: QueueContext,
         _ error: Error,
         _ payload: Payload
     ) -> EventLoopFuture<Void>
@@ -54,14 +54,14 @@ extension Job {
     
     /// See `Job`.`error`
     public func error(
-        _ context: JobContext,
+        _ context: QueueContext,
         _ error: Error,
         _ payload: Payload
     ) -> EventLoopFuture<Void> {
         context.eventLoop.makeSucceededFuture(())
     }
     
-    public func _error(_ context: JobContext, _ error: Error, payload: [UInt8]) -> EventLoopFuture<Void> {
+    public func _error(_ context: QueueContext, _ error: Error, payload: [UInt8]) -> EventLoopFuture<Void> {
         do {
             return try self.error(context, error, Self.parsePayload(payload))
         } catch {
@@ -69,7 +69,7 @@ extension Job {
         }
     }
     
-    public func _dequeue(_ context: JobContext, payload: [UInt8]) -> EventLoopFuture<Void> {
+    public func _dequeue(_ context: QueueContext, payload: [UInt8]) -> EventLoopFuture<Void> {
         do {
             return try self.dequeue(context, Self.parsePayload(payload))
         } catch {
@@ -82,6 +82,6 @@ extension Job {
 public protocol AnyJob {
     /// The name of the `Job`
     static var name: String { get }
-    func _dequeue(_ context: JobContext, payload: [UInt8]) -> EventLoopFuture<Void>
-    func _error(_ context: JobContext, _ error: Error, payload: [UInt8]) -> EventLoopFuture<Void>
+    func _dequeue(_ context: QueueContext, payload: [UInt8]) -> EventLoopFuture<Void>
+    func _error(_ context: QueueContext, _ error: Error, payload: [UInt8]) -> EventLoopFuture<Void>
 }

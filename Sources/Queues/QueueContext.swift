@@ -1,10 +1,9 @@
 import Vapor
 
-/// The context for a job
-public struct JobContext {
-    
+/// The context for a queue.
+public struct QueueContext {
     /// The name of the queue
-    public let queueName: JobsQueueName
+    public let queueName: QueueName
     
     /// The configuration object
     public let configuration: QueuesConfiguration
@@ -26,7 +25,7 @@ public struct JobContext {
     ///   - logger: The logger object
     ///   - eventLoop: An event loop to run the process on
     public init(
-        queueName: JobsQueueName,
+        queueName: QueueName,
         configuration: QueuesConfiguration,
         application: Application,
         logger: Logger,
