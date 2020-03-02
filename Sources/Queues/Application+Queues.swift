@@ -3,11 +3,10 @@ import Vapor
 import NIO
 
 extension Application {
-
     /// Deprecated `Jobs` object
     @available(*, unavailable, renamed: "queues")
     public var jobs: Queues {
-        .init(application: self)
+        self.queues
     }
     
     /// The `Queues` object
@@ -26,7 +25,7 @@ extension Application {
 
         final class Storage {
             public var configuration: QueuesConfiguration
-            let command: QueueCommand
+            let command: QueuesCommand
             var driver: QueuesDriver?
 
             public init(_ application: Application) {
@@ -55,7 +54,7 @@ extension Application {
             nonmutating set { self.storage.configuration = newValue }
         }
 
-        public var queue: JobsQueue {
+        public var queue: Queue {
             self.queue(.default)
         }
 
@@ -81,10 +80,10 @@ extension Application {
         ///   - logger: A logger object
         ///   - eventLoop: The event loop to run on
         public func queue(
-            _ name: JobsQueueName,
+            _ name: QueueName,
             logger: Logger? = nil,
             on eventLoop: EventLoop? = nil
-        ) -> JobsQueue {
+        ) -> Queue {
             return self.driver.makeQueue(
                 with: .init(
                     queueName: name,
@@ -126,13 +125,13 @@ extension Application {
 
         /// Starts an in-process worker to dequeue and run jobs
         /// - Parameter queue: The queue to run the jobs on. Defaults to `default`
-        public func startInProcessJobs(on queue: JobsQueueName = .default) throws {
-            try QueueCommand(application: application, scheduled: false).startJobs(on: queue)
+        public func startInProcessJobs(on queue: QueueName = .default) throws {
+            try QueuesCommand(application: application, scheduled: false).startJobs(on: queue)
         }
         
         /// Starts an in-process worker to run scheduled jobs
         public func startScheduledJobs() throws {
-            try QueueCommand(application: application, scheduled: true).startScheduledJobs()
+            try QueuesCommand(application: application, scheduled: true).startScheduledJobs()
         }
         
         func initialize() {

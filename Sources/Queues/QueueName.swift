@@ -1,7 +1,7 @@
 /// A specific queue that jobs are run on.
-public struct JobsQueueName {
+public struct QueueName {
     /// The default queue that jobs are run on
-    public static let `default` = JobsQueueName(string: "default")
+    public static let `default` = QueueName(string: "default")
 
     /// The name of the queue
     public let string: String

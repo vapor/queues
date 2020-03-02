@@ -3,7 +3,7 @@ import class NIOConcurrencyHelpers.NIOAtomic
 import class NIO.RepeatedTask
 
 /// The command to start the Queue job
-public final class QueueCommand: Command {
+public final class QueuesCommand: Command {
     /// See `Command.signature`
     public let signature = Signature()
     
@@ -51,7 +51,7 @@ public final class QueueCommand: Command {
     /// - Parameters:
     ///   - context: A `CommandContext` for the command to run on
     ///   - signature: The signature of the command
-    public func run(using context: CommandContext, signature: QueueCommand.Signature) throws {
+    public func run(using context: CommandContext, signature: QueuesCommand.Signature) throws {
         // shutdown future
         let promise = self.application.eventLoopGroup.next().makePromise(of: Void.self)
         self.application.running = .start(using: promise)
@@ -75,7 +75,7 @@ public final class QueueCommand: Command {
             self.application.logger.info("Starting scheduled jobs worker")
             try self.startScheduledJobs()
         } else {
-            let queue: JobsQueueName = signature.queue
+            let queue: QueueName = signature.queue
                 .flatMap { .init(string: $0) } ?? .default
             self.application.logger.info("Starting jobs worker (queue: \(queue.string))")
             try self.startJobs(on: queue)
@@ -84,7 +84,7 @@ public final class QueueCommand: Command {
     
     /// Starts an in-process jobs worker for queued tasks
     /// - Parameter queueName: The queue to run the jobs on
-    public func startJobs(on queueName: JobsQueueName) throws {
+    public func startJobs(on queueName: QueueName) throws {
         for eventLoop in eventLoopGroup.makeIterator() {
             let worker = self.application.queues.queue(queueName, on: eventLoop).worker
             let task = eventLoop.scheduleRepeatedAsyncTask(
@@ -121,8 +121,8 @@ public final class QueueCommand: Command {
             return
         }
         
-        let context = JobContext(
-            queueName: JobsQueueName(string: "scheduled"),
+        let context = QueueContext(
+            queueName: QueueName(string: "scheduled"),
             configuration: self.application.queues.configuration,
             application: self.application,
             logger: self.application.logger,

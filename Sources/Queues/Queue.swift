@@ -1,8 +1,7 @@
 /// A type that can store and retrieve jobs from a persistence layer
-public protocol JobsQueue {
-    
+public protocol Queue {
     /// The job context
-    var context: JobContext { get }
+    var context: QueueContext { get }
     
     /// Gets the next job to be run
     /// - Parameter id: The ID of the job
@@ -26,8 +25,7 @@ public protocol JobsQueue {
     func push(_ id: JobIdentifier) -> EventLoopFuture<Void>
 }
 
-extension JobsQueue {
-    
+extension Queue {
     /// The EventLoop for a job queue
     public var eventLoop: EventLoop {
         self.context.eventLoop
@@ -44,7 +42,7 @@ extension JobsQueue {
     }
     
     /// The queue's name
-    public var queueName: JobsQueueName {
+    public var queueName: QueueName {
         self.context.queueName
     }
     
