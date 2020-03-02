@@ -2,18 +2,18 @@
 import PackageDescription
 
 let package = Package(
-    name: "jobs",
+    name: "queues",
     platforms: [
-       .macOS(.v10_14)
+       .macOS(.v10_15)
     ],
     products: [
-        .library(name: "Jobs", targets: ["Jobs"]),
+        .library(name: "Queues", targets: ["Queues"]),
     ],
     dependencies: [
         .package(url: "https://github.com/vapor/vapor.git", from: "4.0.0-beta.2")
     ],
     targets: [
-        .target(name: "Jobs", dependencies: ["Vapor"]),
-        .testTarget(name: "JobsTests", dependencies: ["Jobs", "XCTVapor"]),
+        .target(name: "Queues", dependencies: ["Vapor"]),
+        .testTarget(name: "QueueTests", dependencies: ["Queues", "XCTVapor"]),
     ]
 )

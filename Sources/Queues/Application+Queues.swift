@@ -3,13 +3,19 @@ import Vapor
 import NIO
 
 extension Application {
-    
-    /// The `Jobs` object
-    public var jobs: Jobs {
+
+    /// Deprecated `Jobs` object
+    @available(*, unavailable, renamed: "queues")
+    public var jobs: Queues {
         .init(application: self)
     }
     
-    public struct Jobs {
+    /// The `Queues` object
+    public var queues: Queues {
+        .init(application: self)
+    }
+    
+    public struct Queues {
         public struct Provider {
             let run: (Application) -> ()
 
@@ -19,14 +25,14 @@ extension Application {
         }
 
         final class Storage {
-            public var configuration: JobsConfiguration
-            let command: JobsCommand
-            var driver: JobsDriver?
+            public var configuration: QueuesConfiguration
+            let command: QueueCommand
+            var driver: QueuesDriver?
 
             public init(_ application: Application) {
                 self.configuration = .init(logger: application.logger)
                 self.command = .init(application: application)
-                application.commands.use(self.command, as: "jobs")
+                application.commands.use(self.command, as: "queues")
             }
 
         }
@@ -37,14 +43,14 @@ extension Application {
 
         struct Lifecycle: LifecycleHandler {
             func shutdown(_ application: Application) {
-                application.jobs.storage.command.shutdown()
-                if let driver = application.jobs.storage.driver {
+                application.queues.storage.command.shutdown()
+                if let driver = application.queues.storage.driver {
                     driver.shutdown()
                 }
             }
         }
 
-        public var configuration: JobsConfiguration {
+        public var configuration: QueuesConfiguration {
             get { self.storage.configuration }
             nonmutating set { self.storage.configuration = newValue }
         }
@@ -53,9 +59,9 @@ extension Application {
             self.queue(.default)
         }
 
-        public var driver: JobsDriver {
+        public var driver: QueuesDriver {
             guard let driver = self.storage.driver else {
-                fatalError("No Jobs driver configured. Configure with app.jobs.use(...)")
+                fatalError("No Queues driver configured. Configure with app.queues.use(...)")
             }
             return driver
         }
@@ -83,6 +89,7 @@ extension Application {
                 with: .init(
                     queueName: name,
                     configuration: self.configuration,
+                    application: self.application,
                     logger: logger ?? self.application.logger,
                     on: eventLoop ?? self.application.eventLoopGroup.next()
                 )
@@ -103,7 +110,7 @@ extension Application {
 
         /// Choose which driver to use
         /// - Parameter driver: The driver
-        public func use(custom driver: JobsDriver) {
+        public func use(custom driver: QueuesDriver) {
             self.storage.driver = driver
         }
 
@@ -117,6 +124,17 @@ extension Application {
             return builder
         }
 
+        /// Starts an in-process worker to dequeue and run jobs
+        /// - Parameter queue: The queue to run the jobs on. Defaults to `default`
+        public func startInProcessJobs(on queue: JobsQueueName = .default) throws {
+            try QueueCommand(application: application, scheduled: false).startJobs(on: queue)
+        }
+        
+        /// Starts an in-process worker to run scheduled jobs
+        public func startScheduledJobs() throws {
+            try QueueCommand(application: application, scheduled: true).startScheduledJobs()
+        }
+        
         func initialize() {
             self.application.lifecycle.use(Lifecycle())
             self.application.storage[Key.self] = .init(application)

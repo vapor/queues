@@ -39,7 +39,7 @@ extension JobsQueue {
     }
     
     /// The configuration for the queue
-    public var configuration: JobsConfiguration {
+    public var configuration: QueuesConfiguration {
         self.context.configuration
     }
     
