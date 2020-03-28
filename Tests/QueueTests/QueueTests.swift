@@ -10,6 +10,8 @@ final class QueueTests: XCTestCase {
         defer { app.shutdown() }
         app.queues.use(.test)
         
+        TestQueue.reset()
+        
         let promise = app.eventLoopGroup.next().makePromise(of: String.self)
         app.queues.add(Foo(promise: promise))
         
@@ -110,6 +112,15 @@ final class QueueTests: XCTestCase {
         }
         
         try promise.futureResult.wait()
+    }
+}
+
+extension TestQueue {
+    static func reset() {
+        TestQueue.lock.lock()
+        defer { TestQueue.lock.unlock() }
+        TestQueue.queue.removeAll()
+        TestQueue.jobs.removeAll()
     }
 }
 
