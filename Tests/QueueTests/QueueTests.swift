@@ -35,6 +35,21 @@ final class QueueTests: XCTestCase {
         
         try XCTAssertEqual(promise.futureResult.wait(), "bar")
     }
+    
+    func testAssert() throws {
+        let app = Application(.testing)
+        defer { app.shutdown() }
+        app.queues.use(.test)
+        
+        app.queues.add(DummyJob())
+        app.queues.add(SecondDummyJob())
+        
+        try app.queues.queue.dispatch(SecondDummyJob.self, [:]).wait()
+        try app.queues.queue.dispatch(DummyJob.self, [:]).wait()
+        
+        XCTAssertDispatched(DummyJob.self, app: app)
+        XCTAssertDispatched(SecondDummyJob.self, app: app)
+    }
 
     func testScheduleBuilderAPI() throws {
         let app = Application(.testing)
@@ -95,6 +110,20 @@ final class QueueTests: XCTestCase {
         }
         
         try promise.futureResult.wait()
+    }
+}
+
+struct DummyJob: Job {
+    typealias Payload = [String: String]
+    func dequeue(_ context: QueueContext, _ payload: [String: String]) -> EventLoopFuture<Void> {
+        return context.eventLoop.makeSucceededFuture(())
+    }
+}
+
+struct SecondDummyJob: Job {
+    typealias Payload = [String: String]
+    func dequeue(_ context: QueueContext, _ payload: [String: String]) -> EventLoopFuture<Void> {
+        return context.eventLoop.makeSucceededFuture(())
     }
 }
 
