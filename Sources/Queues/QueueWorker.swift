@@ -30,10 +30,11 @@ public struct QueueWorker {
                     return self.queue.eventLoop.makeSucceededFuture(())
                 }
 
-                self.queue.logger.info("Dequeing Job", metadata: ["job_id": .string(id.string)])
+                self.queue.logger.info("Dequeing Job: \(data.jobName)", metadata: ["job_id": .string(id.string)])
                 var logger = self.queue.logger
                 logger[metadataKey: "job_id"] = .string(id.string)
                 return self.run(
+                    name: data.jobName,
                     job: job,
                     payload: data.payload,
                     logger: logger,
@@ -46,6 +47,7 @@ public struct QueueWorker {
     }
 
     private func run(
+        name: String,
         job: AnyJob,
         payload: [UInt8],
         logger: Logger,
@@ -56,11 +58,12 @@ public struct QueueWorker {
             return complete
         }.flatMapError { error in
             if remainingTries == 0 {
-                logger.error("Job failed: \(error)")
+                logger.error("Job \(name) failed with error: \(error)")
                 return job._error(self.queue.context, error, payload: payload)
             } else {
-                logger.error("Retrying job: \(error)")
+                logger.error("Job \(name) failed, retrying: \(error)")
                 return self.run(
+                    name: name,
                     job: job,
                     payload: payload,
                     logger: logger,

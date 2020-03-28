@@ -8,6 +8,7 @@ let package = Package(
     ],
     products: [
         .library(name: "Queues", targets: ["Queues"]),
+        .library(name: "XCTQueues", targets: ["XCTQueues"])
     ],
     dependencies: [
         .package(url: "https://github.com/vapor/vapor.git", from: "4.0.0-rc.1")
@@ -15,6 +16,9 @@ let package = Package(
     targets: [
         .target(name: "Queues", dependencies: [
             .product(name: "Vapor", package: "vapor"),
+        ]),
+        .target(name: "XCTQueues", dependencies: [
+            .target(name: "Queues")
         ]),
         .testTarget(name: "QueueTests", dependencies: [
             .target(name: "Queues"),

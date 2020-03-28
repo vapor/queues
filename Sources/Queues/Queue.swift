@@ -82,7 +82,7 @@ extension Queue {
         return self.set(id, to: storage).flatMap {
             self.push(id)
         }.map { _ in
-            self.logger.info("Dispatched queue job", metadata: [
+            self.logger.info("Dispatched queue job: \(job)", metadata: [
                 "job_id": .string("\(id)"),
                 "queue": .string(self.queueName.string)
             ])
