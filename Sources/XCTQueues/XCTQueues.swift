@@ -17,4 +17,3 @@ public func XCTAssertDispatched<J: Job>(_ job: J.Type, on queue: QueueName = .de
         XCTFail("\(error)", file: file, line: line)
     }
 }
-

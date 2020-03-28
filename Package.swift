@@ -23,6 +23,7 @@ let package = Package(
         .testTarget(name: "QueueTests", dependencies: [
             .target(name: "Queues"),
             .product(name: "XCTVapor", package: "vapor"),
+            .target(name: "XCTQueues")
         ]),
     ]
 )
