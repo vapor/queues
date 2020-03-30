@@ -10,8 +10,6 @@ final class QueueTests: XCTestCase {
         defer { app.shutdown() }
         app.queues.use(.test)
         
-        TestQueue.reset()
-        
         let promise = app.eventLoopGroup.next().makePromise(of: String.self)
         app.queues.add(Foo(promise: promise))
         
@@ -25,32 +23,19 @@ final class QueueTests: XCTestCase {
             XCTAssertEqual(res.body.string, "done")
         }
         
-        XCTAssertEqual(TestQueue.queue.count, 1)
-        XCTAssertEqual(TestQueue.jobs.count, 1)
-        let job = TestQueue.jobs[TestQueue.queue[0]]!
-        XCTAssertEqual(job.jobName, "Foo")
-        XCTAssertEqual(job.maxRetryCount, 0)
+        XCTAssertEqual(app.queues.test.queue.count, 1)
+        XCTAssertEqual(app.queues.test.jobs.count, 1)
+        let job = app.queues.test.first(Foo.self)
+        XCTAssert(app.queues.test.contains(Foo.self))
+        XCTAssertNotNil(job)
+        XCTAssertEqual(job!.jobName, "Foo")
+        XCTAssertEqual(job!.maxRetryCount, 0)
         
         try app.queues.queue.worker.run().wait()
-        XCTAssertEqual(TestQueue.queue.count, 0)
-        XCTAssertEqual(TestQueue.jobs.count, 0)
+        XCTAssertEqual(app.queues.test.queue.count, 0)
+        XCTAssertEqual(app.queues.test.jobs.count, 0)
         
         try XCTAssertEqual(promise.futureResult.wait(), "bar")
-    }
-    
-    func testAssert() throws {
-        let app = Application(.testing)
-        defer { app.shutdown() }
-        app.queues.use(.test)
-        
-        app.queues.add(DummyJob())
-        app.queues.add(SecondDummyJob())
-        
-        try app.queues.queue.dispatch(SecondDummyJob.self, [:]).wait()
-        try app.queues.queue.dispatch(DummyJob.self, [:]).wait()
-        
-        XCTAssertDispatched(DummyJob.self, app: app)
-        XCTAssertDispatched(SecondDummyJob.self, app: app)
     }
 
     func testScheduleBuilderAPI() throws {
@@ -112,29 +97,6 @@ final class QueueTests: XCTestCase {
         }
         
         try promise.futureResult.wait()
-    }
-}
-
-extension TestQueue {
-    static func reset() {
-        TestQueue.lock.lock()
-        defer { TestQueue.lock.unlock() }
-        TestQueue.queue.removeAll()
-        TestQueue.jobs.removeAll()
-    }
-}
-
-struct DummyJob: Job {
-    typealias Payload = [String: String]
-    func dequeue(_ context: QueueContext, _ payload: [String: String]) -> EventLoopFuture<Void> {
-        return context.eventLoop.makeSucceededFuture(())
-    }
-}
-
-struct SecondDummyJob: Job {
-    typealias Payload = [String: String]
-    func dequeue(_ context: QueueContext, _ payload: [String: String]) -> EventLoopFuture<Void> {
-        return context.eventLoop.makeSucceededFuture(())
     }
 }
 
