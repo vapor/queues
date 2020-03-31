@@ -9,7 +9,7 @@ extension Application.Queues.Provider {
     }
 }
 
-public struct TestQueuesDriver: QueuesDriver {
+struct TestQueuesDriver: QueuesDriver {
     public func makeQueue(with context: QueueContext) -> Queue {
         TestQueue(context: context)
     }
@@ -24,19 +24,24 @@ extension Application.Queues {
         public var jobs: [JobIdentifier: JobData] = [:]
         public var queue: [JobIdentifier] = []
         
-        /// Returns all the jobs of the specific `J` type
-        public func all<J: Job>(_ job: J.Type) -> [JobIdentifier: JobData] {
-            return jobs.filter { $1.jobName == J.name }
+        /// Returns the first job in the queue of the specific `J` type.
+        public func first<J>(_ job: J.Type) -> J.Payload?
+            where J: Job {
+                let filteredJobIds = jobs.filter { $1.jobName == J.name }.map { $0.0 }
+                guard
+                    let queueJob = queue.first(where: { filteredJobIds.contains($0) }),
+                    let jobData = jobs[queueJob]
+                    else {
+                        return nil
+                }
+                
+                return try? J.parsePayload(jobData.payload)
         }
         
-        /// Returns the first job of the specific `J` type.
-        public func first<J: Job>(_ job: J.Type) -> JobData? {
-            return jobs.first(where: { $1.jobName == J.name })?.value
-        }
-        
-        /// Checks whether a job of type `J` was dispatched
-        public func contains<J: Job>(_ job: J.Type) -> Bool {
-            return self.first(job) != nil
+        /// Checks whether a job of type `J` was dispatched to queue
+        public func contains<J>(_ job: J.Type) -> Bool
+            where J: Job {
+                return first(job) != nil
         }
     }
     
@@ -55,28 +60,28 @@ extension Application.Queues {
     }
 }
 
-public struct TestQueue: Queue {
-    public let context: QueueContext
+struct TestQueue: Queue {
+    let context: QueueContext
     
-    public func get(_ id: JobIdentifier) -> EventLoopFuture<JobData> {
+    func get(_ id: JobIdentifier) -> EventLoopFuture<JobData> {
         return self.context.eventLoop.makeSucceededFuture(context.application.queues.test.jobs[id]!)
     }
     
-    public func set(_ id: JobIdentifier, to data: JobData) -> EventLoopFuture<Void> {
+    func set(_ id: JobIdentifier, to data: JobData) -> EventLoopFuture<Void> {
         context.application.queues.test.jobs[id] = data
         return self.context.eventLoop.makeSucceededFuture(())
     }
     
-    public func clear(_ id: JobIdentifier) -> EventLoopFuture<Void> {
+    func clear(_ id: JobIdentifier) -> EventLoopFuture<Void> {
         context.application.queues.test.jobs[id] = nil
         return self.context.eventLoop.makeSucceededFuture(())
     }
     
-    public func pop() -> EventLoopFuture<JobIdentifier?> {
+    func pop() -> EventLoopFuture<JobIdentifier?> {
         return self.context.eventLoop.makeSucceededFuture(context.application.queues.test.queue.popLast())
     }
     
-    public func push(_ id: JobIdentifier) -> EventLoopFuture<Void> {
+    func push(_ id: JobIdentifier) -> EventLoopFuture<Void> {
         context.application.queues.test.queue.append(id)
         return self.context.eventLoop.makeSucceededFuture(())
     }

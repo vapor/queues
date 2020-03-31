@@ -28,8 +28,7 @@ final class QueueTests: XCTestCase {
         let job = app.queues.test.first(Foo.self)
         XCTAssert(app.queues.test.contains(Foo.self))
         XCTAssertNotNil(job)
-        XCTAssertEqual(job!.jobName, "Foo")
-        XCTAssertEqual(job!.maxRetryCount, 0)
+        XCTAssertEqual(job!.foo, "bar")
         
         try app.queues.queue.worker.run().wait()
         XCTAssertEqual(app.queues.test.queue.count, 0)
