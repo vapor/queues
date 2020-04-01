@@ -10,11 +10,11 @@ extension Application.Queues.Provider {
 }
 
 struct TestQueuesDriver: QueuesDriver {
-    public func makeQueue(with context: QueueContext) -> Queue {
+    func makeQueue(with context: QueueContext) -> Queue {
         TestQueue(context: context)
     }
     
-    public func shutdown() {
+    func shutdown() {
         // nothing
     }
 }
@@ -26,22 +26,24 @@ extension Application.Queues {
         
         /// Returns the first job in the queue of the specific `J` type.
         public func first<J>(_ job: J.Type) -> J.Payload?
-            where J: Job {
-                let filteredJobIds = jobs.filter { $1.jobName == J.name }.map { $0.0 }
-                guard
-                    let queueJob = queue.first(where: { filteredJobIds.contains($0) }),
-                    let jobData = jobs[queueJob]
-                    else {
-                        return nil
-                }
-                
-                return try? J.parsePayload(jobData.payload)
+            where J: Job
+        {
+            let filteredJobIds = jobs.filter { $1.jobName == J.name }.map { $0.0 }
+            guard
+                let queueJob = queue.first(where: { filteredJobIds.contains($0) }),
+                let jobData = jobs[queueJob]
+                else {
+                    return nil
+            }
+            
+            return try? J.parsePayload(jobData.payload)
         }
         
         /// Checks whether a job of type `J` was dispatched to queue
         public func contains<J>(_ job: J.Type) -> Bool
-            where J: Job {
-                return first(job) != nil
+            where J: Job
+        {
+            return first(job) != nil
         }
     }
     
