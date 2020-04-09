@@ -20,7 +20,7 @@ let package = Package(
         .target(name: "XCTQueues", dependencies: [
             .target(name: "Queues")
         ]),
-        .testTarget(name: "QueueTests", dependencies: [
+        .testTarget(name: "QueuesTests", dependencies: [
             .target(name: "Queues"),
             .product(name: "XCTVapor", package: "vapor"),
             .target(name: "XCTQueues")
