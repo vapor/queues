@@ -84,6 +84,7 @@ extension Queue {
         }.map { _ in
             self.logger.info("Dispatched queue job", metadata: [
                 "job_id": .string("\(id)"),
+                "job_name": .string(job.name),
                 "queue": .string(self.queueName.string)
             ])
             

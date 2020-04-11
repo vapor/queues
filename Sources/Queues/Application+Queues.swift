@@ -71,7 +71,7 @@ extension Application {
             return self.application.storage[Key.self]!
         }
 
-        let application: Application
+        public let application: Application
 
         /// Returns a `JobsQueue`
         /// - Parameters:
