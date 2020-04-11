@@ -15,7 +15,7 @@ final class QueueTests: XCTestCase {
         
         app.get("foo") { req in
             req.queue.dispatch(Foo.self, .init(foo: "bar"))
-                .map { "done" }
+                .map { _ in "done" }
         }
         
         try app.testable().test(.GET, "foo") { res in

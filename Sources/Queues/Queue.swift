@@ -62,7 +62,7 @@ extension Queue {
         _ payload: J.Payload,
         maxRetryCount: Int = 0,
         delayUntil: Date? = nil
-    ) -> EventLoopFuture<Void>
+    ) -> EventLoopFuture<String>
         where J: Job
     {
         let bytes: [UInt8]
@@ -87,6 +87,8 @@ extension Queue {
                 "job_name": .string(job.name),
                 "queue": .string(self.queueName.string)
             ])
+            
+            return id.string
         }
     }
 }
