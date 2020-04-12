@@ -61,8 +61,9 @@ extension Queue {
         _ job: J.Type,
         _ payload: J.Payload,
         maxRetryCount: Int = 0,
-        delayUntil: Date? = nil
-    ) -> EventLoopFuture<String>
+        delayUntil: Date? = nil,
+        id: JobIdentifier = JobIdentifier()
+    ) -> EventLoopFuture<Void>
         where J: Job
     {
         let bytes: [UInt8]
@@ -71,7 +72,6 @@ extension Queue {
         } catch {
             return self.eventLoop.makeFailedFuture(error)
         }
-        let id = JobIdentifier()
         let storage = JobData(
             payload: bytes,
             maxRetryCount: maxRetryCount,
@@ -87,8 +87,6 @@ extension Queue {
                 "job_name": .string(job.name),
                 "queue": .string(self.queueName.string)
             ])
-            
-            return id.string
         }
     }
 }
