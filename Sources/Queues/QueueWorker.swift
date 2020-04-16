@@ -4,6 +4,7 @@ extension Queue {
     }
 }
 
+/// The worker that runs the `Job`
 public struct QueueWorker {
     let queue: Queue
 

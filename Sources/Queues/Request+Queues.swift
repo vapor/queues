@@ -3,12 +3,6 @@ import Vapor
 import NIO
 
 extension Request {
-    /// Deprecated `Jobs` object
-    @available(*, unavailable, renamed: "queue")
-    public var jobs: Queue {
-        self.queue
-    }
-
     /// The `JobsQueue` object
     public var queue: Queue {
         self.queues(.default)

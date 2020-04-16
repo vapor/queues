@@ -15,7 +15,7 @@ final class QueueTests: XCTestCase {
         
         app.get("foo") { req in
             req.queue.dispatch(Foo.self, .init(foo: "bar"))
-                .map { "done" }
+                .map { _ in "done" }
         }
         
         try app.testable().test(.GET, "foo") { res in
@@ -37,6 +37,35 @@ final class QueueTests: XCTestCase {
         try XCTAssertEqual(promise.futureResult.wait(), "bar")
     }
 
+    func testSettingCustomId() throws {
+        let app = Application(.testing)
+        defer { app.shutdown() }
+        app.queues.use(.test)
+        
+        let promise = app.eventLoopGroup.next().makePromise(of: String.self)
+        app.queues.add(Foo(promise: promise))
+        
+        app.get("foo") { req in
+            req.queue.dispatch(Foo.self, .init(foo: "bar"), id: JobIdentifier(string: "my-custom-id"))
+                .map { _ in "done" }
+        }
+        
+        try app.testable().test(.GET, "foo") { res in
+            XCTAssertEqual(res.status, .ok)
+            XCTAssertEqual(res.body.string, "done")
+        }
+        
+        XCTAssertEqual(app.queues.test.queue.count, 1)
+        XCTAssertEqual(app.queues.test.jobs.count, 1)
+        XCTAssertTrue(app.queues.test.jobs.keys.map(\.string).contains("my-custom-id"))
+        
+        try app.queues.queue.worker.run().wait()
+        XCTAssertEqual(app.queues.test.queue.count, 0)
+        XCTAssertEqual(app.queues.test.jobs.count, 0)
+        
+        try XCTAssertEqual(promise.futureResult.wait(), "bar")
+    }
+    
     func testScheduleBuilderAPI() throws {
         let app = Application(.testing)
         defer { app.shutdown() }

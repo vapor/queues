@@ -3,18 +3,15 @@ import Vapor
 import NIO
 
 extension Application {
-    /// Deprecated `Jobs` object
-    @available(*, unavailable, renamed: "queues")
-    public var jobs: Queues {
-        self.queues
-    }
-    
     /// The `Queues` object
     public var queues: Queues {
         .init(application: self)
     }
     
+    /// Represents a `Queues` configuration object
     public struct Queues {
+        
+        /// The provider of the `Queues` configuration
         public struct Provider {
             let run: (Application) -> ()
 
@@ -33,7 +30,6 @@ extension Application {
                 self.command = .init(application: application)
                 application.commands.use(self.command, as: "queues")
             }
-
         }
 
         struct Key: StorageKey {
@@ -49,15 +45,18 @@ extension Application {
             }
         }
 
+        /// The `QueuesConfiguration` object
         public var configuration: QueuesConfiguration {
             get { self.storage.configuration }
             nonmutating set { self.storage.configuration = newValue }
         }
 
+        /// Returns the default `Queue`
         public var queue: Queue {
             self.queue(.default)
         }
 
+        /// The selected `QueuesDriver`
         public var driver: QueuesDriver {
             guard let driver = self.storage.driver else {
                 fatalError("No Queues driver configured. Configure with app.queues.use(...)")

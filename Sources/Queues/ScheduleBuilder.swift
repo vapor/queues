@@ -336,6 +336,9 @@ public final class ScheduleBuilder {
         }
     }
     
+    /// Retrieves the next date
+    /// - Parameter current: The current date
+    /// - Returns: The next date
     public func nextDate(current: Date = .init()) -> Date? {
         if let date = self.date, date > current {
             return date
