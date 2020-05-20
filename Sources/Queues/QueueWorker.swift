@@ -31,7 +31,7 @@ public struct QueueWorker {
                     return self.queue.eventLoop.makeSucceededFuture(())
                 }
 
-                self.queue.logger.info("Dequeing Job: ", metadata: [
+                self.queue.logger.info("Dequeing job", metadata: [
                     "job_id": .string(id.string),
                     "job_name": .string(data.jobName)
                 ])
