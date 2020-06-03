@@ -23,7 +23,19 @@ extension Application.Queues {
     public final class TestQueueStorage {
         public var jobs: [JobIdentifier: JobData] = [:]
         public var queue: [JobIdentifier] = []
-        
+
+        /// Returns all jobs in the queue of the specific `J` type.
+        public func all<J>(_ job: J.Type) -> [J.Payload]
+            where J: Job
+        {
+            let filteredJobIds = jobs.filter { $1.jobName == J.name }.map { $0.0 }
+
+            return queue
+                .filter { filteredJobIds.contains($0) }
+                .compactMap { jobs[$0] }
+                .compactMap { try? J.parsePayload($0.payload) }
+        }
+
         /// Returns the first job in the queue of the specific `J` type.
         public func first<J>(_ job: J.Type) -> J.Payload?
             where J: Job
