@@ -21,14 +21,25 @@ extension Application {
         }
 
         final class Storage {
+            enum QueuesType: String {
+                case `default` = "queues"
+                case inProcessJob = "inProcessJobsQueues"
+                case scheduledJobs = "scheduledJobsQueues"
+            }
             public var configuration: QueuesConfiguration
-            let command: QueuesCommand
+            private (set) var commands: [QueuesType: QueuesCommand]
             var driver: QueuesDriver?
 
             public init(_ application: Application) {
                 self.configuration = .init(logger: application.logger)
-                self.command = .init(application: application)
-                application.commands.use(self.command, as: "queues")
+                let command: QueuesCommand = .init(application: application)
+                self.commands = [.default: command]
+                application.commands.use(command, as: QueuesType.default.rawValue)
+            }
+            
+            public func add(command: QueuesCommand, type: QueuesType, to application: Application) {
+                self.commands.updateValue(command, forKey: type)
+                application.commands.use(command, as: type.rawValue)
             }
         }
 
@@ -38,7 +49,7 @@ extension Application {
 
         struct Lifecycle: LifecycleHandler {
             func shutdown(_ application: Application) {
-                application.queues.storage.command.shutdown()
+                application.queues.storage.commands.forEach({$0.value.shutdown()})
                 if let driver = application.queues.storage.driver {
                     driver.shutdown()
                 }
@@ -125,12 +136,16 @@ extension Application {
         /// Starts an in-process worker to dequeue and run jobs
         /// - Parameter queue: The queue to run the jobs on. Defaults to `default`
         public func startInProcessJobs(on queue: QueueName = .default) throws {
-            try QueuesCommand(application: application, scheduled: false).startJobs(on: queue)
+            let inProcessJobs = QueuesCommand(application: application, scheduled: false)
+            try inProcessJobs.startJobs(on: queue)
+            self.storage.add(command: inProcessJobs, type: .inProcessJob, to: application)
         }
         
         /// Starts an in-process worker to run scheduled jobs
         public func startScheduledJobs() throws {
-            try QueuesCommand(application: application, scheduled: true).startScheduledJobs()
+            let scheduledJobs = QueuesCommand(application: application, scheduled: true)
+            try scheduledJobs.startScheduledJobs()
+            self.storage.add(command: scheduledJobs, type: .scheduledJobs, to: application)
         }
         
         func initialize() {

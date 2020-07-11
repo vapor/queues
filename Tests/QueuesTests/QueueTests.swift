@@ -5,6 +5,35 @@ import XCTQueues
 @testable import Vapor
 
 final class QueueTests: XCTestCase {
+    func testVaporIntegrationWithInProcessJob() throws {
+        let app = Application(.testing)
+        app.queues.use(.test)
+        defer { app.shutdown() }
+        
+        let jobSignal = app.eventLoopGroup.next().makePromise(of: String.self)
+        app.queues.add(Foo(promise: jobSignal))
+        try app.queues.startInProcessJobs(on: .default)
+    
+        app.get("bar") { req in
+            req.queue.dispatch(Foo.self, .init(foo: "Bar payload"))
+                .map { _ in "job bar dispatched" }
+        }
+        
+        try app.testable().test(.GET, "bar") { res in
+            XCTAssertEqual(res.status, .ok)
+            XCTAssertEqual(res.body.string, "job bar dispatched")
+        }
+        
+        jobSignal.futureResult.whenSuccess { (res) in
+            XCTAssertEqual(res, "Bar payload")
+        }
+        
+        jobSignal.futureResult.whenFailure { (_) in
+            XCTFail("Should never fail")
+        }
+        
+    }
+    
     func testVaporIntegration() throws {
         let app = Application(.testing)
         defer { app.shutdown() }
