@@ -24,13 +24,8 @@ final class QueueTests: XCTestCase {
             XCTAssertEqual(res.body.string, "job bar dispatched")
         }
         
-        jobSignal.futureResult.whenSuccess { (res) in
-            XCTAssertEqual(res, "Bar payload")
-        }
-        
-        jobSignal.futureResult.whenFailure { (_) in
-            XCTFail("Should never fail")
-        }
+
+        try XCTAssertEqual(jobSignal.futureResult.wait(), "Bar payload")
         
     }
     
