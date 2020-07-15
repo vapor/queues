@@ -30,7 +30,7 @@ public final class QueuesCommand: Command {
     private var signalSources: [DispatchSourceSignal]
     private var didShutdown: Bool
     
-    let isShuttingDown: NIOAtomic<Bool>
+    private let isShuttingDown: NIOAtomic<Bool>
     
     private var eventLoopGroup: EventLoopGroup {
         self.application.eventLoopGroup
@@ -120,6 +120,8 @@ public final class QueuesCommand: Command {
         if self.isShuttingDown.load() {
             return
         }
+        self.lock.lock()
+        defer { self.lock.unlock() }
         
         let context = QueueContext(
             queueName: QueueName(string: "scheduled"),
@@ -130,9 +132,7 @@ public final class QueuesCommand: Command {
         )
         
         if let task = job.schedule(context: context) {
-            self.lock.withLock {
-                self.scheduledTasks[job.job.name] = task
-            }
+            self.scheduledTasks[job.job.name] = task
             task.done.whenComplete { _ in
                 self.schedule(job)
             }
@@ -141,6 +141,10 @@ public final class QueuesCommand: Command {
     
     /// Shuts down the jobs worker
     public func shutdown() {
+        self.lock.lock()
+        defer { self.lock.unlock() }
+
+        self.isShuttingDown.store(true)
         self.didShutdown = true
         
         // stop running in case shutting downf rom signal
