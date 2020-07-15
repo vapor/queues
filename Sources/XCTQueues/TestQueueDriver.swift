@@ -11,8 +11,14 @@ extension Application.Queues.Provider {
 }
 
 struct TestQueuesDriver: QueuesDriver {
+    let lock: Lock
+
+    init() {
+        self.lock = .init()
+    }
+
     func makeQueue(with context: QueueContext) -> Queue {
-        TestQueue(context: context)
+        TestQueue(lock: self.lock, context: context)
     }
     
     func shutdown() {
@@ -74,37 +80,47 @@ extension Application.Queues {
 }
 
 struct TestQueue: Queue {
+    let lock: Lock
     let context: QueueContext
     
     func get(_ id: JobIdentifier) -> EventLoopFuture<JobData> {
-        return self.context.eventLoop.makeSucceededFuture(context.application.queues.test.jobs[id]!)
+        self.lock.lock()
+        defer { self.lock.unlock() }
+
+        return self.context.eventLoop.makeSucceededFuture(
+            self.context.application.queues.test.jobs[id]!
+        )
     }
     
     func set(_ id: JobIdentifier, to data: JobData) -> EventLoopFuture<Void> {
-        return context.application.locks.main.withLock {
-            context.application.queues.test.jobs[id] = data
-            return self.context.eventLoop.makeSucceededFuture(())
-        }
+        self.lock.lock()
+        defer { self.lock.unlock() }
+
+        self.context.application.queues.test.jobs[id] = data
+        return self.context.eventLoop.makeSucceededFuture(())
     }
     
     func clear(_ id: JobIdentifier) -> EventLoopFuture<Void> {
-        return context.application.locks.main.withLock {
-            context.application.queues.test.jobs[id] = nil
-            return self.context.eventLoop.makeSucceededFuture(())
-        }
+        self.lock.lock()
+        defer { self.lock.unlock() }
+
+        self.context.application.queues.test.jobs[id] = nil
+        return self.context.eventLoop.makeSucceededFuture(())
     }
     
     func pop() -> EventLoopFuture<JobIdentifier?> {
-        return context.application.locks.main.withLock {
-            let last = context.application.queues.test.queue.popLast()
-            return self.context.eventLoop.makeSucceededFuture(last)
-        }
+        self.lock.lock()
+        defer { self.lock.unlock() }
+
+        let last = context.application.queues.test.queue.popLast()
+        return self.context.eventLoop.makeSucceededFuture(last)
     }
     
     func push(_ id: JobIdentifier) -> EventLoopFuture<Void> {
-        return context.application.locks.main.withLock {
-            context.application.queues.test.queue.append(id)
-            return self.context.eventLoop.makeSucceededFuture(())
-        }
+        self.lock.lock()
+        defer { self.lock.unlock() }
+        
+        self.context.application.queues.test.queue.append(id)
+        return self.context.eventLoop.makeSucceededFuture(())
     }
 }
