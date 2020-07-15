@@ -82,21 +82,30 @@ struct TestQueue: Queue {
     }
     
     func set(_ id: JobIdentifier, to data: JobData) -> EventLoopFuture<Void> {
-        context.application.queues.test.jobs[id] = data
-        return self.context.eventLoop.makeSucceededFuture(())
+        return context.application.locks.main.withLock {
+            context.application.queues.test.jobs[id] = data
+            return self.context.eventLoop.makeSucceededFuture(())
+        }
     }
     
     func clear(_ id: JobIdentifier) -> EventLoopFuture<Void> {
-        context.application.queues.test.jobs[id] = nil
-        return self.context.eventLoop.makeSucceededFuture(())
+        return context.application.locks.main.withLock {
+            context.application.queues.test.jobs[id] = nil
+            return self.context.eventLoop.makeSucceededFuture(())
+        }
     }
     
     func pop() -> EventLoopFuture<JobIdentifier?> {
-        return self.context.eventLoop.makeSucceededFuture(context.application.queues.test.queue.popLast())
+        return context.application.locks.main.withLock {
+            let last = context.application.queues.test.queue.popLast()
+            return self.context.eventLoop.makeSucceededFuture(last)
+        }
     }
     
     func push(_ id: JobIdentifier) -> EventLoopFuture<Void> {
-        context.application.queues.test.queue.append(id)
-        return self.context.eventLoop.makeSucceededFuture(())
+        return context.application.locks.main.withLock {
+            context.application.queues.test.queue.append(id)
+            return self.context.eventLoop.makeSucceededFuture(())
+        }
     }
 }
