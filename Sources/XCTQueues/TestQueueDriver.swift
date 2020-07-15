@@ -4,7 +4,8 @@ import Vapor
 extension Application.Queues.Provider {
     public static var test: Self {
         .init {
-            $0.queues.use(custom: TestQueuesDriver())
+            $0.queues.initializeTestStorage()
+            return $0.queues.use(custom: TestQueuesDriver())
         }
     }
 }
@@ -64,13 +65,11 @@ extension Application.Queues {
     }
     
     public var test: TestQueueStorage {
-        if let existing = self.application.storage[TestQueueKey.self] {
-            return existing
-        } else {
-            let new = TestQueueStorage()
-            self.application.storage[TestQueueKey.self] = new
-            return new
-        }
+        self.application.storage[TestQueueKey.self]!
+    }
+
+    func initializeTestStorage() {
+        self.application.storage[TestQueueKey.self] = .init()
     }
 }
 

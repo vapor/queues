@@ -3,6 +3,7 @@ import Vapor
 import XCTVapor
 import XCTQueues
 @testable import Vapor
+import NIOConcurrencyHelpers
 
 final class QueueTests: XCTestCase {
     func testVaporIntegrationWithInProcessJob() throws {
@@ -23,10 +24,8 @@ final class QueueTests: XCTestCase {
             XCTAssertEqual(res.status, .ok)
             XCTAssertEqual(res.body.string, "job bar dispatched")
         }
-        
 
         try XCTAssertEqual(jobSignal.futureResult.wait(), "Bar payload")
-        
     }
     
     func testVaporIntegration() throws {
@@ -138,13 +137,13 @@ final class QueueTests: XCTestCase {
         let app = Application(.testing)
         defer { app.shutdown() }
         
-        XCTAssertEqual(TestingScheduledJob.count, 0)
+        XCTAssertEqual(TestingScheduledJob.count.load(), 0)
         app.queues.schedule(TestingScheduledJob()).everySecond()
         try app.queues.startScheduledJobs()
         
         let promise = app.eventLoopGroup.next().makePromise(of: Void.self)
         app.eventLoopGroup.next().scheduleTask(in: .seconds(5)) { () -> Void in
-            XCTAssert(TestingScheduledJob.count > 4)
+            XCTAssert(TestingScheduledJob.count.load() > 4)
             promise.succeed(())
         }
         
@@ -153,10 +152,10 @@ final class QueueTests: XCTestCase {
 }
 
 struct TestingScheduledJob: ScheduledJob {
-    static var count = 0
+    static var count = NIOAtomic<Int>.makeAtomic(value: 0)
     
     func run(context: QueueContext) -> EventLoopFuture<Void> {
-        TestingScheduledJob.count += 1
+        TestingScheduledJob.count.add(1)
         return context.eventLoop.future()
     }
 }
