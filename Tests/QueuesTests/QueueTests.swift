@@ -149,6 +149,27 @@ final class QueueTests: XCTestCase {
         
         try promise.futureResult.wait()
     }
+
+    func testFailingScheduledJob() throws {
+        let app = Application(.testing)
+        defer { app.shutdown() }
+        
+        app.queues.schedule(FailingScheduledJob()).everySecond()
+        try app.queues.startScheduledJobs()
+        
+        let promise = app.eventLoopGroup.next().makePromise(of: Void.self)
+        app.eventLoopGroup.next().scheduleTask(in: .seconds(1)) { () -> Void in
+            promise.succeed(())
+        }
+        try promise.futureResult.wait()
+    }
+}
+
+struct Failure: Error { }
+struct FailingScheduledJob: ScheduledJob {
+    func run(context: QueueContext) -> EventLoopFuture<Void> {
+        context.eventLoop.makeFailedFuture(Failure())
+    }    
 }
 
 struct TestingScheduledJob: ScheduledJob {
