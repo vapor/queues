@@ -133,7 +133,12 @@ public final class QueuesCommand: Command {
         
         if let task = job.schedule(context: context) {
             self.scheduledTasks[job.job.name] = task
-            task.done.whenComplete { _ in
+            task.done.whenComplete { result in
+                switch result {
+                case .failure(let error):
+                    context.logger.error("\(job.job.name) failed: \(error)")
+                case .success: break
+                }
                 self.schedule(job)
             }
         }
