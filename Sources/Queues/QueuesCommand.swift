@@ -77,7 +77,7 @@ public final class QueuesCommand: Command {
         } else {
             let queue: QueueName = signature.queue
                 .flatMap { .init(string: $0) } ?? .default
-            self.application.logger.info("Starting jobs worker (queue: \(queue.string))")
+            self.application.logger.info("Starting jobs worker", metadata: ["queue": .string(queue.string)])
             try self.startJobs(on: queue)
         }
     }
