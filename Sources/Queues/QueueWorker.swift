@@ -33,7 +33,8 @@ public struct QueueWorker {
 
                 self.queue.logger.info("Dequeing job", metadata: [
                     "job_id": .string(id.string),
-                    "job_name": .string(data.jobName)
+                    "job_name": .string(data.jobName),
+                    "queue": .string(self.queue.queueName.string)
                 ])
                 var logger = self.queue.logger
                 logger[metadataKey: "job_id"] = .string(id.string)
