@@ -85,7 +85,19 @@ public final class QueuesCommand: Command {
     /// Starts an in-process jobs worker for queued tasks
     /// - Parameter queueName: The queue to run the jobs on
     public func startJobs(on queueName: QueueName) throws {
-        for eventLoop in eventLoopGroup.makeIterator() {
+        let workerCount: Int
+        switch self.application.queues.configuration.workerCount {
+        case .default:
+            var count = 0
+            for _ in self.eventLoopGroup.makeIterator() {
+                count += 1
+            }
+            workerCount = count
+        case .custom(let custom):
+            workerCount = custom
+        }
+        for _ in 0..<workerCount {
+            let eventLoop = self.eventLoopGroup.next()
             let worker = self.application.queues.queue(queueName, on: eventLoop).worker
             let task = eventLoop.scheduleRepeatedAsyncTask(
                 initialDelay: .seconds(0),

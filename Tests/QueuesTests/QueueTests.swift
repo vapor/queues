@@ -163,6 +163,80 @@ final class QueueTests: XCTestCase {
         }
         try promise.futureResult.wait()
     }
+
+    func testCustomWorkerCount() throws {
+        // Setup custom ELG with 4 threads
+        let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 4)
+        defer { try! eventLoopGroup.syncShutdownGracefully() }
+
+        let app = Application(.testing, .shared(eventLoopGroup))
+        defer { app.shutdown() }
+
+        let count = app.eventLoopGroup.next().makePromise(of: Int.self)
+        app.queues.use(custom: WorkerCountDriver(count: count))
+        // Limit worker count to less than 4 threads
+        app.queues.configuration.workerCount = 2
+
+        try app.queues.startInProcessJobs(on: .default)
+        try XCTAssertEqual(count.futureResult.wait(), 2)
+    }
+}
+
+final class WorkerCountDriver: QueuesDriver {
+    let count: EventLoopPromise<Int>
+    let lock: Lock
+    var recordedEventLoops: Set<ObjectIdentifier>
+
+    init(count: EventLoopPromise<Int>) {
+        self.count = count
+        self.lock = .init()
+        self.recordedEventLoops = []
+    }
+
+    func makeQueue(with context: QueueContext) -> Queue {
+        WorkerCountQueue(driver: self, context: context)
+    }
+
+    func record(eventLoop: EventLoop) {
+        self.lock.lock()
+        defer { self.lock.unlock() }
+        let previousCount = self.recordedEventLoops.count
+        self.recordedEventLoops.insert(.init(eventLoop))
+        if self.recordedEventLoops.count == previousCount {
+            // we've detected all unique event loops now
+            self.count.succeed(previousCount)
+        }
+    }
+
+    func shutdown() {
+        // nothing
+    }
+
+    private struct WorkerCountQueue: Queue {
+        let driver: WorkerCountDriver
+        var context: QueueContext
+
+        func get(_ id: JobIdentifier) -> EventLoopFuture<JobData> {
+            fatalError()
+        }
+
+        func set(_ id: JobIdentifier, to data: JobData) -> EventLoopFuture<Void> {
+            fatalError()
+        }
+
+        func clear(_ id: JobIdentifier) -> EventLoopFuture<Void> {
+            fatalError()
+        }
+
+        func pop() -> EventLoopFuture<JobIdentifier?> {
+            self.driver.record(eventLoop: self.context.eventLoop)
+            return self.context.eventLoop.makeSucceededFuture(nil)
+        }
+
+        func push(_ id: JobIdentifier) -> EventLoopFuture<Void> {
+            fatalError()
+        }
+    }
 }
 
 struct Failure: Error { }
