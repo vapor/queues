@@ -6,6 +6,7 @@ public struct QueuesConfiguration {
     /// The key that stores the data about a job. Defaults to `vapor_queues`
     public var persistenceKey: String
 
+    /// Supported options for number of job handling workers. 
     public enum WorkerCount: ExpressibleByIntegerLiteral {
         /// One worker per event loop.
         case `default`
@@ -18,7 +19,8 @@ public struct QueuesConfiguration {
             self = .custom(value)
         }
     }
-    ///
+
+    /// Sets the number of workers used for handling jobs.
     public var workerCount: WorkerCount
     
     /// A logger
