@@ -5,6 +5,21 @@ public struct QueuesConfiguration {
 
     /// The key that stores the data about a job. Defaults to `vapor_queues`
     public var persistenceKey: String
+
+    public enum WorkerCount: ExpressibleByIntegerLiteral {
+        /// One worker per event loop.
+        case `default`
+
+        /// Specify a custom worker count.
+        case custom(Int)
+
+        /// See `ExpressibleByIntegerLiteral`.
+        public init(integerLiteral value: Int) {
+            self = .custom(value)
+        }
+    }
+    ///
+    public var workerCount: WorkerCount
     
     /// A logger
     public let logger: Logger
@@ -19,6 +34,7 @@ public struct QueuesConfiguration {
     public init(
         refreshInterval: TimeAmount = .seconds(1),
         persistenceKey: String = "vapor_queues",
+        workerCount: WorkerCount = .default,
         logger: Logger = .init(label: "codes.vapor.queues")
     ) {
         self.jobs = [:]
@@ -26,6 +42,7 @@ public struct QueuesConfiguration {
         self.logger = logger
         self.refreshInterval = refreshInterval
         self.persistenceKey = persistenceKey
+        self.workerCount = workerCount
         self.userInfo = [:]
     }
     
