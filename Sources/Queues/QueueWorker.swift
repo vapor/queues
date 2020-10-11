@@ -79,7 +79,7 @@ public struct QueueWorker {
             logger.trace("Ran job successfully")
             logger.trace("Sending success notification hooks")
             return self.queue.configuration.notificationHooks.map {
-                $0.success(job: jobData)
+                $0.success(job: jobData, eventLoop: self.queue.context.eventLoop)
             }.flatten(on: self.queue.context.eventLoop)
         }.flatMapError { error in
             logger.trace("Job failed (remaining tries: \(remainingTries)")
@@ -92,7 +92,7 @@ public struct QueueWorker {
 
                 logger.trace("Sending failure notification hooks")
                 let failureNotificationHooks = self.queue.configuration.notificationHooks.map {
-                    $0.error(job: jobData, error: error)
+                    $0.error(job: jobData, error: error, eventLoop: self.queue.context.eventLoop)
                 }.flatten(on: self.queue.context.eventLoop)
 
                 return job._error(self.queue.context, error, payload: payload).and(failureNotificationHooks).transform(to: ())
