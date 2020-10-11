@@ -4,14 +4,14 @@ on:
 jobs:
   queues_xenial:
     container:
-      image: vapor/swift:5.3-xenial
+      image: swift:5.3-xenial
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
       - run: swift test --enable-test-discovery --sanitize=thread
   queues_bionic:
     container:
-      image: vapor/swift:5.3-bionic
+      image: swift:5.3-bionic
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
