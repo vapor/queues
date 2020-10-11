@@ -42,23 +42,28 @@ public struct QueueWorker {
                     return self.queue.eventLoop.makeSucceededFuture(())
                 }
 
-                logger.info("Dequeing job", metadata: [
-                    "job_id": .string(id.string),
-                    "job_name": .string(data.jobName),
-                    "queue": .string(self.queue.queueName.string)
-                ])
+                logger.trace("Sending dequeued notification hooks")
+                return self.queue.configuration.notificationHooks.map {
+                    $0.dequeued(jobId: id.string, eventLoop: self.queue.eventLoop)
+                }.flatten(on: self.queue.eventLoop).flatMap { _ in
+                    logger.info("Dequeing job", metadata: [
+                        "job_id": .string(id.string),
+                        "job_name": .string(data.jobName),
+                        "queue": .string(self.queue.queueName.string)
+                    ])
 
-                return self.run(
-                    id: id,
-                    name: data.jobName,
-                    job: job,
-                    payload: data.payload,
-                    logger: logger,
-                    remainingTries: data.maxRetryCount,
-                    jobData: data
-                ).flatMap {
-                    logger.trace("Job done being run")
-                    return self.queue.clear(id)
+                    return self.run(
+                        id: id,
+                        name: data.jobName,
+                        job: job,
+                        payload: data.payload,
+                        logger: logger,
+                        remainingTries: data.maxRetryCount,
+                        jobData: data
+                    ).flatMap {
+                        logger.trace("Job done being run")
+                        return self.queue.clear(id)
+                    }
                 }
             }
         }

@@ -191,7 +191,9 @@ final class QueueTests: XCTestCase {
         app.queues.add(SuccessHook())
         app.queues.add(ErrorHook())
         app.queues.add(DispatchHook())
+        app.queues.add(DequeuedHook())
         ErrorHook.errorCount = 0
+        DequeuedHook.successHit = false
 
         app.get("foo") { req in
             req.queue.dispatch(Foo.self, .init(foo: "bar"))
@@ -213,13 +215,15 @@ final class QueueTests: XCTestCase {
         XCTAssert(app.queues.test.contains(Foo.self))
         XCTAssertNotNil(job)
         XCTAssertEqual(job!.foo, "bar")
+        XCTAssertEqual(DequeuedHook.successHit, false)
 
         try app.queues.queue.worker.run().wait()
         XCTAssertEqual(SuccessHook.successHit, true)
         XCTAssertEqual(ErrorHook.errorCount, 0)
         XCTAssertEqual(app.queues.test.queue.count, 0)
         XCTAssertEqual(app.queues.test.jobs.count, 0)
-
+        XCTAssertEqual(DequeuedHook.successHit, true)
+        
         try XCTAssertEqual(promise.futureResult.wait(), "bar")
     }
 
@@ -280,6 +284,15 @@ class ErrorHook: NotificationHook {
 
     func error(jobId: String, error: Error, eventLoop: EventLoop) -> EventLoopFuture<Void> {
         Self.errorCount += 1
+        return eventLoop.future()
+    }
+}
+
+class DequeuedHook: NotificationHook {
+    static var successHit = false
+
+    func dequeued(jobId: String, eventLoop: EventLoop) -> EventLoopFuture<Void> {
+        Self.successHit = true
         return eventLoop.future()
     }
 }

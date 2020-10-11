@@ -9,6 +9,12 @@ public protocol NotificationHook {
     ///   - eventLoop: The eventLoop
     func dispatched(job: NotificationJobData, eventLoop: EventLoop) -> EventLoopFuture<Void>
 
+    /// Called when the job is dequeued
+    /// - Parameters:
+    ///   - jobId: The id of the Job
+    ///   - eventLoop: The eventLoop
+    func dequeued(jobId: String, eventLoop: EventLoop) -> EventLoopFuture<Void>
+
 
     /// Called when the job succeeds
     /// - Parameters:
@@ -26,6 +32,10 @@ public protocol NotificationHook {
 
 extension NotificationHook {
     public func dispatched(job: NotificationJobData, eventLoop: EventLoop) -> EventLoopFuture<Void> {
+        eventLoop.future()
+    }
+
+    public func dequeued(jobId: String, eventLoop: EventLoop) -> EventLoopFuture<Void> {
         eventLoop.future()
     }
 
