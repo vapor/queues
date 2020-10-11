@@ -107,7 +107,7 @@ extension Application {
 
         /// Adds a new notification hook
         /// - Parameter hook: The hook object to add
-        public func add<N>(_ hook: N) where N: NotificationHook {
+        public func add<N>(_ hook: N) where N: JobEventDelegate {
             self.configuration.add(hook)
         }
 

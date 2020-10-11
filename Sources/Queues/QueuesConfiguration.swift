@@ -31,7 +31,7 @@ public struct QueuesConfiguration {
     
     var jobs: [String: AnyJob]
     var scheduledJobs: [AnyScheduledJob]
-    var notificationHooks: [NotificationHook]
+    var notificationHooks: [JobEventDelegate]
     
     /// Creates an empty `JobsConfig`
     public init(
@@ -86,7 +86,7 @@ public struct QueuesConfiguration {
     /// Adds a notification hook that can receive status updates about jobs
     /// - Parameter hook: The `NotificationHook` object
     mutating public func add<N>(_ hook: N)
-        where N: NotificationHook
+        where N: JobEventDelegate
     {
         self.logger.trace("Adding notification hook")
         self.notificationHooks.append(hook)

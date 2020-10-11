@@ -261,16 +261,16 @@ final class QueueTests: XCTestCase {
     }
 }
 
-class DispatchHook: NotificationHook {
+class DispatchHook: JobEventDelegate {
     static var successHit = false
 
-    func dispatched(job: NotificationJobData, eventLoop: EventLoop) -> EventLoopFuture<Void> {
+    func dispatched(job: JobEventData, eventLoop: EventLoop) -> EventLoopFuture<Void> {
         Self.successHit = true
         return eventLoop.future()
     }
 }
 
-class SuccessHook: NotificationHook {
+class SuccessHook: JobEventDelegate {
     static var successHit = false
 
     func success(jobId: String, eventLoop: EventLoop) -> EventLoopFuture<Void> {
@@ -279,7 +279,7 @@ class SuccessHook: NotificationHook {
     }
 }
 
-class ErrorHook: NotificationHook {
+class ErrorHook: JobEventDelegate {
     static var errorCount = 0
 
     func error(jobId: String, error: Error, eventLoop: EventLoop) -> EventLoopFuture<Void> {
@@ -288,10 +288,10 @@ class ErrorHook: NotificationHook {
     }
 }
 
-class DequeuedHook: NotificationHook {
+class DequeuedHook: JobEventDelegate {
     static var successHit = false
 
-    func dequeued(jobId: String, eventLoop: EventLoop) -> EventLoopFuture<Void> {
+    func didDequeue(jobId: String, eventLoop: EventLoop) -> EventLoopFuture<Void> {
         Self.successHit = true
         return eventLoop.future()
     }

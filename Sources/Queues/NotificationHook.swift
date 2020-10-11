@@ -1,19 +1,19 @@
 import NIO
 
 /// Represents an object that can receive notifications about job statuses
-public protocol NotificationHook {
+public protocol JobEventDelegate {
 
     /// Called when the job is first dispatched
     /// - Parameters:
     ///   - job: The `JobData` associated with the job
     ///   - eventLoop: The eventLoop
-    func dispatched(job: NotificationJobData, eventLoop: EventLoop) -> EventLoopFuture<Void>
+    func dispatched(job: JobEventData, eventLoop: EventLoop) -> EventLoopFuture<Void>
 
     /// Called when the job is dequeued
     /// - Parameters:
     ///   - jobId: The id of the Job
     ///   - eventLoop: The eventLoop
-    func dequeued(jobId: String, eventLoop: EventLoop) -> EventLoopFuture<Void>
+    func didDequeue(jobId: String, eventLoop: EventLoop) -> EventLoopFuture<Void>
 
 
     /// Called when the job succeeds
@@ -30,12 +30,12 @@ public protocol NotificationHook {
     func error(jobId: String, error: Error, eventLoop: EventLoop) -> EventLoopFuture<Void>
 }
 
-extension NotificationHook {
-    public func dispatched(job: NotificationJobData, eventLoop: EventLoop) -> EventLoopFuture<Void> {
+extension JobEventDelegate {
+    public func dispatched(job: JobEventData, eventLoop: EventLoop) -> EventLoopFuture<Void> {
         eventLoop.future()
     }
 
-    public func dequeued(jobId: String, eventLoop: EventLoop) -> EventLoopFuture<Void> {
+    public func didDequeue(jobId: String, eventLoop: EventLoop) -> EventLoopFuture<Void> {
         eventLoop.future()
     }
 
@@ -49,7 +49,7 @@ extension NotificationHook {
 }
 
 /// Data on a job sent via a notification
-public struct NotificationJobData {
+public struct JobEventData {
     /// The id of the job, assigned at dispatch
     public var id: String
 
