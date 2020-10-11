@@ -72,6 +72,7 @@ extension Queue {
         } catch {
             return self.eventLoop.makeFailedFuture(error)
         }
+        logger.trace("Serialized bytes for payload: \(bytes)")
         let storage = JobData(
             payload: bytes,
             maxRetryCount: maxRetryCount,
@@ -79,6 +80,7 @@ extension Queue {
             delayUntil: delayUntil,
             queuedAt: Date()
         )
+        logger.trace("Adding the ID to the storage")
         return self.set(id, to: storage).flatMap {
             self.push(id)
         }.map { _ in

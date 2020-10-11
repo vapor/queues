@@ -14,30 +14,40 @@ public struct QueueWorker {
     
     /// Logic to run the queue
     public func run() -> EventLoopFuture<Void> {
-        self.queue.pop().flatMap { id in
+        queue.logger.trace("Popping job from queue")
+        return self.queue.pop().flatMap { id in
             //No job found, go to the next iteration
             guard let id = id else {
+                queue.logger.trace("Did not receive ID from pop")
                 return self.queue.eventLoop.makeSucceededFuture(())
             }
+
+            queue.logger.trace("Received job \(id)")
+            queue.logger.trace("Getting data for job \(id)")
+
             return self.queue.get(id).flatMap { data in
+                var logger = self.queue.logger
+                logger[metadataKey: "job_id"] = .string(id.string)
+
+                logger.trace("Received job data for \(id): \(data)")
                 // If the job has a delay, we must check to make sure we can execute.
                 // If the delay has not passed yet, requeue the job
                 if let delay = data.delayUntil, delay >= Date() {
+                    logger.trace("Requeing job \(id) for execution later because the delayUntil value of \(delay) has not passed yet")
                     return self.queue.push(id)
                 }
 
                 guard let job = self.queue.configuration.jobs[data.jobName] else {
-                    self.queue.logger.error("No job named \(data.jobName) is registered")
+                    logger.error("No job named \(data.jobName) is registered")
                     return self.queue.eventLoop.makeSucceededFuture(())
                 }
 
-                self.queue.logger.info("Dequeing job", metadata: [
+                logger.info("Dequeing job", metadata: [
                     "job_id": .string(id.string),
                     "job_name": .string(data.jobName),
                     "queue": .string(self.queue.queueName.string)
                 ])
-                var logger = self.queue.logger
-                logger[metadataKey: "job_id"] = .string(id.string)
+
                 return self.run(
                     id: id,
                     name: data.jobName,
@@ -46,7 +56,8 @@ public struct QueueWorker {
                     logger: logger,
                     remainingTries: data.maxRetryCount
                 ).flatMap {
-                    self.queue.clear(id)
+                    logger.trace("Job done being run")
+                    return self.queue.clear(id)
                 }
             }
         }
@@ -60,10 +71,13 @@ public struct QueueWorker {
         logger: Logger,
         remainingTries: Int
     ) -> EventLoopFuture<Void> {
+        logger.trace("Running the queue job (remaining tries: \(remainingTries)")
         let futureJob = job._dequeue(self.queue.context, payload: payload)
         return futureJob.map { complete in
+            logger.trace("Ran job successfully")
             return complete
         }.flatMapError { error in
+            logger.trace("Job failed (remaining tries: \(remainingTries)")
             if remainingTries == 0 {
                 logger.error("Job failed with error: \(error)", metadata: [
                     "job_id": .string(id.string),

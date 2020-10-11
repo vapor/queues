@@ -55,6 +55,7 @@ public struct QueuesConfiguration {
     mutating public func add<J>(_ job: J)
         where J: Job
     {
+        self.logger.trace("Adding job type: \(J.name)")
         if let existing = self.jobs[J.name] {
             self.logger.warning("A job is already registered with key \(J.name): \(existing)")
         }
@@ -74,6 +75,7 @@ public struct QueuesConfiguration {
     mutating internal func schedule<J>(_ job: J, builder: ScheduleBuilder = ScheduleBuilder()) -> ScheduleBuilder
         where J: ScheduledJob
     {
+        self.logger.trace("Scheduling \(job.name)")
         let storage = AnyScheduledJob(job: job, scheduler: builder)
         self.scheduledJobs.append(storage)
         return builder
