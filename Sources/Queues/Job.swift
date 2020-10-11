@@ -61,17 +61,21 @@ extension Job {
         context.eventLoop.makeSucceededFuture(())
     }
     
-    public func _error(_ context: QueueContext, _ error: Error, payload: [UInt8]) -> EventLoopFuture<Void> {
+    public func _error(_ context: QueueContext, id: String, _ error: Error, payload: [UInt8]) -> EventLoopFuture<Void> {
+        var contextCopy = context
+        contextCopy.logger[metadataKey: "job_id"] = .string(id)
         do {
-            return try self.error(context, error, Self.parsePayload(payload))
+            return try self.error(contextCopy, error, Self.parsePayload(payload))
         } catch {
             return context.eventLoop.makeFailedFuture(error)
         }
     }
     
-    public func _dequeue(_ context: QueueContext, payload: [UInt8]) -> EventLoopFuture<Void> {
+    public func _dequeue(_ context: QueueContext, id: String, payload: [UInt8]) -> EventLoopFuture<Void> {
+        var contextCopy = context
+        contextCopy.logger[metadataKey: "job_id"] = .string(id)
         do {
-            return try self.dequeue(context, Self.parsePayload(payload))
+            return try self.dequeue(contextCopy, Self.parsePayload(payload))
         } catch {
             return context.eventLoop.makeFailedFuture(error)
         }
@@ -82,6 +86,6 @@ extension Job {
 public protocol AnyJob {
     /// The name of the `Job`
     static var name: String { get }
-    func _dequeue(_ context: QueueContext, payload: [UInt8]) -> EventLoopFuture<Void>
-    func _error(_ context: QueueContext, _ error: Error, payload: [UInt8]) -> EventLoopFuture<Void>
+    func _dequeue(_ context: QueueContext, id: String, payload: [UInt8]) -> EventLoopFuture<Void>
+    func _error(_ context: QueueContext, id: String, _ error: Error, payload: [UInt8]) -> EventLoopFuture<Void>
 }

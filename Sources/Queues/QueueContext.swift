@@ -12,7 +12,7 @@ public struct QueueContext {
     public let application: Application
     
     /// The logger object
-    public let logger: Logger
+    public var logger: Logger
     
     /// An event loop to run the process on
     public let eventLoop: EventLoop

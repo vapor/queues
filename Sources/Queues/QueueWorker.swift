@@ -74,7 +74,7 @@ public struct QueueWorker {
         jobData: JobData
     ) -> EventLoopFuture<Void> {
         logger.trace("Running the queue job (remaining tries: \(remainingTries)")
-        let futureJob = job._dequeue(self.queue.context, payload: payload)
+        let futureJob = job._dequeue(self.queue.context, id: id.string, payload: payload)
         return futureJob.flatMap { complete in
             logger.trace("Ran job successfully")
             logger.trace("Sending success notification hooks")
@@ -95,7 +95,7 @@ public struct QueueWorker {
                     $0.error(jobId: id.string, error: error, eventLoop: self.queue.context.eventLoop)
                 }.flatten(on: self.queue.context.eventLoop)
 
-                return job._error(self.queue.context, error, payload: payload).and(failureNotificationHooks).transform(to: ())
+                return job._error(self.queue.context, id: id.string, error, payload: payload).and(failureNotificationHooks).transform(to: ())
             } else {
                 logger.error("Job failed, retrying... \(error)", metadata: [
                     "job_id": .string(id.string),
