@@ -54,7 +54,8 @@ public struct QueueWorker {
                     job: job,
                     payload: data.payload,
                     logger: logger,
-                    remainingTries: data.maxRetryCount
+                    remainingTries: data.maxRetryCount,
+                    jobData: data
                 ).flatMap {
                     logger.trace("Job done being run")
                     return self.queue.clear(id)
@@ -69,13 +70,17 @@ public struct QueueWorker {
         job: AnyJob,
         payload: [UInt8],
         logger: Logger,
-        remainingTries: Int
+        remainingTries: Int,
+        jobData: JobData
     ) -> EventLoopFuture<Void> {
         logger.trace("Running the queue job (remaining tries: \(remainingTries)")
         let futureJob = job._dequeue(self.queue.context, payload: payload)
-        return futureJob.map { complete in
+        return futureJob.flatMap { complete in
             logger.trace("Ran job successfully")
-            return complete
+            logger.trace("Sending success notification hooks")
+            return self.queue.configuration.notificationHooks.map {
+                $0.success(job: jobData)
+            }.flatten(on: self.queue.context.eventLoop)
         }.flatMapError { error in
             logger.trace("Job failed (remaining tries: \(remainingTries)")
             if remainingTries == 0 {
@@ -84,7 +89,13 @@ public struct QueueWorker {
                     "job_name": .string(name),
                     "queue": .string(self.queue.queueName.string)
                 ])
-                return job._error(self.queue.context, error, payload: payload)
+
+                logger.trace("Sending failure notification hooks")
+                let failureNotificationHooks = self.queue.configuration.notificationHooks.map {
+                    $0.error(job: jobData, error: error)
+                }.flatten(on: self.queue.context.eventLoop)
+
+                return job._error(self.queue.context, error, payload: payload).and(failureNotificationHooks).transform(to: ())
             } else {
                 logger.error("Job failed, retrying... \(error)", metadata: [
                     "job_id": .string(id.string),
@@ -97,7 +108,8 @@ public struct QueueWorker {
                     job: job,
                     payload: payload,
                     logger: logger,
-                    remainingTries: remainingTries - 1
+                    remainingTries: remainingTries - 1,
+                    jobData: jobData
                 )
             }
         }

@@ -31,6 +31,7 @@ public struct QueuesConfiguration {
     
     var jobs: [String: AnyJob]
     var scheduledJobs: [AnyScheduledJob]
+    var notificationHooks: [NotificationHook]
     
     /// Creates an empty `JobsConfig`
     public init(
@@ -46,6 +47,7 @@ public struct QueuesConfiguration {
         self.persistenceKey = persistenceKey
         self.workerCount = workerCount
         self.userInfo = [:]
+        self.notificationHooks = []
     }
     
     /// Adds a new `Job` to the queue configuration.
@@ -79,5 +81,14 @@ public struct QueuesConfiguration {
         let storage = AnyScheduledJob(job: job, scheduler: builder)
         self.scheduledJobs.append(storage)
         return builder
+    }
+
+    /// Adds a notification hook that can receive status updates about jobs
+    /// - Parameter hook: The `NotificationHook` object
+    mutating public func add<N>(_ hook: N)
+        where N: NotificationHook
+    {
+        self.logger.trace("Adding notification hook")
+        self.notificationHooks.append(hook)
     }
 }
