@@ -3,26 +3,37 @@ import NIO
 /// Represents an object that can receive notifications about job statuses
 public protocol NotificationHook {
 
-    /// Called when the job succeeds
+    /// Called when the job is first dispatched
     /// - Parameters:
     ///   - job: The `JobData` associated with the job
     ///   - eventLoop: The eventLoop
-    func success(job: NotificationJobData, eventLoop: EventLoop) -> EventLoopFuture<Void>
+    func dispatched(job: NotificationJobData, eventLoop: EventLoop) -> EventLoopFuture<Void>
+
+
+    /// Called when the job succeeds
+    /// - Parameters:
+    ///   - jobId: The id of the Job
+    ///   - eventLoop: The eventLoop
+    func success(jobId: String, eventLoop: EventLoop) -> EventLoopFuture<Void>
 
     /// Called when the job returns an error
     /// - Parameters:
-    ///   - job: The `JobData` associated with the job
+    ///   - jobId: The id of the Job
     ///   - error: The error that caused the job to fail
     ///   - eventLoop: The eventLoop
-    func error(job: NotificationJobData, error: Error, eventLoop: EventLoop) -> EventLoopFuture<Void>
+    func error(jobId: String, error: Error, eventLoop: EventLoop) -> EventLoopFuture<Void>
 }
 
 extension NotificationHook {
-    public func success(job: NotificationJobData, eventLoop: EventLoop) -> EventLoopFuture<Void> {
+    public func dispatched(job: NotificationJobData, eventLoop: EventLoop) -> EventLoopFuture<Void> {
         eventLoop.future()
     }
 
-    public func error(job: NotificationJobData, error: Error, eventLoop: EventLoop) -> EventLoopFuture<Void> {
+    public func success(jobId: String, eventLoop: EventLoop) -> EventLoopFuture<Void> {
+        eventLoop.future()
+    }
+
+    public func error(jobId: String, error: Error, eventLoop: EventLoop) -> EventLoopFuture<Void> {
         eventLoop.future()
     }
 }

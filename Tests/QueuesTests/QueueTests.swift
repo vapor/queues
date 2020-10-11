@@ -190,6 +190,7 @@ final class QueueTests: XCTestCase {
         app.queues.add(Foo(promise: promise))
         app.queues.add(SuccessHook())
         app.queues.add(ErrorHook())
+        app.queues.add(DispatchHook())
         ErrorHook.errorCount = 0
 
         app.get("foo") { req in
@@ -197,9 +198,11 @@ final class QueueTests: XCTestCase {
                 .map { _ in "done" }
         }
 
+        XCTAssertEqual(DispatchHook.successHit, false)
         try app.testable().test(.GET, "foo") { res in
             XCTAssertEqual(res.status, .ok)
             XCTAssertEqual(res.body.string, "done")
+            XCTAssertEqual(DispatchHook.successHit, true)
         }
 
         XCTAssertEqual(SuccessHook.successHit, false)
@@ -254,10 +257,19 @@ final class QueueTests: XCTestCase {
     }
 }
 
+class DispatchHook: NotificationHook {
+    static var successHit = false
+
+    func dispatched(job: NotificationJobData, eventLoop: EventLoop) -> EventLoopFuture<Void> {
+        Self.successHit = true
+        return eventLoop.future()
+    }
+}
+
 class SuccessHook: NotificationHook {
     static var successHit = false
 
-    func success(job: NotificationJobData, eventLoop: EventLoop) -> EventLoopFuture<Void> {
+    func success(jobId: String, eventLoop: EventLoop) -> EventLoopFuture<Void> {
         Self.successHit = true
         return eventLoop.future()
     }
@@ -266,7 +278,7 @@ class SuccessHook: NotificationHook {
 class ErrorHook: NotificationHook {
     static var errorCount = 0
 
-    func error(job: NotificationJobData, error: Error, eventLoop: EventLoop) -> EventLoopFuture<Void> {
+    func error(jobId: String, error: Error, eventLoop: EventLoop) -> EventLoopFuture<Void> {
         Self.errorCount += 1
         return eventLoop.future()
     }
