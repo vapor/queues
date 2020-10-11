@@ -257,7 +257,7 @@ final class QueueTests: XCTestCase {
 class SuccessHook: NotificationHook {
     static var successHit = false
 
-    func success(job: JobData, eventLoop: EventLoop) -> EventLoopFuture<Void> {
+    func success(job: NotificationJobData, eventLoop: EventLoop) -> EventLoopFuture<Void> {
         Self.successHit = true
         return eventLoop.future()
     }
@@ -266,7 +266,7 @@ class SuccessHook: NotificationHook {
 class ErrorHook: NotificationHook {
     static var errorCount = 0
 
-    func error(job: JobData, error: Error, eventLoop: EventLoop) -> EventLoopFuture<Void> {
+    func error(job: NotificationJobData, error: Error, eventLoop: EventLoop) -> EventLoopFuture<Void> {
         Self.errorCount += 1
         return eventLoop.future()
     }

@@ -29,6 +29,7 @@ extension NotificationHook {
 
 /// Data on a job sent via a notification
 public struct NotificationJobData {
+    /// The id of the job, assigned at dispatch
     public let id: String
 
     /// The job data to be encoded.
