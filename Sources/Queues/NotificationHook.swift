@@ -53,6 +53,9 @@ public struct NotificationJobData {
     /// The id of the job, assigned at dispatch
     public let id: String
 
+    /// The name of the queue (i.e. `default`)
+    public let queueName: String
+
     /// The job data to be encoded.
     public let payload: [UInt8]
 
@@ -69,8 +72,9 @@ public struct NotificationJobData {
     public let jobName: String
 
     /// Creates a new `JobStorage` holding object
-    public init(id: String, jobData: JobData) {
+    public init(id: String, queueName: String, jobData: JobData) {
         self.id = id
+        self.queueName = queueName
         self.payload = jobData.payload
         self.maxRetryCount = jobData.maxRetryCount
         self.jobName = jobData.jobName

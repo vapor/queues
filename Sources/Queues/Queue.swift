@@ -91,7 +91,7 @@ extension Queue {
             ])
 
             return self.configuration.notificationHooks.map {
-                $0.dispatched(job: .init(id: id.string, jobData: storage), eventLoop: self.eventLoop)
+                $0.dispatched(job: .init(id: id.string, queueName: self.queueName.string, jobData: storage), eventLoop: self.eventLoop)
             }.flatten(on: self.eventLoop).transform(to: ())
         }
     }
