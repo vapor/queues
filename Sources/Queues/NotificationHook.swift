@@ -51,25 +51,25 @@ extension NotificationHook {
 /// Data on a job sent via a notification
 public struct NotificationJobData {
     /// The id of the job, assigned at dispatch
-    public let id: String
+    public var id: String
 
     /// The name of the queue (i.e. `default`)
-    public let queueName: String
+    public var queueName: String
 
     /// The job data to be encoded.
-    public let payload: [UInt8]
+    public var payload: [UInt8]
 
     /// The maxRetryCount for the `Job`.
-    public let maxRetryCount: Int
+    public var maxRetryCount: Int
 
     /// A date to execute this job after
-    public let delayUntil: Date?
+    public var delayUntil: Date?
 
     /// The date this job was queued
-    public let queuedAt: Date
+    public var queuedAt: Date
 
     /// The name of the `Job`
-    public let jobName: String
+    public var jobName: String
 
     /// Creates a new `JobStorage` holding object
     public init(id: String, queueName: String, jobData: JobData) {
