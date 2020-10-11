@@ -52,6 +52,8 @@ public final class QueuesCommand: Command {
     ///   - context: A `CommandContext` for the command to run on
     ///   - signature: The signature of the command
     public func run(using context: CommandContext, signature: QueuesCommand.Signature) throws {
+        self.application.logger.trace("Begginning the run function")
+
         // shutdown future
         let promise = self.application.eventLoopGroup.next().makePromise(of: Void.self)
         self.application.running = .start(using: promise)
@@ -93,20 +95,27 @@ public final class QueuesCommand: Command {
                 count += 1
             }
             workerCount = count
+            self.application.logger.trace("Default workerCount, setting to \(workerCount)")
         case .custom(let custom):
             workerCount = custom
+            self.application.logger.trace("Custom workerCount, setting to \(workerCount)")
         }
-        for _ in 0..<workerCount {
+        for i in 0..<workerCount {
+            self.application.logger.trace("Booting worker: \(i)")
             let eventLoop = self.eventLoopGroup.next()
             let worker = self.application.queues.queue(queueName, on: eventLoop).worker
             let task = eventLoop.scheduleRepeatedAsyncTask(
                 initialDelay: .seconds(0),
                 delay: worker.queue.configuration.refreshInterval
             ) { task in
+                self.application.logger.trace("Running refresh task")
+
                 // run task
                 return worker.run().map {
+                    self.application.logger.trace("Worker ran the task successfully")
                     //Check if shutting down
                     if self.isShuttingDown.load() {
+                        self.application.logger.trace("Shutting down, cancelling the task")
                         task.cancel()
                     }
                 }.recover { error in
@@ -115,23 +124,32 @@ public final class QueuesCommand: Command {
             }
             self.jobTasks.append(task)
         }
+
+        self.application.logger.trace("Finished adding jobTasks, total count: \(jobTasks.count)")
     }
     
     /// Starts the scheduled jobs in-process
     public func startScheduledJobs() throws {
+        self.application.logger.trace("Checking for scheduled jobs to begin the worker")
+
         guard !self.application.queues.configuration.scheduledJobs.isEmpty else {
             self.application.logger.warning("No scheduled jobs exist, exiting scheduled jobs worker.")
             return
         }
-        
-        self.application.queues.configuration.scheduledJobs
-            .forEach { self.schedule($0) }
+
+        self.application.logger.trace("Beginning the scheduling process")
+        self.application.queues.configuration.scheduledJobs.forEach {
+            self.application.logger.trace("Scheduling \($0.job.name)")
+            self.schedule($0)
+        }
     }
     
     private func schedule(_ job: AnyScheduledJob) {
         if self.isShuttingDown.load() {
+            self.application.logger.trace("Application is shutting down, cancelling scheduling \(job.job.name)")
             return
         }
+
         self.lock.lock()
         defer { self.lock.unlock() }
         
@@ -144,6 +162,7 @@ public final class QueuesCommand: Command {
         )
         
         if let task = job.schedule(context: context) {
+            self.application.logger.trace("Job \(job.job.name) was scheduled successfully")
             self.scheduledTasks[job.job.name] = task
             task.done.whenComplete { result in
                 switch result {

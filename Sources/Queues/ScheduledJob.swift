@@ -29,6 +29,7 @@ extension AnyScheduledJob {
     }
 
     func schedule(context: QueueContext) -> Task? {
+        context.logger.trace("Beginning the scheduler process")
         guard let date = self.scheduler.nextDate() else {
             context.logger.debug("No date scheduled for \(self.job.name)")
             return nil
@@ -41,6 +42,7 @@ extension AnyScheduledJob {
         ) { task in
             // always cancel
             task.cancel()
+            context.logger.trace("Running the scheduled job \(self.job.name)")
             self.job.run(context: context).cascade(to: promise)
         }
         return .init(task: task, done: promise.futureResult)

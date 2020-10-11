@@ -72,6 +72,7 @@ extension Queue {
         } catch {
             return self.eventLoop.makeFailedFuture(error)
         }
+        logger.trace("Serialized bytes for payload: \(bytes)")
         let storage = JobData(
             payload: bytes,
             maxRetryCount: maxRetryCount,
@@ -79,6 +80,7 @@ extension Queue {
             delayUntil: delayUntil,
             queuedAt: Date()
         )
+        logger.trace("Adding the ID to the storage")
         return self.set(id, to: storage).flatMap {
             self.push(id)
         }.map { _ in
@@ -87,6 +89,13 @@ extension Queue {
                 "job_name": .string(job.name),
                 "queue": .string(self.queueName.string)
             ])
+
+            _ = self.configuration.notificationHooks.map {
+                $0.dispatched(job: .init(id: id.string, queueName: self.queueName.string, jobData: storage), eventLoop: self.eventLoop)
+            }.flatten(on: self.eventLoop).flatMapError { error in
+                self.logger.error("Could not send dispatched notification: \(error)")
+                return self.eventLoop.future()
+            }
         }
     }
 }
