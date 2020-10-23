@@ -34,6 +34,6 @@ New features are little more complex. If you come up with an idea, you should fo
 # Maintainers
 
 - [@tanner0101](https://github.com/tanner0101)
-- [@mcdappdev](https://github.com/mcdappdev)
+- [@jdmcd](https://github.com/jdmcd)
 
-See the [Vapor maintainers doc](https://github.com/vapor/vapor/blob/master/Docs/maintainers.md) for more information. 
+See the [Vapor maintainers doc](https://github.com/vapor/vapor/blob/master/.github/maintainers.md) for more information. 
