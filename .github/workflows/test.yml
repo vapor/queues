@@ -2,17 +2,16 @@ name: test
 on:
   - pull_request
 jobs:
-  queues_xenial:
-    container:
-      image: swift:5.3-xenial
+  linux:
     runs-on: ubuntu-latest
+    strategy:
+      matrix: 
+        image: 
+          - swift:5.2-xenial
+          - swift:5.2-bionic
+          - swift:5.3-xenial
+          - swift:5.3-bionic
+    container: ${{ matrix.image }}
     steps:
-      - uses: actions/checkout@v1
-      - run: swift test --enable-test-discovery --sanitize=thread
-  queues_bionic:
-    container:
-      image: swift:5.3-bionic
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
       - run: swift test --enable-test-discovery --sanitize=thread

@@ -18,12 +18,12 @@ public struct QueueWorker {
         return self.queue.pop().flatMap { id in
             //No job found, go to the next iteration
             guard let id = id else {
-                queue.logger.trace("Did not receive ID from pop")
+                self.queue.logger.trace("Did not receive ID from pop")
                 return self.queue.eventLoop.makeSucceededFuture(())
             }
 
-            queue.logger.trace("Received job \(id)")
-            queue.logger.trace("Getting data for job \(id)")
+            self.queue.logger.trace("Received job \(id)")
+            self.queue.logger.trace("Getting data for job \(id)")
 
             return self.queue.get(id).flatMap { data in
                 var logger = self.queue.logger
