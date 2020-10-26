@@ -20,7 +20,7 @@ New features are little more complex. If you come up with an idea, you should fo
 
 - We'll take a look at your proposed idea and decide if it should be a feature or maybe it isn't needed enough to be added (don't take it personally if we reject it 😄, we still think you're a nice person). If we decide it fits with Queues, you can go ahead and open a PR!
 - After you open the PR, make sure it fills out the PR checklist:
-	- Circle CI is passing (code compiles and passes tests).
+	- Github Action checks are passing (code compiles and passes tests).
 	- There are no breaking changes to public API.
 	- New test cases have been added where appropriate.
 	- All new code has been commented with doc blocks `///`.
@@ -34,6 +34,6 @@ New features are little more complex. If you come up with an idea, you should fo
 # Maintainers
 
 - [@tanner0101](https://github.com/tanner0101)
-- [@mcdappdev](https://github.com/mcdappdev)
+- [@jdmcd](https://github.com/jdmcd)
 
-See the [Vapor maintainers doc](https://github.com/vapor/vapor/blob/master/Docs/maintainers.md) for more information. 
+See the [Vapor maintainers doc](https://github.com/vapor/vapor/blob/master/.github/maintainers.md) for more information. 
