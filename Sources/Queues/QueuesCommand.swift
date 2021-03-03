@@ -144,7 +144,7 @@ public final class QueuesCommand: Command {
         }
     }
     
-    private func schedule(_ job: AnyScheduledJob) {
+    private func schedule(_ job: AnyScheduledJob, minCurrentDate: Date? = nil) {
         if self.isShuttingDown.load() {
             self.application.logger.trace("Application is shutting down, cancelling scheduling \(job.job.name)")
             return
@@ -161,7 +161,7 @@ public final class QueuesCommand: Command {
             on: self.eventLoopGroup.next()
         )
         
-        if let task = job.schedule(context: context) {
+        if let task = job.schedule(context: context, minCurrentDate: minCurrentDate) {
             self.application.logger.trace("Job \(job.job.name) was scheduled successfully")
             self.scheduledTasks[job.job.name] = task
             task.done.whenComplete { result in
@@ -170,7 +170,7 @@ public final class QueuesCommand: Command {
                     context.logger.error("\(job.job.name) failed: \(error)")
                 case .success: break
                 }
-                self.schedule(job)
+                self.schedule(job, minCurrentDate: task.scheduledDate)
             }
         }
     }
