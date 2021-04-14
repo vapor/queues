@@ -363,6 +363,15 @@ public final class ScheduleContainer {
         var second: Second?
         var nanosecond: Int?
         
+        // MARK: variables for `every(_:in:)` function
+        
+        /// The `_nextDate(current:)` looks at this when `self.interval` is not nil.
+        /// This __must__ only be set to `false` by the app. `_nextDate(current:)`
+        /// will set this to `false` by default, after the first time.
+        private var isFirstLifecycle = true
+        public var amount: TimeAmount?
+        public var interval: TimeAmount?
+        
         public init(container: ScheduleContainer) {
             self.container = container
             let isBuilderInContainer = container.builders.contains(where: { $0.id == self.id })
@@ -372,44 +381,6 @@ public final class ScheduleContainer {
         }
         
         // MARK: Helpers
-        
-        /// Populates `Builder`s date times using a `TimeAmount`
-        /// - Parameter amount: A `TimeAmount` less than a week.
-        private func _populateDates(using amount: TimeAmount) {
-            let timeAmount = Int(amount.nanoseconds)
-            let nanoFactor = 1000_000_000
-            self.nanosecond = timeAmount % nanoFactor
-            var timeSeconds = timeAmount / nanoFactor
-            
-            func populateUpToADay() {
-                let hours = timeSeconds / 3600
-                timeSeconds -= hours * 3600
-                let minutes = timeSeconds / 60
-                timeSeconds -= minutes * 60
-                let seconds = timeSeconds
-                self.time = .init(.init(hours), .init(minutes))
-                self.minute = .init(minutes)
-                self.second = .init(seconds)
-            }
-            
-            let dayInSeconds = 24 * 60 * 60
-            if timeSeconds < dayInSeconds {
-                populateUpToADay()
-            } else if timeSeconds < dayInSeconds {
-                let days = timeSeconds / dayInSeconds
-                timeSeconds -= days * dayInSeconds
-                let currentWeekday = Calendar.current.component(.weekday, from: Date())
-                /// Next weekday total number
-                let weekdayTotalNumber = currentWeekday + days + 1
-                /// Reduced weekday number to the acceptable range 1...7
-                let weekdayNumber = ((weekdayTotalNumber - 1) % 7) + 1
-                let weekday = Weekday(rawValue: weekdayNumber)
-                self.weekday = weekday
-                populateUpToADay()
-            } else {
-                fatalError("Time amount \(timeAmount) is more than a week.")
-            }
-        }
         
         /// Runs a job every `amount` in the `interval`
         ///
@@ -443,19 +414,19 @@ public final class ScheduleContainer {
             in interval: TimeAmount,
             underestimatedCount: Bool = false
         ) {
-            let nanoInterval = Int(interval.nanoseconds)
-            let nanoAmount = Int(amount.nanoseconds)
+            let nanoInterval = interval.nanoseconds
+            let nanoAmount = amount.nanoseconds
             guard nanoAmount > 0, nanoAmount <= nanoInterval else {
                 fatalError("Amount \(amount.nanoseconds) is greater than interval \(interval.nanoseconds), or is not positive.")
             }
-            let runCount: Int
+            let runCount: Int64
             if underestimatedCount {
                 runCount = nanoInterval / nanoAmount
             } else {
-                runCount = Int((Double(nanoInterval) / Double(nanoAmount)).rounded(.up))
+                runCount = Int64((Double(nanoInterval) / Double(nanoAmount)).rounded(.up))
             }
             let timeAmounts = (0..<runCount).map { index in
-                index * nanoAmount
+                Int64(index) * nanoAmount
             }
             /// After using `.every` on top a `Builder`, the current builder
             /// is populated with the first schedule's time, and the next schedule times
@@ -466,7 +437,8 @@ public final class ScheduleContainer {
                 case 0: builder = self
                 default: builder = Builder(container: self.container)
                 }
-                builder._populateDates(using: .nanoseconds(Int64(timeAmount)))
+                builder.amount = .nanoseconds(timeAmount)
+                builder.interval = interval
             }
         }
         
@@ -523,48 +495,79 @@ public final class ScheduleContainer {
         }
         
         /// Retrieves the next date
+        ///
+        /// Caution:
+        /// If this builder is built using `.every` functions, using
+        /// `_nextDate()` will start its lifecycle. Use the public
+        /// `nextDate()` function to not start the lifecycle.
+        /// Read `self.isFirstLifecycle` comments for more.
+        ///
         /// - Parameter current: The current date
+        /// - Parameter startLifecycle: Whether or not this should be counted as
+        /// the sign that the lifecycle is being started. This is to prevent
+        /// users from setting `self.isFirstLifecycle` to `false` by accident
         /// - Returns: The next date
-        public func nextDate(current: Date = .init()) -> Date? {
+        func _nextDate(current: Date = .init(), startLifecycle: Bool = true) -> Date? {
             if let date = self.date, date > current {
                 return date
             }
             
-            var components = DateComponents()
-            if let nanoseconds = nanosecond {
-                components.nanosecond = nanoseconds
-            }
-            if let second = self.second {
-                components.second = second.number
-            }
-            if let minute = self.minute {
-                components.minute = minute.number
-            }
-            if let time = self.time {
-                components.minute = time.minute.number
-                components.hour = time.hour.number
-            }
-            if let weekday = self.weekday {
-                components.weekday = weekday.rawValue
-            }
-            if let day = self.day {
-                switch day {
-                case .first:
-                    components.day = 1
-                case .last:
-                    fatalError("Last day of the month is not yet supported.")
-                case .exact(let exact):
-                    components.day = exact
+            /// If the schedule was built using one of the `.every` functions
+            if let interval = self.interval, let amount = self.amount {
+                switch self.isFirstLifecycle {
+                case false:
+                    let seconds = Double(interval.nanoseconds) / 1000 / 1000 / 1000
+                    return current.addingTimeInterval(seconds)
+                case true: 
+                    if startLifecycle { self.isFirstLifecycle = false }
+                    let seconds = Double(amount.nanoseconds) / 1000 / 1000 / 1000
+                    return current.addingTimeInterval(seconds)
                 }
+            } else {
+                var components = DateComponents()
+                if let nanoseconds = nanosecond {
+                    components.nanosecond = nanoseconds
+                }
+                if let second = self.second {
+                    components.second = second.number
+                }
+                if let minute = self.minute {
+                    components.minute = minute.number
+                }
+                if let time = self.time {
+                    components.minute = time.minute.number
+                    components.hour = time.hour.number
+                }
+                if let weekday = self.weekday {
+                    components.weekday = weekday.rawValue
+                }
+                if let day = self.day {
+                    switch day {
+                    case .first:
+                        components.day = 1
+                    case .last:
+                        fatalError("Last day of the month is not yet supported.")
+                    case .exact(let exact):
+                        components.day = exact
+                    }
+                }
+                if let month = self.month {
+                    components.month = month.rawValue
+                }
+                return Calendar.current.nextDate(
+                    after: current,
+                    matching: components,
+                    matchingPolicy: .strict
+                )
             }
-            if let month = self.month {
-                components.month = month.rawValue
-            }
-            return Calendar.current.nextDate(
-                after: current,
-                matching: components,
-                matchingPolicy: .strict
-            )
+                
+        }
+        
+        /// Retrieves the next date
+        /// - Parameter current: The current date
+        /// - Returns: The next date
+        public func nextDate(current: Date = Date()) -> Date? {
+            self._nextDate(current: current, startLifecycle: false)
         }
         
     }

@@ -30,7 +30,7 @@ extension AnyScheduledJob {
 
     func schedule(context: QueueContext) -> Task? {
         context.logger.trace("Beginning the scheduler process")
-        guard let date = self.scheduler.nextDate() else {
+        guard let date = self.scheduler._nextDate() else {
             context.logger.debug("No date scheduled for \(self.job.name)")
             return nil
         }
