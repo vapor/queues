@@ -30,7 +30,7 @@ public struct QueuesConfiguration {
     public var userInfo: [AnyHashable: Any]
     
     var jobs: [String: AnyJob]
-    var scheduledJobsContainers: [ScheduleBuilderContainer]
+    var scheduledJobsContainers: [ScheduleContainer]
     var scheduledJobs: [AnyScheduledJob] {
         scheduledJobsContainers.map { container in
             container.builders.map { builder in
@@ -80,15 +80,9 @@ public struct QueuesConfiguration {
     ///     .on(23)
     ///     .at(.noon)
     ///
-    /// - Parameter job: The `ScheduledJob` to be scheduled.
-    mutating internal func schedule(container: ScheduleBuilderContainer) {
+    /// - Parameter container: The `ScheduleContainer` to be used for schedule.
+    mutating internal func schedule(container: ScheduleContainer) {
         self.scheduledJobsContainers.append(container)
-        #warning("remove")
-//        container.builders.forEach { builder in
-//            self.logger.trace("Scheduling \(job.name)")
-//            let storage = AnyScheduledJob(job: job, scheduler: builder)
-//            self.scheduledJobs.append(storage)
-//        }
     }
 
     /// Adds a notification hook that can receive status updates about jobs

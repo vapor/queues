@@ -131,14 +131,15 @@ public final class QueuesCommand: Command {
     /// Starts the scheduled jobs in-process
     public func startScheduledJobs() throws {
         self.application.logger.trace("Checking for scheduled jobs to begin the worker")
-
-        guard !self.application.queues.configuration.scheduledJobs.isEmpty else {
+        
+        let scheduledJobs = self.application.queues.configuration.scheduledJobs
+        guard !scheduledJobs.isEmpty else {
             self.application.logger.warning("No scheduled jobs exist, exiting scheduled jobs worker.")
             return
         }
 
         self.application.logger.trace("Beginning the scheduling process")
-        self.application.queues.configuration.scheduledJobs.forEach {
+        scheduledJobs.forEach {
             self.application.logger.trace("Scheduling \($0.job.name)")
             self.schedule($0)
         }

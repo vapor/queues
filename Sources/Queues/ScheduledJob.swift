@@ -14,9 +14,9 @@ extension ScheduledJob {
 
 class AnyScheduledJob {
     let job: ScheduledJob
-    let scheduler: ScheduleBuilderContainer.Builder
+    let scheduler: ScheduleContainer.Builder
     
-    init(job: ScheduledJob, scheduler: ScheduleBuilderContainer.Builder) {
+    init(job: ScheduledJob, scheduler: ScheduleContainer.Builder) {
         self.job = job
         self.scheduler = scheduler
     }

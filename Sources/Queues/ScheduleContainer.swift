@@ -3,7 +3,7 @@ import struct Foundation.Calendar
 import struct Foundation.UUID
 
 /// An object that can be used to build a scheduled job
-public final class ScheduleBuilderContainer {
+public final class ScheduleContainer {
     /// Months of the year
     public enum Month: Int {
         case january = 1
@@ -351,7 +351,7 @@ public final class ScheduleBuilderContainer {
             }
         }
         
-        public var container: ScheduleBuilderContainer
+        public let container: ScheduleContainer
         let id = UUID()
         /// Date to perform task (one-off job)
         var date: Date?
@@ -363,7 +363,7 @@ public final class ScheduleBuilderContainer {
         var second: Second?
         var nanosecond: Int?
         
-        public init(container: ScheduleBuilderContainer) {
+        public init(container: ScheduleContainer) {
             self.container = container
             let isBuilderInContainer = container.builders.contains(where: { $0.id == self.id })
             if !isBuilderInContainer {
@@ -387,11 +387,8 @@ public final class ScheduleBuilderContainer {
                 let minutes = timeSeconds / 60
                 timeSeconds -= minutes * 60
                 let seconds = timeSeconds
-                if hours != 0 {
-                    self.time = .init(.init(hours), .init(minutes))
-                } else {
-                    self.minute = .init(minutes)
-                }
+                self.time = .init(.init(hours), .init(minutes))
+                self.minute = .init(minutes)
                 self.second = .init(seconds)
             }
             
@@ -572,7 +569,7 @@ public final class ScheduleBuilderContainer {
         
     }
     
-    var job: ScheduledJob
+    let job: ScheduledJob
     public var builders: [Builder] = []
     
     public init(job: ScheduledJob) {
