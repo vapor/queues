@@ -30,7 +30,14 @@ public struct QueuesConfiguration {
     public var userInfo: [AnyHashable: Any]
     
     var jobs: [String: AnyJob]
-    var scheduledJobs: [AnyScheduledJob]
+    var scheduledJobsContainers: [ScheduleBuilderContainer]
+    var scheduledJobs: [AnyScheduledJob] {
+        scheduledJobsContainers.map { container in
+            container.builders.map { builder in
+                AnyScheduledJob(job: container.job, scheduler: builder)
+            }
+        }.reduce(into: [AnyScheduledJob]()) { $0 += $1 }
+    }
     var notificationHooks: [JobEventDelegate]
     
     /// Creates an empty `JobsConfig`
@@ -41,7 +48,7 @@ public struct QueuesConfiguration {
         logger: Logger = .init(label: "codes.vapor.queues")
     ) {
         self.jobs = [:]
-        self.scheduledJobs = []
+        self.scheduledJobsContainers = []
         self.logger = logger
         self.refreshInterval = refreshInterval
         self.persistenceKey = persistenceKey
@@ -74,14 +81,14 @@ public struct QueuesConfiguration {
     ///     .at(.noon)
     ///
     /// - Parameter job: The `ScheduledJob` to be scheduled.
-    mutating internal func schedule<J>(_ job: J, container: ScheduleBuilderContainer)
-        where J: ScheduledJob
-    {
-        container.builders.forEach { builder in
-            self.logger.trace("Scheduling \(job.name)")
-            let storage = AnyScheduledJob(job: job, scheduler: builder)
-            self.scheduledJobs.append(storage)
-        }
+    mutating internal func schedule(container: ScheduleBuilderContainer) {
+        self.scheduledJobsContainers.append(container)
+        #warning("remove")
+//        container.builders.forEach { builder in
+//            self.logger.trace("Scheduling \(job.name)")
+//            let storage = AnyScheduledJob(job: job, scheduler: builder)
+//            self.scheduledJobs.append(storage)
+//        }
     }
 
     /// Adds a notification hook that can receive status updates about jobs

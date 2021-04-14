@@ -572,9 +572,12 @@ public final class ScheduleBuilderContainer {
         
     }
     
+    var job: ScheduledJob
     public var builders: [Builder] = []
     
-    public init() { }
+    public init(job: ScheduledJob) {
+        self.job = job
+    }
     
     // MARK: Helpers
     
