@@ -427,8 +427,8 @@ public final class ScheduleBuilderContainer {
         /// equal to _22 hours_.
         ///
         /// when `underestimatedCount` is `true`, the number of jobs created
-        /// will be [22 / 5] = 4, which will be done on hours 0, 5, 10 and 15.
-        /// In this case, it will __not__ schedule a job for the hour _20_ because
+        /// will be 22 / 5 = 4, which will be done on hours 0, 5, 10 and 15.
+        /// In this case, it __will not__ schedule a job for the hour _20_ because
         /// the period between the hour _20_ and the next hour _0_ is only 3 hours
         /// and preceeds the value of `amount` which is _5_ hours.
         /// But, when `underestimatedCount` is set to `false`, the function

@@ -128,9 +128,9 @@ extension Application {
         public func schedule<J>(_ job: J) -> ScheduleBuilderContainer
         where J: ScheduledJob
         {
-            let builder = ScheduleBuilderContainer()
-            self.storage.configuration.schedule(job, builder: builder)
-            return builder
+            let container = ScheduleBuilderContainer()
+            self.storage.configuration.schedule(job, container: container)
+            return container
         }
 
         /// Starts an in-process worker to dequeue and run jobs

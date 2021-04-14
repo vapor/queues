@@ -74,12 +74,14 @@ public struct QueuesConfiguration {
     ///     .at(.noon)
     ///
     /// - Parameter job: The `ScheduledJob` to be scheduled.
-    mutating internal func schedule<J>(_ job: J, builder: ScheduleBuilderContainer)
+    mutating internal func schedule<J>(_ job: J, container: ScheduleBuilderContainer)
         where J: ScheduledJob
     {
-        self.logger.trace("Scheduling \(job.name)")
-        let storage = AnyScheduledJob(job: job, scheduler: builder)
-        self.scheduledJobs.append(storage)
+        container.builders.forEach { builder in
+            self.logger.trace("Scheduling \(job.name)")
+            let storage = AnyScheduledJob(job: job, scheduler: builder)
+            self.scheduledJobs.append(storage)
+        }
     }
 
     /// Adds a notification hook that can receive status updates about jobs
