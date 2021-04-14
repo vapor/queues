@@ -451,7 +451,7 @@ extension ScheduleContainer {
         
         public enum TimeValue {
             case exact(date: Date)
-            /// isFirstCycle explanation:
+            /// isFirstLifecycle explanation:
             /// The `_nextDate(current:)` looks at this when `self.interval` is not nil.
             /// This __must__ only be set to `false` by the app or the `_nextDate(current:)`
             /// function output can turn wrong. `_nextDate(current:)` will
@@ -470,7 +470,29 @@ extension ScheduleContainer {
         
         let id = UUID()
         let container: ScheduleContainer
-        var timeValue: TimeValue? = nil
+        private var _timeValue: TimeValue? = nil
+        var timeValue: TimeValue? {
+            get { _timeValue }
+            set {
+                /// Adds newValue to _timeValue if both are `.componentBased`,
+                /// sets _timeValue to newValue otherwise
+                switch newValue {
+                case let .componentBased(month, day, weekday, time,
+                                         minute, second, nanosecond):
+                    switch _timeValue {
+                    case let .componentBased(monthP, dayP, weekdayP,
+                                             timeP, minuteP, secondP, nanosecondP):
+                        _timeValue = TimeValue.componentBased(
+                            month: month ?? monthP, day: day ?? dayP,
+                            weekday: weekday ?? weekdayP, time: time ?? timeP,
+                            minute: minute ?? minuteP, second: second ?? secondP,
+                            nanosecond: nanosecond ?? nanosecondP)
+                    default: _timeValue = newValue
+                    }
+                default: _timeValue = newValue
+                }
+            }
+        }
         
         public init(container: ScheduleContainer) {
             self.container = container
@@ -633,8 +655,8 @@ extension ScheduleContainer {
                 }
             case let .componentBased(month, day, weekday, time, minute, second, nanosecond):
                 var components = DateComponents()
-                if let nanoseconds = nanosecond {
-                    components.nanosecond = nanoseconds
+                if let nanosecond = nanosecond {
+                    components.nanosecond = nanosecond
                 }
                 if let second = second {
                     components.second = second.number

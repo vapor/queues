@@ -80,6 +80,7 @@ final class ScheduleContainerTests: XCTestCase {
         let builderContainer = ScheduleContainer(job: Cleanup())
         let builder = ScheduleContainer.Builder(container: builderContainer)
         builder.monthly().on(.first).at(.noon)
+        
         // middle of jan
         XCTAssertEqual(
             builder._nextDate(current: Date(year: 2019, month: 1, day: 15, hour: 5, minute: 23)),
