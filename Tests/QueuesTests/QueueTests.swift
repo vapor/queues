@@ -131,6 +131,41 @@ final class QueueTests: XCTestCase {
         app.queues.schedule(Cleanup())
             .hourly()
             .at(30)
+
+        // MARK: `.every` functions
+
+        // hourly 1
+        app.queues.schedule(Cleanup())
+            .hourly()
+            .every(.seconds(1))
+
+        // hourly 2
+        app.queues.schedule(Cleanup())
+            .hourly()
+            .every(.seconds(2500))
+
+        // hourly 3
+        app.queues.schedule(Cleanup())
+            .hourly()
+            .every(.hours(1))
+
+        // minutely
+        app.queues.schedule(Cleanup())
+            .minutely()
+            .every(.seconds(10))
+
+        // every second
+        app.queues.schedule(Cleanup())
+            .everySecond()
+
+        // secondly
+        app.queues.schedule(Cleanup())
+            .every(.milliseconds(10), in: .seconds(1))
+        
+        // (very-little-time)-ly
+        app.queues.schedule(Cleanup())
+            .every(.nanoseconds(1), in: .nanoseconds(30))
+
     }
     
     func testRepeatingScheduledJob() throws {

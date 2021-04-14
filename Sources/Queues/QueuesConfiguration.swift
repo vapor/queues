@@ -74,7 +74,7 @@ public struct QueuesConfiguration {
     ///     .at(.noon)
     ///
     /// - Parameter job: The `ScheduledJob` to be scheduled.
-    mutating internal func schedule<J>(_ job: J, builder: ScheduleBuilder = ScheduleBuilder())
+    mutating internal func schedule<J>(_ job: J, builder: ScheduleBuilderContainer)
         where J: ScheduledJob
     {
         self.logger.trace("Scheduling \(job.name)")

@@ -161,16 +161,18 @@ public final class QueuesCommand: Command {
             on: self.eventLoopGroup.next()
         )
         
-        if let task = job.schedule(context: context) {
-            self.application.logger.trace("Job \(job.job.name) was scheduled successfully")
-            self.scheduledTasks[job.job.name] = task
-            task.done.whenComplete { result in
-                switch result {
-                case .failure(let error):
-                    context.logger.error("\(job.job.name) failed: \(error)")
-                case .success: break
+        job.schedule(context: context).forEach { task in
+            if let task = task {
+                self.application.logger.trace("Job \(job.job.name) was scheduled successfully")
+                self.scheduledTasks[job.job.name] = task
+                task.done.whenComplete { result in
+                    switch result {
+                    case .failure(let error):
+                        context.logger.error("\(job.job.name) failed: \(error)")
+                    case .success: break
+                    }
+                    self.schedule(job)
                 }
-                self.schedule(job)
             }
         }
     }

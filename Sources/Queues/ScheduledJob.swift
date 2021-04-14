@@ -14,9 +14,9 @@ extension ScheduledJob {
 
 class AnyScheduledJob {
     let job: ScheduledJob
-    let scheduler: ScheduleBuilder
+    let scheduler: ScheduleBuilderContainer
     
-    init(job: ScheduledJob, scheduler: ScheduleBuilder) {
+    init(job: ScheduledJob, scheduler: ScheduleBuilderContainer) {
         self.job = job
         self.scheduler = scheduler
     }
@@ -28,23 +28,28 @@ extension AnyScheduledJob {
         let done: EventLoopFuture<Void>
     }
 
-    func schedule(context: QueueContext) -> Task? {
+    func schedule(context: QueueContext) -> [Task?] {
         context.logger.trace("Beginning the scheduler process")
-        guard let date = self.scheduler.nextDate() else {
-            context.logger.debug("No date scheduled for \(self.job.name)")
-            return nil
+        if self.scheduler.builders.isEmpty {
+            context.logger.trace("Scheduler contains no builders so no jobs are scheduled")
         }
-        context.logger.debug("Scheduling \(self.job.name) to run at \(date)")
-        let promise = context.eventLoop.makePromise(of: Void.self)
-        let task = context.eventLoop.scheduleRepeatedTask(
-            initialDelay: .microseconds(Int64(date.timeIntervalSinceNow * 1_000_000)),
-            delay: .seconds(0)
-        ) { task in
-            // always cancel
-            task.cancel()
-            context.logger.trace("Running the scheduled job \(self.job.name)")
-            self.job.run(context: context).cascade(to: promise)
+        return self.scheduler.builders.map { container in
+            guard let date = container.nextDate() else {
+                context.logger.debug("No date scheduled for \(self.job.name)")
+                return nil
+            }
+            context.logger.debug("Scheduling \(self.job.name) to run at \(date)")
+            let promise = context.eventLoop.makePromise(of: Void.self)
+            let task = context.eventLoop.scheduleRepeatedTask(
+                initialDelay: .microseconds(Int64(date.timeIntervalSinceNow * 1_000_000)),
+                delay: .seconds(0)
+            ) { task in
+                // always cancel
+                task.cancel()
+                context.logger.trace("Running the scheduled job \(self.job.name)")
+                self.job.run(context: context).cascade(to: promise)
+            }
+            return Task(task: task, done: promise.futureResult)
         }
-        return .init(task: task, done: promise.futureResult)
     }
 }
