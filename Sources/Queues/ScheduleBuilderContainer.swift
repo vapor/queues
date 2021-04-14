@@ -251,7 +251,7 @@ public final class ScheduleBuilderContainer {
         }
     }
     
-    public final class Builder: CustomDebugStringConvertible {
+    public final class Builder {
         
         /// An object to build a `Yearly` scheduled job
         public struct Yearly {
