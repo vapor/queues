@@ -307,14 +307,8 @@ public final class ScheduleContainer {
     }
     
     /// Runs a job every `amount` in the `interval`
-    ///
-    /// Notes:
-    /// * day length is estimated as 24 hours.
-    /// * week length is estimated as 24 * 7 hours.
-    ///
-    /// - Parameter amount: A `TimeAmount` less than a week.
-    /// - Parameter interval: A `TimeAmount` less than a week.
-    /// use `.monthly()`, `.yearly()` or `.at(_:)` for amounts more than a week.
+    /// - Parameter amount: A `TimeAmount` after which the job will be repeated.
+    /// - Parameter interval: A `TimeAmount` period in which the job will be repeated.
     /// - Parameter underestimatedCount: Decides whether the function should underestimate
     /// count of the created jobs or overestimate. Read `ScheduleContainer.Builder.every(_:in:)`
     /// discussion for more info.
@@ -447,11 +441,12 @@ extension ScheduleContainer {
         var second: Second?
         var nanosecond: Int?
         
-        // MARK: variables for `every(_:in:)` function
+        // MARK: variables for `every()` functions
         
         /// The `_nextDate(current:)` looks at this when `self.interval` is not nil.
-        /// This __must__ only be set to `false` by the app. `_nextDate(current:)`
-        /// will set this to `false` by default, after the first time.
+        /// This __must__ only be set to `false` by the app or the `_nextDate(current:)`
+        /// function output can turn wrong. `_nextDate(current:)` will
+        /// set this to `false` after the first time.
         private var isFirstLifecycle = true
         public var amount: TimeAmount?
         public var interval: TimeAmount?
@@ -488,11 +483,10 @@ extension ScheduleContainer {
         /// the hour _20_ and the next _0_ hour is only _3_ and preceeds
         /// the `amount` _5_.
         ///
-        /// - Parameter amount: A `TimeAmount` less than a week.
-        /// - Parameter interval: A `TimeAmount` less than a week.
-        /// use `.monthly()`, `.yearly()` or `.at(_:)` for amounts more than a week.
+        /// - Parameter amount: A `TimeAmount` after which the job will be repeated.
+        /// - Parameter interval: A `TimeAmount` period in which the job will be repeated.
         /// - Parameter underestimatedCount: Decides whether the function should underestimate
-        /// count of jobs or overestimate.
+        /// count of the created jobs or overestimate.
         public func every(
             _ amount: TimeAmount,
             in interval: TimeAmount,
