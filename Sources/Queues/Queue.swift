@@ -16,7 +16,7 @@ public protocol Queue {
     /// Removes a job from the queue
     /// - Parameter id: The ID of the job
     func clear(_ id: JobIdentifier) -> EventLoopFuture<Void>
-
+    
     /// Pops the next job in the queue
     func pop() -> EventLoopFuture<JobIdentifier?>
     
@@ -64,7 +64,7 @@ extension Queue {
         delayUntil: Date? = nil,
         id: JobIdentifier = JobIdentifier()
     ) -> EventLoopFuture<Void>
-        where J: Job
+    where J: Job
     {
         let bytes: [UInt8]
         do {
@@ -89,7 +89,7 @@ extension Queue {
                 "job_name": .string(job.name),
                 "queue": .string(self.queueName.string)
             ])
-
+            
             _ = self.configuration.notificationHooks.map {
                 $0.dispatched(job: .init(id: id.string, queueName: self.queueName.string, jobData: storage), eventLoop: self.eventLoop)
             }.flatten(on: self.eventLoop).flatMapError { error in

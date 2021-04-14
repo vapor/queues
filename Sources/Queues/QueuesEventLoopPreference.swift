@@ -18,7 +18,7 @@ public enum QueuesEventLoopPreference {
     /// If possible, the connection should also be on this EventLoop for
     /// improved performance.
     case delegate(on: EventLoop)
-
+    
     /// Returns the delegate EventLoop given an EventLoopGroup.
     public func delegate(for eventLoopGroup: EventLoopGroup) -> EventLoop {
         switch self {

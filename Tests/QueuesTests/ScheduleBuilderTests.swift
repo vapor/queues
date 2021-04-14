@@ -142,7 +142,7 @@ final class ScheduleContainerTests: XCTestCase {
         )
     }
     
-    // Test `.every` functions.
+    // Test `.every()` functions.
     func testEveryBuildHelper() throws {
         
         // As explained in `ScheduleBuilderContainer.Builder.every(_:in:underestimatedCount:)`
@@ -158,40 +158,48 @@ final class ScheduleContainerTests: XCTestCase {
             let builders = builderContainer.builders
             
             let date0 = builders[0]._nextDate()
-            let date1 = builders[0]._nextDate()
-            let date2 = builders[0]._nextDate()
+            let date1 = builders[1]._nextDate()
+            let date2 = builders[2]._nextDate()
             XCTAssertNotEqual(date0, date1)
             XCTAssertNotEqual(date0, date2)
             XCTAssertNotEqual(date1, date2)
         }
         
-        // Repeating the exact same tests in `testHourlyBuilder()` using a builder
-        // that is made using the `.every` function.
-        // Results must stay the same with this new builder.
         do {
             let builderContainer = ScheduleContainer(job: Cleanup())
             let builder = ScheduleContainer.Builder(container: builderContainer)
             builder.hourly().every(.minutes(30))
             let builder2 = builderContainer.builders[1]
             
-            // same time
             XCTAssertEqual(
                 builder._nextDate(current: Date(hour: 5, minute: 30)),
                 // plus one hour
                 Date(hour: 5, minute: 30)
             )
-            // just before
             XCTAssertEqual(
                 builder._nextDate(current: Date(hour: 5, minute: 30)),
-                // plus one minute
                 Date(hour: 6, minute: 30)
             )
-            // just after
             XCTAssertEqual(
                 builder2._nextDate(current: Date(hour: 5, minute: 30)),
-                // plus one hour
                 Date(hour: 6, minute: 00)
             )
+        }
+        
+        // Testing for expected times that `nextDate()` should return
+        do {
+            let builderContainer = ScheduleContainer(job: Cleanup())
+            let builder = ScheduleContainer.Builder(container: builderContainer)
+            builder.every(.seconds(5), in: .seconds(22))
+            
+            let expectedAdditionalSeconds = [0, 5, 10, 15, 20]
+            builderContainer.builders.enumerated().forEach { index, builder in
+                let nextDate = builder.nextDate()!.timeIntervalSinceReferenceDate
+                let expected = Date().addingTimeInterval(Double(expectedAdditionalSeconds[index]))
+                    .timeIntervalSinceReferenceDate
+                // Comparing the two times with millisecond precision
+                XCTAssertEqual(Int(nextDate * 1000), Int(expected * 1000))
+            }
         }
         
         // MARK: tests for the correct amount of made builders
@@ -234,7 +242,6 @@ final class ScheduleContainerTests: XCTestCase {
     }
     
 }
-
 
 
 final class Cleanup: ScheduledJob {

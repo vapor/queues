@@ -35,7 +35,7 @@ public final class QueuesCommand: Command {
     private var eventLoopGroup: EventLoopGroup {
         self.application.eventLoopGroup
     }
-
+    
     /// Create a new `QueueCommand`
     public init(application: Application, scheduled: Bool = false) {
         self.application = application
@@ -53,7 +53,7 @@ public final class QueuesCommand: Command {
     ///   - signature: The signature of the command
     public func run(using context: CommandContext, signature: QueuesCommand.Signature) throws {
         self.application.logger.trace("Begginning the run function")
-
+        
         // shutdown future
         let promise = self.application.eventLoopGroup.next().makePromise(of: Void.self)
         self.application.running = .start(using: promise)
@@ -109,7 +109,7 @@ public final class QueuesCommand: Command {
                 delay: worker.queue.configuration.refreshInterval
             ) { task in
                 self.application.logger.trace("Running refresh task")
-
+                
                 // run task
                 return worker.run().map {
                     self.application.logger.trace("Worker ran the task successfully")
@@ -124,7 +124,7 @@ public final class QueuesCommand: Command {
             }
             self.jobTasks.append(task)
         }
-
+        
         self.application.logger.trace("Finished adding jobTasks, total count: \(jobTasks.count)")
     }
     
@@ -137,7 +137,7 @@ public final class QueuesCommand: Command {
             self.application.logger.warning("No scheduled jobs exist, exiting scheduled jobs worker.")
             return
         }
-
+        
         self.application.logger.trace("Beginning the scheduling process")
         scheduledJobs.forEach {
             self.application.logger.trace("Scheduling \($0.job.name)")
@@ -150,7 +150,7 @@ public final class QueuesCommand: Command {
             self.application.logger.trace("Application is shutting down, cancelling scheduling \(job.job.name)")
             return
         }
-
+        
         self.lock.lock()
         defer { self.lock.unlock() }
         
@@ -180,7 +180,7 @@ public final class QueuesCommand: Command {
     public func shutdown() {
         self.lock.lock()
         defer { self.lock.unlock() }
-
+        
         self.isShuttingDown.store(true)
         self.didShutdown = true
         

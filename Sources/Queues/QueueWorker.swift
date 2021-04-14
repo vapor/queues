@@ -7,7 +7,7 @@ extension Queue {
 /// The worker that runs the `Job`
 public struct QueueWorker {
     let queue: Queue
-
+    
     init(queue: Queue) {
         self.queue = queue
     }
@@ -21,14 +21,14 @@ public struct QueueWorker {
                 self.queue.logger.trace("Did not receive ID from pop")
                 return self.queue.eventLoop.makeSucceededFuture(())
             }
-
+            
             self.queue.logger.trace("Received job \(id)")
             self.queue.logger.trace("Getting data for job \(id)")
-
+            
             return self.queue.get(id).flatMap { data in
                 var logger = self.queue.logger
                 logger[metadataKey: "job_id"] = .string(id.string)
-
+                
                 logger.trace("Received job data for \(id): \(data)")
                 // If the job has a delay, we must check to make sure we can execute.
                 // If the delay has not passed yet, requeue the job
@@ -36,27 +36,27 @@ public struct QueueWorker {
                     logger.trace("Requeing job \(id) for execution later because the delayUntil value of \(delay) has not passed yet")
                     return self.queue.push(id)
                 }
-
+                
                 guard let job = self.queue.configuration.jobs[data.jobName] else {
                     logger.error("No job named \(data.jobName) is registered")
                     return self.queue.eventLoop.makeSucceededFuture(())
                 }
-
+                
                 logger.trace("Sending dequeued notification hooks")
-
+                
                 _ = self.queue.configuration.notificationHooks.map {
                     $0.didDequeue(jobId: id.string, eventLoop: self.queue.eventLoop)
                 }.flatten(on: self.queue.eventLoop).flatMapError { error in
                     logger.error("Could not send didDequeue notification: \(error)")
                     return self.queue.eventLoop.future()
                 }
-
+                
                 logger.info("Dequeing job", metadata: [
                     "job_id": .string(id.string),
                     "job_name": .string(data.jobName),
                     "queue": .string(self.queue.queueName.string)
                 ])
-
+                
                 return self.run(
                     id: id,
                     name: data.jobName,
@@ -72,7 +72,7 @@ public struct QueueWorker {
             }
         }
     }
-
+    
     private func run(
         id: JobIdentifier,
         name: String,
@@ -93,7 +93,7 @@ public struct QueueWorker {
                 self.queue.logger.error("Could not send success notification: \(error)")
                 return self.queue.context.eventLoop.future()
             }
-
+            
             return complete
         }.flatMapError { error in
             logger.trace("Job failed (remaining tries: \(remainingTries)")
@@ -103,7 +103,7 @@ public struct QueueWorker {
                     "job_name": .string(name),
                     "queue": .string(self.queue.queueName.string)
                 ])
-
+                
                 logger.trace("Sending failure notification hooks")
                 _ = self.queue.configuration.notificationHooks.map {
                     $0.error(jobId: id.string, error: error, eventLoop: self.queue.context.eventLoop)
@@ -111,7 +111,7 @@ public struct QueueWorker {
                     self.queue.logger.error("Failed to send error notification: \(error)")
                     return self.queue.context.eventLoop.future()
                 }
-
+                
                 return job._error(self.queue.context, id: id.string, error, payload: payload)
             } else {
                 logger.error("Job failed, retrying... \(error)", metadata: [

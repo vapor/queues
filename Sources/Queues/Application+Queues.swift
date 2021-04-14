@@ -14,17 +14,17 @@ extension Application {
         /// The provider of the `Queues` configuration
         public struct Provider {
             let run: (Application) -> ()
-
+            
             public init(_ run: @escaping (Application) -> ()) {
                 self.run = run
             }
         }
-
+        
         final class Storage {
             public var configuration: QueuesConfiguration
             private (set) var commands: [QueuesCommand]
             var driver: QueuesDriver?
-
+            
             public init(_ application: Application) {
                 self.configuration = .init(logger: application.logger)
                 let command: QueuesCommand = .init(application: application)
@@ -36,11 +36,11 @@ extension Application {
                 self.commands.append(command)
             }
         }
-
+        
         struct Key: StorageKey {
             typealias Value = Storage
         }
-
+        
         struct Lifecycle: LifecycleHandler {
             func shutdown(_ application: Application) {
                 application.queues.storage.commands.forEach({$0.shutdown()})
@@ -49,18 +49,18 @@ extension Application {
                 }
             }
         }
-
+        
         /// The `QueuesConfiguration` object
         public var configuration: QueuesConfiguration {
             get { self.storage.configuration }
             nonmutating set { self.storage.configuration = newValue }
         }
-
+        
         /// Returns the default `Queue`
         public var queue: Queue {
             self.queue(.default)
         }
-
+        
         /// The selected `QueuesDriver`
         public var driver: QueuesDriver {
             guard let driver = self.storage.driver else {
@@ -68,16 +68,16 @@ extension Application {
             }
             return driver
         }
-
+        
         var storage: Storage {
             if self.application.storage[Key.self] == nil {
                 self.initialize()
             }
             return self.application.storage[Key.self]!
         }
-
+        
         public let application: Application
-
+        
         /// Returns a `JobsQueue`
         /// - Parameters:
         ///   - name: The name of the queue
@@ -104,25 +104,25 @@ extension Application {
         public func add<J>(_ job: J) where J: Job {
             self.configuration.add(job)
         }
-
+        
         /// Adds a new notification hook
         /// - Parameter hook: The hook object to add
         public func add<N>(_ hook: N) where N: JobEventDelegate {
             self.configuration.add(hook)
         }
-
+        
         /// Choose which provider to use
         /// - Parameter provider: The provider
         public func use(_ provider: Provider) {
             provider.run(self.application)
         }
-
+        
         /// Choose which driver to use
         /// - Parameter driver: The driver
         public func use(custom driver: QueuesDriver) {
             self.storage.driver = driver
         }
-
+        
         /// Schedule a new job
         /// - Parameter job: The job to schedule
         public func schedule<J>(_ job: J) -> ScheduleContainer
@@ -132,7 +132,7 @@ extension Application {
             self.storage.configuration.schedule(container: container)
             return container
         }
-
+        
         /// Starts an in-process worker to dequeue and run jobs
         /// - Parameter queue: The queue to run the jobs on. Defaults to `default`
         public func startInProcessJobs(on queue: QueueName = .default) throws {
