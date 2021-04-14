@@ -468,10 +468,10 @@ extension ScheduleContainer {
                                 nanosecond: Int? = nil)
         }
         
-        let id = UUID()
-        let container: ScheduleContainer
+        public let id = UUID()
+        public let container: ScheduleContainer
         private var _timeValue: TimeValue? = nil
-        var timeValue: TimeValue? {
+        public var timeValue: TimeValue? {
             get { _timeValue }
             set {
                 /// Adds newValue to _timeValue if both are `.componentBased`,
@@ -538,7 +538,7 @@ extension ScheduleContainer {
             let nanoInterval = interval.nanoseconds
             let nanoAmount = amount.nanoseconds
             guard nanoAmount > 0, nanoAmount <= nanoInterval else {
-                fatalError("Amount \(amount.nanoseconds) is greater than interval \(interval.nanoseconds), or is not positive.")
+                precondition("Amount \(amount.nanoseconds) is greater than interval \(interval.nanoseconds), or is not positive.")
             }
             let runCount: Int64
             if underestimatedCount {
