@@ -1,4 +1,5 @@
 @testable import Queues
+import Vapor
 import XCTest
 
 final class ScheduleContainerTests: XCTestCase {
@@ -238,6 +239,17 @@ final class ScheduleContainerTests: XCTestCase {
             let builder = ScheduleContainer.Builder(container: builderContainer)
             builder.every(.milliseconds(90), in: .seconds(1), underestimatedCount: true)
             XCTAssertEqual(builderContainer.builders.count, 11)
+        }
+        
+        /// Testing `QueuesConfiguration`'s container management
+        do {
+            let app = Application()
+            app.queues.schedule(Cleanup()).every(.seconds(10), in: .seconds(20))
+            app.queues.schedule(Cleanup()).every(.seconds(10), in: .seconds(30))
+            try? app.queues.startScheduledJobs()
+            let containers = app.queues.configuration.scheduledJobsContainers
+            XCTAssertEqual(containers.count, 1)
+            XCTAssertEqual(containers.first?.builders.count, 5)
         }
         
     }

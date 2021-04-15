@@ -132,6 +132,29 @@ public final class QueuesCommand: Command {
     public func startScheduledJobs() throws {
         self.application.logger.trace("Checking for scheduled jobs to begin the worker")
         
+        /// Adding builders of the containers who have the same `ScheduledJob`
+        /// together to avoid unnecessary memory usage by the containers
+        let containers = self.application.queues.configuration.scheduledJobsContainers
+        var unneededContainersIndices: [Int] = []
+        for (index, container) in containers.enumerated() {
+            for (idx, cont) in containers.enumerated() {
+                if (idx > index) && (container.job.name == cont.job.name) {
+                    let builders = cont.builders.map { builder -> ScheduleContainer.Builder in
+                        /// Setting builder's container to its new container
+                        builder.container = container
+                        return builder
+                    }
+                    container.builders += builders
+                    unneededContainersIndices.append(idx)
+                }
+            }
+        }
+        /// Removing the containers whose builders are added to another container
+        for (idx, containerIndex) in unneededContainersIndices.enumerated() {
+            self.application.queues.configuration.scheduledJobsContainers
+                .remove(at: containerIndex + idx)
+        }
+        
         let scheduledJobs = self.application.queues.configuration.scheduledJobs
         guard !scheduledJobs.isEmpty else {
             self.application.logger.warning("No scheduled jobs exist, exiting scheduled jobs worker.")

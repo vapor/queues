@@ -469,7 +469,7 @@ extension ScheduleContainer {
         }
         
         public let id = UUID()
-        public let container: ScheduleContainer
+        public var container: ScheduleContainer
         private var _timeValue: TimeValue? = nil
         public var timeValue: TimeValue? {
             get { _timeValue }
@@ -547,7 +547,7 @@ extension ScheduleContainer {
                 runCount = Int64((Double(nanoInterval) / Double(nanoAmount)).rounded(.up))
             }
             let timeAmounts = (0..<runCount).map { index in
-                Int64(index) * nanoAmount
+                index * nanoAmount
             }
             /// After using `.every` on top a `Builder`, the current builder
             /// is populated with the first schedule time, and the next schedule times
