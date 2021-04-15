@@ -138,8 +138,11 @@ public final class QueuesCommand: Command {
         var unneededContainersIndices: [Int] = []
         for (index, container) in containers.enumerated() {
             for (idx, cont) in containers.enumerated() {
-                if (idx > index) && (container.job.name == cont.job.name) {
-                    let builders = cont.builders.map { builder -> ScheduleContainer.Builder in
+                if (idx > index)
+                    && (container.job.name == cont.job.name)
+                    && !unneededContainersIndices.contains(index) {
+                    let builders = cont.builders.map {
+                        builder -> ScheduleContainer.Builder in
                         /// Setting builder's container to its new container
                         builder.container = container
                         return builder
