@@ -494,6 +494,7 @@ extension ScheduleContainer {
             }
         }
         
+        /// Creates a new builder and adds it to the container if it isn't there
         public init(container: ScheduleContainer) {
             self.container = container
             let isBuilderInContainer = container.builders.contains(where: { $0.id == self.id })
@@ -537,9 +538,8 @@ extension ScheduleContainer {
         ) {
             let nanoInterval = interval.nanoseconds
             let nanoAmount = amount.nanoseconds
-            guard nanoAmount > 0, nanoAmount <= nanoInterval else {
-                precondition("Amount \(amount.nanoseconds) is greater than interval \(interval.nanoseconds), or is not positive.")
-            }
+            precondition(nanoAmount > 0, "Amount \(amount.nanoseconds) is not positive.")
+            precondition(nanoAmount <= nanoInterval, "Amount \(amount.nanoseconds) is greater than interval \(interval.nanoseconds).")
             let runCount: Int64
             if underestimatedCount {
                 runCount = nanoInterval / nanoAmount
@@ -550,7 +550,7 @@ extension ScheduleContainer {
                 Int64(index) * nanoAmount
             }
             /// After using `.every` on top a `Builder`, the current builder
-            /// is populated with the first schedule's time, and the next schedule times
+            /// is populated with the first schedule time, and the next schedule times
             /// will have a new builder created for them and added to the container.
             timeAmounts.enumerated().forEach { index, timeAmount in
                 let builder: Builder
@@ -621,16 +621,16 @@ extension ScheduleContainer {
         /// Retrieves the next date
         ///
         /// Caution:
-        /// If this builder is built using `.every` functions, using
+        /// If the current builder is built using `.every` functions, using
         /// `_nextDate()` will start its lifecycle. Use the public
         /// `nextDate()` function to not start the lifecycle.
         /// Read `TimeValue.intervalBased.isFirstLifecycle` comments for more.
         ///
         /// - Parameter current: The current date
-        /// - Parameter startLifecycle: Whether or not this should be counted as
-        /// the sign that the lifecycle is being started. Internality of this function
+        /// - Parameter startLifecycle: Whether or not calling this function should
+        /// start the builder's lifecycle. Internality of this function
         /// is to prevent users from setting `TimeValue.intervalBased.isFirstLifecycle`
-        /// to `false` by accident
+        /// to `false` and start the lifecycle by accident
         /// - Returns: The next date
         internal func _nextDate(current: Date = .init(), startLifecycle: Bool = true) -> Date? {
             guard let value = timeValue else { return nil }
