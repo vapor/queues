@@ -252,7 +252,7 @@ public final class ScheduleContainer {
         }
     }
     
-    let job: ScheduledJob
+    public let job: ScheduledJob
     public var builders: [Builder] = []
     
     public init(job: ScheduledJob) {
