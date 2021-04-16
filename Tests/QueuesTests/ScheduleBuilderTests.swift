@@ -245,9 +245,9 @@ final class ScheduleContainerTests: XCTestCase {
         do {
             let app = Application()
             app.queues.schedule(Cleanup()).every(.seconds(10), in: .seconds(10))
+            app.queues.schedule(Cleanup2()).every(.seconds(2), in: .seconds(18))
             app.queues.schedule(Cleanup()).every(.seconds(10), in: .seconds(20))
             app.queues.schedule(Cleanup()).every(.seconds(10), in: .seconds(40))
-            app.queues.schedule(Cleanup2()).every(.seconds(2), in: .seconds(18))
             app.queues.schedule(Cleanup2()).every(.seconds(1), in: .seconds(17))
             
             try? app.queues.startScheduledJobs()
