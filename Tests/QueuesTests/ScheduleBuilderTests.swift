@@ -241,14 +241,14 @@ final class ScheduleContainerTests: XCTestCase {
             XCTAssertEqual(builderContainer.builders.count, 11)
         }
         
-        /// Testing `QueuesConfiguration`'s container management
+        /// Testing `QueuesConfiguration`'s container management in `startScheduledJobs()` func
         do {
             let app = Application()
             app.queues.schedule(Cleanup()).every(.seconds(10), in: .seconds(10))
             app.queues.schedule(Cleanup2()).every(.seconds(2), in: .seconds(18))
             app.queues.schedule(Cleanup()).every(.seconds(10), in: .seconds(20))
-            app.queues.schedule(Cleanup()).every(.seconds(10), in: .seconds(40))
             app.queues.schedule(Cleanup2()).every(.seconds(1), in: .seconds(17))
+            app.queues.schedule(Cleanup()).every(.seconds(10), in: .seconds(40))
             
             try? app.queues.startScheduledJobs()
             let containers = app.queues.configuration.scheduledJobsContainers

@@ -153,7 +153,7 @@ public final class QueuesCommand: Command {
             }
         }
         /// Removing the containers whose builders are added to another container
-        for (idx, containerIndex) in unneededContainersIndices.enumerated() {
+        for (idx, containerIndex) in unneededContainersIndices.sorted().enumerated() {
             self.application.queues.configuration.scheduledJobsContainers
                 .remove(at: containerIndex - idx)
         }
