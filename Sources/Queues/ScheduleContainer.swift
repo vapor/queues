@@ -449,10 +449,10 @@ extension ScheduleContainer {
             }
         }
         
+        /// Describes the date at which the container's job is meant to be executed
         public enum TimeValue {
             case exact(date: Date)
             /// isFirstLifecycle explanation:
-            /// The `_nextDate(current:)` looks at this when `self.interval` is not nil.
             /// This __must__ only be set to `false` by the app or the `_nextDate(current:)`
             /// function output can turn wrong. `_nextDate(current:)` will
             /// set this to `false` after the first time.
