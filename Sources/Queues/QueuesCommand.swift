@@ -135,7 +135,7 @@ public final class QueuesCommand: Command {
         /// Adding builders of the containers who have the same `ScheduledJob`
         /// together to avoid unnecessary memory usage by the containers
         let containers = self.application.queues.configuration.scheduledJobsContainers
-        var unneededContainersIndices: [Int] = []
+        var unneededContainersIndices: Set<Int> = .init()
         for (index, container) in containers.enumerated() {
             for (idx, cont) in containers.enumerated() {
                 if (idx > index)
@@ -148,7 +148,7 @@ public final class QueuesCommand: Command {
                         return builder
                     }
                     container.builders += builders
-                    unneededContainersIndices.append(idx)
+                    unneededContainersIndices.insert(idx)
                 }
             }
         }
