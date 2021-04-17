@@ -15,7 +15,7 @@ extension ScheduledJob {
 class AnyScheduledJob {
     let job: ScheduledJob
     let scheduler: ScheduleContainer.Builder
-    
+
     init(job: ScheduledJob, scheduler: ScheduleContainer.Builder) {
         self.job = job
         self.scheduler = scheduler
@@ -27,7 +27,7 @@ extension AnyScheduledJob {
         let task: RepeatedTask
         let done: EventLoopFuture<Void>
     }
-    
+
     func schedule(context: QueueContext) -> Task? {
         context.logger.trace("Beginning the scheduler process")
         guard let date = self.scheduler._nextDate() else {
