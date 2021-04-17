@@ -3,12 +3,12 @@ import Vapor
 import XCTest
 
 final class ScheduleContainerTests: XCTestCase {
-    
+
     func testHourlyBuilder() throws {
         let builderContainer = ScheduleContainer(job: Cleanup())
         let builder = ScheduleContainer.Builder(container: builderContainer)
         builder.hourly().at(30)
-        
+
         // same time
         XCTAssertEqual(
             builder._nextDate(current: Date(hour: 5, minute: 30)),
@@ -28,7 +28,7 @@ final class ScheduleContainerTests: XCTestCase {
             Date(hour: 6, minute: 30)
         )
     }
-    
+
     func testDailyBuilder() throws {
         let builderContainer = ScheduleContainer(job: Cleanup())
         let builder = ScheduleContainer.Builder(container: builderContainer)
@@ -52,7 +52,7 @@ final class ScheduleContainerTests: XCTestCase {
             Date(day: 2, hour: 5, minute: 23)
         )
     }
-    
+
     func testWeeklyBuilder() throws {
         let builderContainer = ScheduleContainer(job: Cleanup())
         let builder = ScheduleContainer.Builder(container: builderContainer)
@@ -76,12 +76,12 @@ final class ScheduleContainerTests: XCTestCase {
             Date(year: 2019, month: 1, day: 7, hour: 12, minute: 00)
         )
     }
-    
+
     func testMonthlyBuilderFirstDay() throws {
         let builderContainer = ScheduleContainer(job: Cleanup())
         let builder = ScheduleContainer.Builder(container: builderContainer)
         builder.monthly().on(.first).at(.noon)
-        
+
         // middle of jan
         XCTAssertEqual(
             builder._nextDate(current: Date(year: 2019, month: 1, day: 15, hour: 5, minute: 23)),
@@ -101,7 +101,7 @@ final class ScheduleContainerTests: XCTestCase {
             Date(year: 2019, month: 3, day: 1, hour: 12, minute: 00)
         )
     }
-    
+
     func testMonthlyBuilder15th() throws {
         let builderContainer = ScheduleContainer(job: Cleanup())
         let builder = ScheduleContainer.Builder(container: builderContainer)
@@ -119,7 +119,7 @@ final class ScheduleContainerTests: XCTestCase {
             Date(year: 2019, month: 3, day: 15, hour: 12, minute: 00)
         )
     }
-    
+
     func testYearlyBuilder() throws {
         let builderContainer = ScheduleContainer(job: Cleanup())
         let builder = ScheduleContainer.Builder(container: builderContainer)
@@ -143,22 +143,22 @@ final class ScheduleContainerTests: XCTestCase {
             Date(year: 2020, month: 5, day: 23, hour: 14, minute: 58)
         )
     }
-    
+
     // Test `.every()` functions.
     func testEveryBuildHelper() throws {
-        
+
         // As explained in `ScheduleBuilderContainer.Builder.every(_:in:underestimatedCount:)`
         // when using `.every`, the current builder gets populated with the first job's
         // schedule time, and for the next schedule times we'll have new builders created
         // and added to the container.
-        
+
         // Test to make sure builders made with `.every` function will have different `._nextDate()`s
         do {
             let builderContainer = ScheduleContainer(job: Cleanup())
             let builder = ScheduleContainer.Builder(container: builderContainer)
             builder.minutely().every(.seconds(24))
             let builders = builderContainer.builders
-            
+
             let date0 = builders[0]._nextDate()
             let date1 = builders[1]._nextDate()
             let date2 = builders[2]._nextDate()
@@ -166,13 +166,13 @@ final class ScheduleContainerTests: XCTestCase {
             XCTAssertNotEqual(date0, date2)
             XCTAssertNotEqual(date1, date2)
         }
-        
+
         do {
             let builderContainer = ScheduleContainer(job: Cleanup())
             let builder = ScheduleContainer.Builder(container: builderContainer)
             builder.hourly().every(.minutes(30))
             let builder2 = builderContainer.builders[1]
-            
+
             XCTAssertEqual(
                 builder._nextDate(current: Date(hour: 5, minute: 30)),
                 // plus one hour
@@ -187,13 +187,13 @@ final class ScheduleContainerTests: XCTestCase {
                 Date(hour: 6, minute: 00)
             )
         }
-        
+
         // Testing for expected times that `nextDate()` should return
         do {
             let builderContainer = ScheduleContainer(job: Cleanup())
             let builder = ScheduleContainer.Builder(container: builderContainer)
             builder.every(.seconds(5), in: .seconds(22))
-            
+
             let expectedAdditionalSeconds = [0, 5, 10, 15, 20]
             builderContainer.builders.enumerated().forEach { index, builder in
                 let nextDate = builder.nextDate()!.timeIntervalSinceReferenceDate
@@ -203,44 +203,44 @@ final class ScheduleContainerTests: XCTestCase {
                 XCTAssertEqual(Int(nextDate * 1000), Int(expected * 1000))
             }
         }
-        
+
         // MARK: tests for the correct amount of made builders
-        
+
         do {
             let builderContainer = ScheduleContainer(job: Cleanup())
             let builder = ScheduleContainer.Builder(container: builderContainer)
             builder.minutely().every(.seconds(10))
             XCTAssertEqual(builderContainer.builders.count, 6)
         }
-        
+
         do {
             let builderContainer = ScheduleContainer(job: Cleanup())
             let builder = ScheduleContainer.Builder(container: builderContainer)
             builder.hourly().every(.seconds(66))
             XCTAssertEqual(builderContainer.builders.count, 55)
         }
-        
+
         do {
             let builderContainer = ScheduleContainer(job: Cleanup())
             let builder = ScheduleContainer.Builder(container: builderContainer)
             builder.hourly().every(.minutes(60))
             XCTAssertEqual(builderContainer.builders.count, 1)
         }
-        
+
         do {
             let builderContainer = ScheduleContainer(job: Cleanup())
             let builder = ScheduleContainer.Builder(container: builderContainer)
             builder.every(.minutes(12), in: .hours(24), underestimatedCount: true)
             XCTAssertEqual(builderContainer.builders.count, 120)
         }
-        
+
         do {
             let builderContainer = ScheduleContainer(job: Cleanup())
             let builder = ScheduleContainer.Builder(container: builderContainer)
             builder.every(.milliseconds(90), in: .seconds(1), underestimatedCount: true)
             XCTAssertEqual(builderContainer.builders.count, 11)
         }
-        
+
         /// Testing `QueuesConfiguration`'s container management in `startScheduledJobs()` func
         do {
             let app = Application()
@@ -252,7 +252,7 @@ final class ScheduleContainerTests: XCTestCase {
             app.queues.schedule(Cleanup3()).every(.seconds(1), in: .seconds(11))
             app.queues.schedule(Cleanup2()).every(.seconds(1), in: .seconds(17))
             app.queues.schedule(Cleanup()).every(.seconds(10), in: .seconds(40))
-            
+
             try? app.queues.startScheduledJobs()
             let containers = app.queues.configuration.scheduledJobsContainers
             XCTAssertEqual(containers.count, 3)
@@ -260,9 +260,9 @@ final class ScheduleContainerTests: XCTestCase {
             XCTAssertEqual(containers[1].builders.count, 7)
             XCTAssertEqual(containers[2].builders.count, 26)
         }
-        
+
     }
-    
+
 }
 
 
@@ -288,31 +288,31 @@ extension Date {
     var year: Int {
         Calendar.current.component(.year, from: self)
     }
-    
+
     var month: Int {
         Calendar.current.component(.month, from: self)
     }
-    
+
     var weekday: Int {
         Calendar.current.component(.weekday, from: self)
     }
-    
+
     var day: Int {
         Calendar.current.component(.day, from: self)
     }
-    
+
     var hour: Int {
         Calendar.current.component(.hour, from: self)
     }
-    
+
     var minute: Int {
         Calendar.current.component(.minute, from: self)
     }
-    
+
     var second: Int {
         Calendar.current.component(.second, from: self)
     }
-    
+
     init(
         year: Int = 2020,
         month: Int = 1,

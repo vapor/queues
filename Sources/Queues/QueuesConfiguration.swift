@@ -2,33 +2,33 @@
 public struct QueuesConfiguration {
     /// The number of seconds to wait before checking for the next job. Defaults to `1`
     public var refreshInterval: TimeAmount
-    
+
     /// The key that stores the data about a job. Defaults to `vapor_queues`
     public var persistenceKey: String
-    
+
     /// Supported options for number of job handling workers. 
     public enum WorkerCount: ExpressibleByIntegerLiteral {
         /// One worker per event loop.
         case `default`
-        
+
         /// Specify a custom worker count.
         case custom(Int)
-        
+
         /// See `ExpressibleByIntegerLiteral`.
         public init(integerLiteral value: Int) {
             self = .custom(value)
         }
     }
-    
+
     /// Sets the number of workers used for handling jobs.
     public var workerCount: WorkerCount
-    
+
     /// A logger
     public let logger: Logger
-    
+
     // Arbitrary user info to be stored
     public var userInfo: [AnyHashable: Any]
-    
+
     var jobs: [String: AnyJob]
     var scheduledJobsContainers: [ScheduleContainer]
     var scheduledJobs: [AnyScheduledJob] {
@@ -39,7 +39,7 @@ public struct QueuesConfiguration {
         }.reduce(into: [AnyScheduledJob]()) { $0 += $1 }
     }
     var notificationHooks: [JobEventDelegate]
-    
+
     /// Creates an empty `JobsConfig`
     public init(
         refreshInterval: TimeAmount = .seconds(1),
@@ -56,7 +56,7 @@ public struct QueuesConfiguration {
         self.userInfo = [:]
         self.notificationHooks = []
     }
-    
+
     /// Adds a new `Job` to the queue configuration.
     /// This must be called on all `Job` objects before they can be run in a queue.
     ///
@@ -70,8 +70,8 @@ public struct QueuesConfiguration {
         }
         self.jobs[J.name] = job
     }
-    
-    
+
+
     /// Schedules a new job for execution at a later date.
     ///
     ///     config.schedule(Cleanup())
@@ -84,7 +84,7 @@ public struct QueuesConfiguration {
     mutating internal func schedule(container: ScheduleContainer) {
         self.scheduledJobsContainers.append(container)
     }
-    
+
     /// Adds a notification hook that can receive status updates about jobs
     /// - Parameter hook: The `NotificationHook` object
     mutating public func add<N>(_ hook: N)
