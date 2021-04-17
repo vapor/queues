@@ -244,17 +244,21 @@ final class ScheduleContainerTests: XCTestCase {
         /// Testing `QueuesConfiguration`'s container management in `startScheduledJobs()` func
         do {
             let app = Application()
+            app.queues.schedule(Cleanup3()).every(.seconds(7), in: .seconds(14))
             app.queues.schedule(Cleanup()).every(.seconds(10), in: .seconds(10))
             app.queues.schedule(Cleanup2()).every(.seconds(2), in: .seconds(18))
+            app.queues.schedule(Cleanup3()).every(.seconds(5), in: .seconds(40))
             app.queues.schedule(Cleanup()).every(.seconds(10), in: .seconds(20))
+            app.queues.schedule(Cleanup3()).every(.seconds(1), in: .seconds(11))
             app.queues.schedule(Cleanup2()).every(.seconds(1), in: .seconds(17))
             app.queues.schedule(Cleanup()).every(.seconds(10), in: .seconds(40))
             
             try? app.queues.startScheduledJobs()
             let containers = app.queues.configuration.scheduledJobsContainers
-            XCTAssertEqual(containers.count, 2)
-            XCTAssertEqual(containers.first?.builders.count, 7)
-            XCTAssertEqual(containers.last?.builders.count, 26)
+            XCTAssertEqual(containers.count, 3)
+            XCTAssertEqual(containers[0].builders.count, 21)
+            XCTAssertEqual(containers[1].builders.count, 7)
+            XCTAssertEqual(containers[2].builders.count, 26)
         }
         
     }
@@ -269,6 +273,12 @@ final class Cleanup: ScheduledJob {
 }
 
 final class Cleanup2: ScheduledJob {
+    func run(context: QueueContext) -> EventLoopFuture<Void> {
+        return context.eventLoop.makeSucceededFuture(())
+    }
+}
+
+final class Cleanup3: ScheduledJob {
     func run(context: QueueContext) -> EventLoopFuture<Void> {
         return context.eventLoop.makeSucceededFuture(())
     }
