@@ -20,18 +20,18 @@ public final class ScheduleContainer {
         case november = 11
         case december = 12
     }
-
+    
     /// Describes a day
     public enum Day: ExpressibleByIntegerLiteral {
         case first
         case last
         case exact(Int)
-
+        
         public init(integerLiteral value: Int) {
             self = .exact(value)
         }
     }
-
+    
     /// Describes a day of the week
     public enum Weekday: Int {
         case sunday = 1
@@ -42,32 +42,32 @@ public final class ScheduleContainer {
         case friday = 6
         case saturday = 7
     }
-
+    
     /// Describes a time of day
     public struct Time: ExpressibleByStringLiteral, CustomStringConvertible {
         var hour: Hour24
         var minute: Minute
-
+        
         /// Returns a `Time` object at midnight (12:00 AM)
         public static var midnight: Time {
             return .init(12, 00, .am)
         }
-
+        
         /// Returns a `Time` object at noon (12:00 PM)
         public static var noon: Time {
             return .init(12, 00, .pm)
         }
-
+        
         /// The readable description of the time
         public var description: String {
             return "\(self.hour):\(self.minute)"
         }
-
+        
         init(_ hour: Hour24, _ minute: Minute) {
             self.hour = hour
             self.minute = minute
         }
-
+        
         init(_ hour: Hour12, _ minute: Minute, _ period: HourPeriod) {
             switch period {
             case .am:
@@ -85,7 +85,7 @@ public final class ScheduleContainer {
             }
             self.minute = minute
         }
-
+        
         /// Takes a stringLiteral and returns a `TimeObject`. Must be in the format `00:00am/pm`
         public init(stringLiteral value: String) {
             let parts = value.split(separator: ":")
@@ -120,32 +120,32 @@ public final class ScheduleContainer {
             }
         }
     }
-
+    
     /// Represents an hour numeral that must be in 12 hour format
     public struct Hour12: ExpressibleByIntegerLiteral, CustomStringConvertible {
         let number: Int
-
+        
         /// The readable description of the hour
         public var description: String {
             return self.number.description
         }
-
+        
         init(_ number: Int) {
             precondition(number > 0, "12-hour clock cannot preceed 1")
             precondition(number <= 12, "12-hour clock cannot exceed 12")
             self.number = number
         }
-
+        
         /// Takes an integerLiteral and creates a `Hour12`. Must be `> 0 && <= 12`
         public init(integerLiteral value: Int) {
             self.init(value)
         }
     }
-
+    
     /// Represents an hour numeral that must be in 24 hour format
     public struct Hour24: ExpressibleByIntegerLiteral, CustomStringConvertible {
         let number: Int
-
+        
         /// The readable description of the hour, zero padding included
         public var description: String {
             switch self.number {
@@ -155,24 +155,24 @@ public final class ScheduleContainer {
                 return self.number.description
             }
         }
-
+        
         init(_ number: Int) {
             precondition(number >= 0, "24-hour clock cannot preceed 0")
             precondition(number < 24, "24-hour clock cannot exceed 24")
             self.number = number
         }
-
+        
         /// Takes an integerLiteral and creates a `Hour24`. Must be `>= 0 && < 24`
         public init(integerLiteral value: Int) {
             self.init(value)
         }
     }
-
+    
     /// A period of hours - either `am` or `pm`
     public enum HourPeriod: ExpressibleByStringLiteral, CustomStringConvertible {
         case am
         case pm
-
+        
         /// The readable string
         public var description: String {
             switch self {
@@ -182,7 +182,7 @@ public final class ScheduleContainer {
                 return "pm"
             }
         }
-
+        
         init(_ string: String) {
             switch string.lowercased() {
             case "am":
@@ -193,17 +193,17 @@ public final class ScheduleContainer {
                 fatalError("Unknown hour period: \(string), must be am or pm")
             }
         }
-
+        
         /// Takes a stringLiteral and creates a `HourPeriod.` Must be `am` or `pm`
         public init(stringLiteral value: String) {
             self.init(value)
         }
     }
-
+    
     /// Describes a minute numeral
     public struct Minute: ExpressibleByIntegerLiteral, CustomStringConvertible {
         let number: Int
-
+        
         /// The readable minute, zero padded.
         public var description: String {
             switch self.number {
@@ -213,23 +213,23 @@ public final class ScheduleContainer {
                 return self.number.description
             }
         }
-
+        
         init(_ number: Int) {
             assert(number >= 0, "Minute cannot preceed 0")
             assert(number < 60, "Minute cannot exceed 60")
             self.number = number
         }
-
+        
         /// Takes an integerLiteral and creates a `Minute`. Must be `>= 0 && < 60`
         public init(integerLiteral value: Int) {
             self.init(value)
         }
     }
-
+    
     /// Describes a second numeral
     public struct Second: ExpressibleByIntegerLiteral, CustomStringConvertible {
         let number: Int
-
+        
         /// The readable second, zero padded.
         public var description: String {
             switch self.number {
@@ -239,73 +239,73 @@ public final class ScheduleContainer {
                 return self.number.description
             }
         }
-
+        
         init(_ number: Int) {
             assert(number >= 0, "Second cannot preceed 0")
             assert(number < 60, "Second cannot exceed 60")
             self.number = number
         }
-
+        
         /// Takes an integerLiteral and creates a `Second`. Must be `>= 0 && < 60`
         public init(integerLiteral value: Int) {
             self.init(value)
         }
     }
-
+    
     public let job: ScheduledJob
     public var builders: [Builder] = []
-
+    
     public init(job: ScheduledJob) {
         self.job = job
     }
-
+    
     // MARK: Helpers
-
+    
     /// Schedules a job at the specified dates
     public func at(_ dates: Date...) -> Void {
         Builder(container: self).at(dates)
     }
-
+    
     /// Schedules a job at the specified dates
     public func at(_ dates: [Date]) -> Void {
         Builder(container: self).at(dates)
     }
-
+    
     /// Creates a yearly scheduled job for further building
     public func yearly() -> Builder.Yearly {
         return Builder.Yearly(builder: Builder(container: self))
     }
-
+    
     /// Creates a monthly scheduled job for further building
     public func monthly() -> Builder.Monthly {
         return Builder.Monthly(builder: Builder(container: self))
     }
-
+    
     /// Creates a weekly scheduled job for further building
     public func weekly() -> Builder.Weekly {
         return Builder.Weekly(builder: Builder(container: self))
     }
-
+    
     /// Creates a daily scheduled job for further building
     public func daily() -> Builder.Daily {
         return Builder.Daily(builder: Builder(container: self))
     }
-
+    
     /// Creates a hourly scheduled job for further building
     public func hourly() -> Builder.Hourly {
         return Builder.Hourly(builder: Builder(container: self))
     }
-
+    
     /// Creates a minutely scheduled job for further building
     public func minutely() -> Builder.Minutely {
         return Builder.Minutely(builder: Builder(container: self))
     }
-
+    
     /// Runs a job every second
     public func everySecond() {
         Builder(container: self).everySecond()
     }
-
+    
     /// Runs a job every `amount` in the `interval`
     ///
     /// `underestimatedCount` Explanation:
@@ -343,18 +343,18 @@ public final class ScheduleContainer {
             underestimatedCount: underestimatedCount
         )
     }
-
+    
 }
 
 //MARK: - Builder
 
 extension ScheduleContainer {
     public final class Builder {
-
+        
         /// An object to build a `Yearly` scheduled job
         public struct Yearly {
             let builder: Builder
-
+            
             /// The month to run the job in
             /// - Parameter month: A `Month` to run the job in
             public func `in`(_ month: Month) -> Monthly {
@@ -362,11 +362,11 @@ extension ScheduleContainer {
                 return self.builder.monthly()
             }
         }
-
+        
         /// An object to build a `Monthly` scheduled job
         public struct Monthly {
             let builder: Builder
-
+            
             /// The day to run the job on
             /// - Parameter day: A `Day` to run the job on
             public func on(_ day: Day) -> Daily {
@@ -374,11 +374,11 @@ extension ScheduleContainer {
                 return self.builder.daily()
             }
         }
-
+        
         /// An object to build a `Weekly` scheduled job
         public struct Weekly {
             let builder: Builder
-
+            
             /// The day of week to run the job on
             /// - Parameter dayOfWeek: A `DayOfWeek` to run the job on
             public func on(_ weekday: Weekday) -> Daily {
@@ -386,24 +386,24 @@ extension ScheduleContainer {
                 return self.builder.daily()
             }
         }
-
+        
         /// An object to build a `Daily` scheduled job
         public struct Daily {
             let builder: Builder
-
+            
             /// The time to run the job at
             /// - Parameter time: A `Time` object to run the job on
             public func at(_ time: Time) {
                 self.builder.timeValue = .componentBased(time: time)
             }
-
+            
             /// The 24 hour time to run the job at
             /// - Parameter hour: A `Hour24` to run the job at
             /// - Parameter minute: A `Minute` to run the job at
             public func at(_ hour: Hour24, _ minute: Minute) {
                 self.at(.init(hour, minute))
             }
-
+            
             /// The 12 hour time to run the job at
             /// - Parameter hour: A `Hour12` to run the job at
             /// - Parameter minute: A `Minute` to run the job at
@@ -412,43 +412,43 @@ extension ScheduleContainer {
                 self.at(.init(hour, minute, period))
             }
         }
-
+        
         /// An object to build a `Hourly` scheduled job
         public struct Hourly {
             let builder: Builder
-
+            
             /// Runs the job multiple times
             /// - Parameter amount: A period after which the job will be repeated as
             /// many times as an hour allows.
             public func every(_ amount: TimeAmount) {
                 self.builder.every(amount, in: .hours(1))
             }
-
+            
             /// The minute to run the job at
             /// - Parameter minute: A `Minute` to run the job at
             public func at(_ minute: Minute) {
                 self.builder.timeValue = .componentBased(minute: minute)
             }
         }
-
+        
         /// An object to build a `EveryMinute` scheduled job
         public struct Minutely {
             let builder: Builder
-
+            
             /// Runs the job multiple times
             /// - Parameter amount: A period after which the job will be repeated as
             /// many times as a minute allows.
             public func every(_ amount: TimeAmount) {
                 self.builder.every(amount, in: .minutes(1))
             }
-
+            
             /// The second to run the job at
             /// - Parameter second: A `Second` to run the job at
             public func at(_ second: Second) {
                 self.builder.timeValue = .componentBased(second: second)
             }
         }
-
+        
         /// Describes the date at which the container's job is meant to be executed
         public enum TimeValue {
             case exact(date: Date)
@@ -467,7 +467,7 @@ extension ScheduleContainer {
                                 second: Second? = nil,
                                 nanosecond: Int? = nil)
         }
-
+        
         public let id = UUID()
         public var container: ScheduleContainer
         private var _timeValue: TimeValue? = nil
@@ -493,7 +493,7 @@ extension ScheduleContainer {
                 }
             }
         }
-
+        
         /// Creates a new builder and adds it to the container if it isn't there
         public init(container: ScheduleContainer) {
             self.container = container
@@ -502,9 +502,9 @@ extension ScheduleContainer {
                 container.builders.append(self)
             }
         }
-
+        
         // MARK: Helpers
-
+        
         /// Runs a job every `amount` in the `interval`
         ///
         /// `underestimatedCount` Explanation:
@@ -565,12 +565,12 @@ extension ScheduleContainer {
                     interval: intervalSeconds)
             }
         }
-
+        
         /// Schedules a job at the specified dates
         public func at(_ dates: Date...) -> Void {
             self.at(dates)
         }
-
+        
         /// Schedules a job at the specified dates
         public func at(_ dates: [Date]) -> Void {
             dates.enumerated().forEach { index, date in
@@ -582,42 +582,42 @@ extension ScheduleContainer {
                 }
             }
         }
-
+        
         /// Creates a yearly scheduled job for further building
         public func yearly() -> Yearly {
             return Yearly(builder: self)
         }
-
+        
         /// Creates a monthly scheduled job for further building
         public func monthly() -> Monthly {
             return Monthly(builder: self)
         }
-
+        
         /// Creates a weekly scheduled job for further building
         public func weekly() -> Weekly {
             return Weekly(builder: self)
         }
-
+        
         /// Creates a daily scheduled job for further building
         public func daily() -> Daily {
             return Daily(builder: self)
         }
-
+        
         /// Creates a hourly scheduled job for further building
         public func hourly() -> Hourly {
             return Hourly(builder: self)
         }
-
+        
         /// Creates a minutely scheduled job for further building
         public func minutely() -> Minutely {
             return Minutely(builder: self)
         }
-
+        
         /// Runs a job every second
         public func everySecond() {
             self.every(.seconds(1), in: .seconds(1))
         }
-
+        
         /// Retrieves the next date
         ///
         /// Caution:
@@ -691,13 +691,13 @@ extension ScheduleContainer {
                 )
             }
         }
-
+        
         /// Retrieves the next date
         /// - Parameter current: The current date
         /// - Returns: The next date
         public func nextDate(current: Date = Date()) -> Date? {
             self._nextDate(current: current, startLifecycle: false)
         }
-
+        
     }
 }

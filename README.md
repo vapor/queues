@@ -3,7 +3,7 @@
         src="https://user-images.githubusercontent.com/1342803/75701575-03f34580-5c82-11ea-9960-f39cdd3c8862.png"
         height="64" 
         alt="Queues"
-    >
+    >    
     <br>
     <br>
     <a href="https://docs.vapor.codes/4.0/">

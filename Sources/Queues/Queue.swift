@@ -2,24 +2,24 @@
 public protocol Queue {
     /// The job context
     var context: QueueContext { get }
-
+    
     /// Gets the next job to be run
     /// - Parameter id: The ID of the job
     func get(_ id: JobIdentifier) -> EventLoopFuture<JobData>
-
+    
     /// Sets a job that should be run in the future
     /// - Parameters:
     ///   - id: The ID of the job
     ///   - data: Data for the job
     func set(_ id: JobIdentifier, to data: JobData) -> EventLoopFuture<Void>
-
+    
     /// Removes a job from the queue
     /// - Parameter id: The ID of the job
     func clear(_ id: JobIdentifier) -> EventLoopFuture<Void>
-
+    
     /// Pops the next job in the queue
     func pop() -> EventLoopFuture<JobIdentifier?>
-
+    
     /// Pushes the next job into a queue
     /// - Parameter id: The ID of the job
     func push(_ id: JobIdentifier) -> EventLoopFuture<Void>
@@ -30,27 +30,27 @@ extension Queue {
     public var eventLoop: EventLoop {
         self.context.eventLoop
     }
-
+    
     /// A logger
     public var logger: Logger {
         self.context.logger
     }
-
+    
     /// The configuration for the queue
     public var configuration: QueuesConfiguration {
         self.context.configuration
     }
-
+    
     /// The queue's name
     public var queueName: QueueName {
         self.context.queueName
     }
-
+    
     /// The key name of the queue
     public var key: String {
         self.queueName.makeKey(with: self.configuration.persistenceKey)
     }
-
+    
     /// Dispatch a job into the queue for processing
     /// - Parameters:
     ///   - job: The Job type
@@ -89,7 +89,7 @@ extension Queue {
                 "job_name": .string(job.name),
                 "queue": .string(self.queueName.string)
             ])
-
+            
             _ = self.configuration.notificationHooks.map {
                 $0.dispatched(job: .init(id: id.string, queueName: self.queueName.string, jobData: storage), eventLoop: self.eventLoop)
             }.flatten(on: self.eventLoop).flatMapError { error in

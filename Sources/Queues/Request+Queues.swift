@@ -7,7 +7,7 @@ extension Request {
     public var queue: Queue {
         self.queues(.default)
     }
-
+    
     /// Returns the specific job `Queue` for the given queue name
     /// - Parameter queue: The queue name
     public func queues(_ queue: QueueName) -> Queue {
