@@ -82,6 +82,7 @@ public struct QueuesConfiguration {
     ///
     /// - Parameter container: The `ScheduleContainer` to be used for schedule.
     mutating internal func schedule(container: ScheduleContainer) {
+        self.logger.trace("Scheduling a container with job name \(container.job.name) and \(container.builders.count) builders.")
         self.scheduledJobsContainers.append(container)
     }
 
