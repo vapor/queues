@@ -335,11 +335,13 @@ public final class ScheduleContainer {
     public func every(
         _ amount: TimeAmount,
         in interval: TimeAmount,
-        underestimatedCount: Bool = false
+        initialDelay: TimeAmount = .seconds(1),
+        underestimatedCount: Bool = true
     ) {
         Builder(container: self).every(
             amount,
             in: interval,
+            initialDelay: initialDelay,
             underestimatedCount: underestimatedCount
         )
     }
@@ -529,15 +531,18 @@ extension ScheduleContainer {
         ///
         /// - Parameter amount: A `TimeAmount` after which the job will be repeated.
         /// - Parameter interval: A `TimeAmount` period in which the job will be repeated.
+        /// - Parameter initialDelay: A `TimeAmount` as the initial delay.
         /// - Parameter underestimatedCount: Decides whether the function should underestimate
         /// count of the created jobs or overestimate.
         public func every(
             _ amount: TimeAmount,
             in interval: TimeAmount,
-            underestimatedCount: Bool = false
+            initialDelay: TimeAmount = .seconds(1),
+            underestimatedCount: Bool = true
         ) {
             let nanoInterval = interval.nanoseconds
             let nanoAmount = amount.nanoseconds
+            let nanoDelay = initialDelay.nanoseconds
             precondition(nanoAmount > 0, "Amount \(amount.nanoseconds) is not positive.")
             precondition(nanoAmount <= nanoInterval, "Amount \(amount.nanoseconds) is greater than interval \(interval.nanoseconds).")
             let runCount: Int64
@@ -547,7 +552,7 @@ extension ScheduleContainer {
                 runCount = Int64((Double(nanoInterval) / Double(nanoAmount)).rounded(.up))
             }
             let timeAmounts = (0..<runCount).map { index in
-                index * nanoAmount
+                index * nanoAmount + nanoDelay
             }
             /// After using `.every` on top a `Builder`, the current builder
             /// is populated with the first schedule time, and the next schedule times

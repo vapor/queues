@@ -52,7 +52,7 @@ public final class QueuesCommand: Command {
     ///   - context: A `CommandContext` for the command to run on
     ///   - signature: The signature of the command
     public func run(using context: CommandContext, signature: QueuesCommand.Signature) throws {
-        self.application.logger.trace("Begginning the run function")
+        self.application.logger.trace("Beginning the run function")
 
         // shutdown future
         let promise = self.application.eventLoopGroup.next().makePromise(of: Void.self)
@@ -113,7 +113,7 @@ public final class QueuesCommand: Command {
                 // run task
                 return worker.run().map {
                     self.application.logger.trace("Worker ran the task successfully")
-                    //Check if shutting down
+                    // Check if shutting down
                     if self.isShuttingDown.load() {
                         self.application.logger.trace("Shutting down, cancelling the task")
                         task.cancel()
