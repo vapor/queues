@@ -178,7 +178,7 @@ final class QueueTests: XCTestCase {
 
         let promise = app.eventLoopGroup.next().makePromise(of: Void.self)
         app.eventLoopGroup.next().scheduleTask(in: .seconds(5)) { () -> Void in
-            XCTAssert(TestingScheduledJob.count.load() > 4)
+            XCTAssertEqual(TestingScheduledJob.count.load(), 4)
             promise.succeed(())
         }
 

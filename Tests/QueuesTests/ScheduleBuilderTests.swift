@@ -156,7 +156,7 @@ final class ScheduleContainerTests: XCTestCase {
         do {
             let builderContainer = ScheduleContainer(job: Cleanup())
             let builder = ScheduleContainer.Builder(container: builderContainer)
-            builder.minutely().every(.seconds(24))
+            builder.minutely().every(.seconds(19))
             let builders = builderContainer.builders
 
             let date0 = builders[0]._nextDate()
@@ -176,7 +176,7 @@ final class ScheduleContainerTests: XCTestCase {
             XCTAssertEqual(
                 builder._nextDate(current: Date(hour: 5, minute: 30)),
                 // plus one hour
-                Date(hour: 5, minute: 30)
+                Date(hour: 5, minute: 30, second: 1)
             )
             XCTAssertEqual(
                 builder._nextDate(current: Date(hour: 5, minute: 30)),
@@ -184,7 +184,7 @@ final class ScheduleContainerTests: XCTestCase {
             )
             XCTAssertEqual(
                 builder2._nextDate(current: Date(hour: 5, minute: 30)),
-                Date(hour: 6, minute: 00)
+                Date(hour: 6, minute: 00, second: 1)
             )
         }
 
@@ -194,7 +194,7 @@ final class ScheduleContainerTests: XCTestCase {
             let builder = ScheduleContainer.Builder(container: builderContainer)
             builder.every(.seconds(5), in: .seconds(22))
 
-            let expectedAdditionalSeconds = [0, 5, 10, 15, 20]
+            let expectedAdditionalSeconds = [1, 6, 11, 16, 21]
             builderContainer.builders.enumerated().forEach { index, builder in
                 let nextDate = builder.nextDate()!.timeIntervalSinceReferenceDate
                 let expected = Date().addingTimeInterval(Double(expectedAdditionalSeconds[index]))
@@ -217,7 +217,7 @@ final class ScheduleContainerTests: XCTestCase {
             let builderContainer = ScheduleContainer(job: Cleanup())
             let builder = ScheduleContainer.Builder(container: builderContainer)
             builder.hourly().every(.seconds(66))
-            XCTAssertEqual(builderContainer.builders.count, 55)
+            XCTAssertEqual(builderContainer.builders.count, 54)
         }
 
         do {
@@ -230,15 +230,15 @@ final class ScheduleContainerTests: XCTestCase {
         do {
             let builderContainer = ScheduleContainer(job: Cleanup())
             let builder = ScheduleContainer.Builder(container: builderContainer)
-            builder.every(.minutes(12), in: .hours(24), underestimatedCount: true)
+            builder.every(.minutes(12), in: .hours(24), underestimatedCount: false)
             XCTAssertEqual(builderContainer.builders.count, 120)
         }
 
         do {
             let builderContainer = ScheduleContainer(job: Cleanup())
             let builder = ScheduleContainer.Builder(container: builderContainer)
-            builder.every(.milliseconds(90), in: .seconds(1), underestimatedCount: true)
-            XCTAssertEqual(builderContainer.builders.count, 11)
+            builder.every(.milliseconds(90), in: .seconds(1), underestimatedCount: false)
+            XCTAssertEqual(builderContainer.builders.count, 12)
         }
 
         /// Testing `QueuesConfiguration`'s container management in `startScheduledJobs()` func
