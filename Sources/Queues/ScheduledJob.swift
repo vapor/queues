@@ -37,8 +37,8 @@ extension AnyScheduledJob {
         context.logger.debug("Scheduling \(self.job.name) to run at \(date)")
         let promise = context.eventLoop.makePromise(of: Void.self)
         let task = context.eventLoop.scheduleRepeatedTask(
-            initialDelay: .microseconds(Int64(date.timeIntervalSinceNow * 1_000_000)),
-            delay: .seconds(0)
+            initialDelay: .nanoseconds(Int64(date.timeIntervalSinceNow * 1000 * 1000 * 1000)),
+            delay: .zero
         ) { task in
             // always cancel
             task.cancel()

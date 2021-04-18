@@ -345,6 +345,12 @@ public final class ScheduleContainer {
             underestimatedCount: underestimatedCount
         )
     }
+
+    /// Schedules a task to be done again right-away, every time it is finished.
+    /// - Parameter initialDelay: A `TimeAmount` as the initial delay.
+    public func continuously(initialDelay: TimeAmount = .seconds(1)) {
+        Builder(container: self).continuously(initialDelay: initialDelay)
+    }
     
 }
 
@@ -506,7 +512,59 @@ extension ScheduleContainer {
         }
         
         // MARK: Helpers
+
+        /// Schedules a job at the specified dates
+        public func at(_ dates: Date...) -> Void {
+            self.at(dates)
+        }
         
+        /// Schedules a job at the specified dates
+        public func at(_ dates: [Date]) -> Void {
+            dates.enumerated().forEach { index, date in
+                if index == 0 {
+                    self.timeValue = .exact(date: date)
+                } else {
+                    let builder = Builder(container: self.container)
+                    builder.timeValue = .exact(date: date)
+                }
+            }
+        }
+        
+        /// Creates a yearly scheduled job for further building
+        public func yearly() -> Yearly {
+            return Yearly(builder: self)
+        }
+        
+        /// Creates a monthly scheduled job for further building
+        public func monthly() -> Monthly {
+            return Monthly(builder: self)
+        }
+        
+        /// Creates a weekly scheduled job for further building
+        public func weekly() -> Weekly {
+            return Weekly(builder: self)
+        }
+        
+        /// Creates a daily scheduled job for further building
+        public func daily() -> Daily {
+            return Daily(builder: self)
+        }
+        
+        /// Creates a hourly scheduled job for further building
+        public func hourly() -> Hourly {
+            return Hourly(builder: self)
+        }
+        
+        /// Creates a minutely scheduled job for further building
+        public func minutely() -> Minutely {
+            return Minutely(builder: self)
+        }
+        
+        /// Runs a job every second
+        public func everySecond() {
+            self.every(.seconds(1), in: .seconds(1))
+        }
+
         /// Runs a job every `amount` in the `interval`
         ///
         /// `underestimatedCount` Explanation:
@@ -570,57 +628,12 @@ extension ScheduleContainer {
                     interval: intervalSeconds)
             }
         }
-        
-        /// Schedules a job at the specified dates
-        public func at(_ dates: Date...) -> Void {
-            self.at(dates)
-        }
-        
-        /// Schedules a job at the specified dates
-        public func at(_ dates: [Date]) -> Void {
-            dates.enumerated().forEach { index, date in
-                if index == 0 {
-                    self.timeValue = .exact(date: date)
-                } else {
-                    let builder = Builder(container: self.container)
-                    builder.timeValue = .exact(date: date)
-                }
-            }
-        }
-        
-        /// Creates a yearly scheduled job for further building
-        public func yearly() -> Yearly {
-            return Yearly(builder: self)
-        }
-        
-        /// Creates a monthly scheduled job for further building
-        public func monthly() -> Monthly {
-            return Monthly(builder: self)
-        }
-        
-        /// Creates a weekly scheduled job for further building
-        public func weekly() -> Weekly {
-            return Weekly(builder: self)
-        }
-        
-        /// Creates a daily scheduled job for further building
-        public func daily() -> Daily {
-            return Daily(builder: self)
-        }
-        
-        /// Creates a hourly scheduled job for further building
-        public func hourly() -> Hourly {
-            return Hourly(builder: self)
-        }
-        
-        /// Creates a minutely scheduled job for further building
-        public func minutely() -> Minutely {
-            return Minutely(builder: self)
-        }
-        
-        /// Runs a job every second
-        public func everySecond() {
-            self.every(.seconds(1), in: .seconds(1))
+
+        /// Schedules a task to be done again right-away, every time it is finished.
+        /// - Parameter initialDelay: A `TimeAmount` as the initial delay.
+        public func continuously(initialDelay: TimeAmount = .seconds(1)) {
+            let delaySeconds = Double(initialDelay.nanoseconds) / 1000 / 1000 / 1000
+            self.timeValue = .intervalBased(offset: delaySeconds, interval: 0)
         }
         
         /// Retrieves the next date
