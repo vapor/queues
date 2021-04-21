@@ -632,7 +632,7 @@ extension ScheduleContainer {
         /// Schedules a task to be done again right-away, every time it is finished.
         /// - Parameter initialDelay: A `TimeAmount` as the initial delay.
         public func continuously(initialDelay: TimeAmount = .seconds(1)) {
-            let delaySeconds = Double(initialDelay.nanoseconds) / 1000 / 1000 / 1000
+            let delaySeconds = TimeInterval(initialDelay.nanoseconds) / 1000 / 1000 / 1000
             self.timeValue = .intervalBased(offset: delaySeconds, interval: 0)
         }
         

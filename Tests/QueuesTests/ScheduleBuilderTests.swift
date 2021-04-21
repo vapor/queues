@@ -166,7 +166,9 @@ final class ScheduleContainerTests: XCTestCase {
             XCTAssertNotEqual(date0, date2)
             XCTAssertNotEqual(date1, date2)
         }
-
+        
+        // MARK: Testing for expected times that `nextDate()` should return
+        
         do {
             let builderContainer = ScheduleContainer(job: Cleanup())
             let builder = ScheduleContainer.Builder(container: builderContainer)
@@ -188,7 +190,6 @@ final class ScheduleContainerTests: XCTestCase {
             )
         }
 
-        // Testing for expected times that `nextDate()` should return
         do {
             let builderContainer = ScheduleContainer(job: Cleanup())
             let builder = ScheduleContainer.Builder(container: builderContainer)
@@ -204,7 +205,7 @@ final class ScheduleContainerTests: XCTestCase {
             }
         }
 
-        // MARK: tests for the correct amount of made builders
+        // MARK: Tests for the correct amount of made builders
 
         do {
             let builderContainer = ScheduleContainer(job: Cleanup())
