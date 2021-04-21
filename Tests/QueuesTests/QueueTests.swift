@@ -10,16 +10,16 @@ final class QueueTests: XCTestCase {
         let app = Application(.testing)
         app.queues.use(.test)
         defer { app.shutdown() }
-        
+
         let jobSignal = app.eventLoopGroup.next().makePromise(of: String.self)
         app.queues.add(Foo(promise: jobSignal))
         try app.queues.startInProcessJobs(on: .default)
-    
+
         app.get("bar") { req in
             req.queue.dispatch(Foo.self, .init(foo: "Bar payload"))
                 .map { _ in "job bar dispatched" }
         }
-        
+
         try app.testable().test(.GET, "bar") { res in
             XCTAssertEqual(res.status, .ok)
             XCTAssertEqual(res.body.string, "job bar dispatched")
@@ -27,36 +27,36 @@ final class QueueTests: XCTestCase {
 
         try XCTAssertEqual(jobSignal.futureResult.wait(), "Bar payload")
     }
-    
+
     func testVaporIntegration() throws {
         let app = Application(.testing)
         defer { app.shutdown() }
         app.queues.use(.test)
-        
+
         let promise = app.eventLoopGroup.next().makePromise(of: String.self)
         app.queues.add(Foo(promise: promise))
-        
+
         app.get("foo") { req in
             req.queue.dispatch(Foo.self, .init(foo: "bar"))
                 .map { _ in "done" }
         }
-        
+
         try app.testable().test(.GET, "foo") { res in
             XCTAssertEqual(res.status, .ok)
             XCTAssertEqual(res.body.string, "done")
         }
-        
+
         XCTAssertEqual(app.queues.test.queue.count, 1)
         XCTAssertEqual(app.queues.test.jobs.count, 1)
         let job = app.queues.test.first(Foo.self)
         XCTAssert(app.queues.test.contains(Foo.self))
         XCTAssertNotNil(job)
         XCTAssertEqual(job!.foo, "bar")
-        
+
         try app.queues.queue.worker.run().wait()
         XCTAssertEqual(app.queues.test.queue.count, 0)
         XCTAssertEqual(app.queues.test.jobs.count, 0)
-        
+
         try XCTAssertEqual(promise.futureResult.wait(), "bar")
     }
 
@@ -64,35 +64,35 @@ final class QueueTests: XCTestCase {
         let app = Application(.testing)
         defer { app.shutdown() }
         app.queues.use(.test)
-        
+
         let promise = app.eventLoopGroup.next().makePromise(of: String.self)
         app.queues.add(Foo(promise: promise))
-        
+
         app.get("foo") { req in
             req.queue.dispatch(Foo.self, .init(foo: "bar"), id: JobIdentifier(string: "my-custom-id"))
                 .map { _ in "done" }
         }
-        
+
         try app.testable().test(.GET, "foo") { res in
             XCTAssertEqual(res.status, .ok)
             XCTAssertEqual(res.body.string, "done")
         }
-        
+
         XCTAssertEqual(app.queues.test.queue.count, 1)
         XCTAssertEqual(app.queues.test.jobs.count, 1)
         XCTAssertTrue(app.queues.test.jobs.keys.map(\.string).contains("my-custom-id"))
-        
+
         try app.queues.queue.worker.run().wait()
         XCTAssertEqual(app.queues.test.queue.count, 0)
         XCTAssertEqual(app.queues.test.jobs.count, 0)
-        
+
         try XCTAssertEqual(promise.futureResult.wait(), "bar")
     }
-    
+
     func testScheduleBuilderAPI() throws {
         let app = Application(.testing)
         defer { app.shutdown() }
-        
+
         // yearly
         app.queues.schedule(Cleanup())
             .yearly()
@@ -131,32 +131,67 @@ final class QueueTests: XCTestCase {
         app.queues.schedule(Cleanup())
             .hourly()
             .at(30)
+
+        // MARK: `.every` functions
+
+        // hourly 1
+        app.queues.schedule(Cleanup())
+            .hourly()
+            .every(.seconds(1))
+
+        // hourly 2
+        app.queues.schedule(Cleanup())
+            .hourly()
+            .every(.seconds(2500))
+
+        // hourly 3
+        app.queues.schedule(Cleanup())
+            .hourly()
+            .every(.hours(1))
+
+        // minutely
+        app.queues.schedule(Cleanup())
+            .minutely()
+            .every(.seconds(10))
+
+        // every second
+        app.queues.schedule(Cleanup())
+            .everySecond()
+
+        // secondly
+        app.queues.schedule(Cleanup())
+            .every(.milliseconds(10), in: .seconds(1))
+
+        // (very-little-time)-ly
+        app.queues.schedule(Cleanup())
+            .every(.nanoseconds(1), in: .nanoseconds(30))
+
     }
-    
+
     func testRepeatingScheduledJob() throws {
         let app = Application(.testing)
         defer { app.shutdown() }
-        
+
         XCTAssertEqual(TestingScheduledJob.count.load(), 0)
         app.queues.schedule(TestingScheduledJob()).everySecond()
         try app.queues.startScheduledJobs()
-        
+
         let promise = app.eventLoopGroup.next().makePromise(of: Void.self)
         app.eventLoopGroup.next().scheduleTask(in: .seconds(5)) { () -> Void in
-            XCTAssert(TestingScheduledJob.count.load() > 4)
+            XCTAssertEqual(TestingScheduledJob.count.load(), 4)
             promise.succeed(())
         }
-        
+
         try promise.futureResult.wait()
     }
 
     func testFailingScheduledJob() throws {
         let app = Application(.testing)
         defer { app.shutdown() }
-        
+
         app.queues.schedule(FailingScheduledJob()).everySecond()
         try app.queues.startScheduledJobs()
-        
+
         let promise = app.eventLoopGroup.next().makePromise(of: Void.self)
         app.eventLoopGroup.next().scheduleTask(in: .seconds(1)) { () -> Void in
             promise.succeed(())
@@ -223,7 +258,7 @@ final class QueueTests: XCTestCase {
         XCTAssertEqual(app.queues.test.queue.count, 0)
         XCTAssertEqual(app.queues.test.jobs.count, 0)
         XCTAssertEqual(DequeuedHook.successHit, true)
-        
+
         try XCTAssertEqual(promise.futureResult.wait(), "bar")
     }
 
@@ -358,12 +393,12 @@ struct Failure: Error { }
 struct FailingScheduledJob: ScheduledJob {
     func run(context: QueueContext) -> EventLoopFuture<Void> {
         context.eventLoop.makeFailedFuture(Failure())
-    }    
+    }
 }
 
 struct TestingScheduledJob: ScheduledJob {
     static var count = NIOAtomic<Int>.makeAtomic(value: 0)
-    
+
     func run(context: QueueContext) -> EventLoopFuture<Void> {
         TestingScheduledJob.count.add(1)
         return context.eventLoop.future()
@@ -379,16 +414,16 @@ extension ByteBuffer {
 
 struct Foo: Job {
     let promise: EventLoopPromise<String>
-    
+
     struct Data: Codable {
         var foo: String
     }
-    
+
     func dequeue(_ context: QueueContext, _ data: Data) -> EventLoopFuture<Void> {
         self.promise.succeed(data.foo)
         return context.eventLoop.makeSucceededFuture(())
     }
-    
+
     func error(_ context: QueueContext, _ error: Error, _ data: Data) -> EventLoopFuture<Void> {
         self.promise.fail(error)
         return context.eventLoop.makeSucceededFuture(())

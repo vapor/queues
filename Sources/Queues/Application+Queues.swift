@@ -7,10 +7,10 @@ extension Application {
     public var queues: Queues {
         .init(application: self)
     }
-    
+
     /// Represents a `Queues` configuration object
     public struct Queues {
-        
+
         /// The provider of the `Queues` configuration
         public struct Provider {
             let run: (Application) -> ()
@@ -31,7 +31,7 @@ extension Application {
                 self.commands = [command]
                 application.commands.use(command, as: "queues")
             }
-            
+
             public func add(command: QueuesCommand) {
                 self.commands.append(command)
             }
@@ -98,7 +98,7 @@ extension Application {
                 )
             )
         }
-        
+
         /// Adds a new queued job
         /// - Parameter job: The job to add
         public func add<J>(_ job: J) where J: Job {
@@ -125,12 +125,12 @@ extension Application {
 
         /// Schedule a new job
         /// - Parameter job: The job to schedule
-        public func schedule<J>(_ job: J) -> ScheduleBuilder
-            where J: ScheduledJob
+        public func schedule<J>(_ job: J) -> ScheduleContainer
+        where J: ScheduledJob
         {
-            let builder = ScheduleBuilder()
-            _ = self.storage.configuration.schedule(job, builder: builder)
-            return builder
+            let container = ScheduleContainer(job: job)
+            self.storage.configuration.schedule(container: container)
+            return container
         }
 
         /// Starts an in-process worker to dequeue and run jobs
@@ -140,14 +140,14 @@ extension Application {
             try inProcessJobs.startJobs(on: queue)
             self.storage.add(command: inProcessJobs)
         }
-        
+
         /// Starts an in-process worker to run scheduled jobs
         public func startScheduledJobs() throws {
             let scheduledJobs = QueuesCommand(application: application, scheduled: true)
             try scheduledJobs.startScheduledJobs()
             self.storage.add(command: scheduledJobs)
         }
-        
+
         func initialize() {
             self.application.lifecycle.use(Lifecycle())
             self.application.storage[Key.self] = .init(application)

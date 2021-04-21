@@ -6,7 +6,7 @@ import Vapor
 public protocol Job: AnyJob {
     /// The data associated with a job
     associatedtype Payload
-    
+
     /// Called when it's this Job's turn to be dequeued.
     /// - Parameters:
     ///   - context: The JobContext. Can be used to store and retrieve services
@@ -15,7 +15,7 @@ public protocol Job: AnyJob {
         _ context: QueueContext,
         _ payload: Payload
     ) -> EventLoopFuture<Void>
-    
+
     /// Called when there is an error at any stage of the Job's execution.
     /// - Parameters:
     ///   - context: The JobContext. Can be used to store and retrieve services
@@ -26,19 +26,19 @@ public protocol Job: AnyJob {
         _ error: Error,
         _ payload: Payload
     ) -> EventLoopFuture<Void>
-    
+
     static func serializePayload(_ payload: Payload) throws -> [UInt8]
     static func parsePayload(_ bytes: [UInt8]) throws -> Payload
 }
 
 extension Job where Payload: Codable {
-    
+
     /// Serialize a payload into Data
     /// - Parameter payload: The payload
     public static func serializePayload(_ payload: Payload) throws -> [UInt8] {
         try .init(JSONEncoder().encode(payload))
     }
-    
+
     /// Parse bytes into the payload
     /// - Parameter bytes: The Payload
     public static func parsePayload(_ bytes: [UInt8]) throws -> Payload {
@@ -51,7 +51,7 @@ extension Job {
     public static var name: String {
         return String(describing: Self.self)
     }
-    
+
     /// See `Job`.`error`
     public func error(
         _ context: QueueContext,
@@ -60,7 +60,7 @@ extension Job {
     ) -> EventLoopFuture<Void> {
         context.eventLoop.makeSucceededFuture(())
     }
-    
+
     public func _error(_ context: QueueContext, id: String, _ error: Error, payload: [UInt8]) -> EventLoopFuture<Void> {
         var contextCopy = context
         contextCopy.logger[metadataKey: "job_id"] = .string(id)
@@ -70,7 +70,7 @@ extension Job {
             return context.eventLoop.makeFailedFuture(error)
         }
     }
-    
+
     public func _dequeue(_ context: QueueContext, id: String, payload: [UInt8]) -> EventLoopFuture<Void> {
         var contextCopy = context
         contextCopy.logger[metadataKey: "job_id"] = .string(id)

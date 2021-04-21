@@ -22,17 +22,24 @@ public struct QueuesConfiguration {
 
     /// Sets the number of workers used for handling jobs.
     public var workerCount: WorkerCount
-    
+
     /// A logger
     public let logger: Logger
-    
+
     // Arbitrary user info to be stored
     public var userInfo: [AnyHashable: Any]
-    
+
     var jobs: [String: AnyJob]
-    var scheduledJobs: [AnyScheduledJob]
+    var scheduledJobsContainers: [ScheduleContainer]
+    var scheduledJobs: [AnyScheduledJob] {
+        scheduledJobsContainers.map { container in
+            container.builders.map { builder in
+                AnyScheduledJob(job: container.job, scheduler: builder)
+            }
+        }.reduce(into: [AnyScheduledJob]()) { $0 += $1 }
+    }
     var notificationHooks: [JobEventDelegate]
-    
+
     /// Creates an empty `JobsConfig`
     public init(
         refreshInterval: TimeAmount = .seconds(1),
@@ -41,7 +48,7 @@ public struct QueuesConfiguration {
         logger: Logger = .init(label: "codes.vapor.queues")
     ) {
         self.jobs = [:]
-        self.scheduledJobs = []
+        self.scheduledJobsContainers = []
         self.logger = logger
         self.refreshInterval = refreshInterval
         self.persistenceKey = persistenceKey
@@ -49,13 +56,13 @@ public struct QueuesConfiguration {
         self.userInfo = [:]
         self.notificationHooks = []
     }
-    
+
     /// Adds a new `Job` to the queue configuration.
     /// This must be called on all `Job` objects before they can be run in a queue.
     ///
     /// - Parameter job: The `Job` to add.
     mutating public func add<J>(_ job: J)
-        where J: Job
+    where J: Job
     {
         self.logger.trace("Adding job type: \(J.name)")
         if let existing = self.jobs[J.name] {
@@ -63,8 +70,8 @@ public struct QueuesConfiguration {
         }
         self.jobs[J.name] = job
     }
-    
-    
+
+
     /// Schedules a new job for execution at a later date.
     ///
     ///     config.schedule(Cleanup())
@@ -73,20 +80,16 @@ public struct QueuesConfiguration {
     ///     .on(23)
     ///     .at(.noon)
     ///
-    /// - Parameter job: The `ScheduledJob` to be scheduled.
-    mutating internal func schedule<J>(_ job: J, builder: ScheduleBuilder = ScheduleBuilder()) -> ScheduleBuilder
-        where J: ScheduledJob
-    {
-        self.logger.trace("Scheduling \(job.name)")
-        let storage = AnyScheduledJob(job: job, scheduler: builder)
-        self.scheduledJobs.append(storage)
-        return builder
+    /// - Parameter container: The `ScheduleContainer` to be used for schedule.
+    mutating internal func schedule(container: ScheduleContainer) {
+        self.logger.trace("Scheduling a container with job name \(container.job.name) and \(container.builders.count) builders.")
+        self.scheduledJobsContainers.append(container)
     }
 
     /// Adds a notification hook that can receive status updates about jobs
     /// - Parameter hook: The `NotificationHook` object
     mutating public func add<N>(_ hook: N)
-        where N: JobEventDelegate
+    where N: JobEventDelegate
     {
         self.logger.trace("Adding notification hook")
         self.notificationHooks.append(hook)

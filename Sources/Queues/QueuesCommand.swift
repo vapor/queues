@@ -6,32 +6,32 @@ import class NIO.RepeatedTask
 public final class QueuesCommand: Command {
     /// See `Command.signature`
     public let signature = Signature()
-    
+
     /// See `Command.Signature`
     public struct Signature: CommandSignature {
         public init() { }
-        
+
         @Option(name: "queue", help: "Specifies a single queue to run")
         var queue: String?
-        
+
         @Flag(name: "scheduled", help: "Runs the scheduled queue jobs")
         var scheduled: Bool
     }
-    
+
     /// See `Command.help`
     public var help: String {
         return "Starts the Vapor Queues worker"
     }
-    
+
     private let application: Application
     private var jobTasks: [RepeatedTask]
     private var scheduledTasks: [String: AnyScheduledJob.Task]
     private var lock: Lock
     private var signalSources: [DispatchSourceSignal]
     private var didShutdown: Bool
-    
+
     private let isShuttingDown: NIOAtomic<Bool>
-    
+
     private var eventLoopGroup: EventLoopGroup {
         self.application.eventLoopGroup
     }
@@ -46,18 +46,18 @@ public final class QueuesCommand: Command {
         self.didShutdown = false
         self.lock = .init()
     }
-    
+
     /// Runs the command
     /// - Parameters:
     ///   - context: A `CommandContext` for the command to run on
     ///   - signature: The signature of the command
     public func run(using context: CommandContext, signature: QueuesCommand.Signature) throws {
-        self.application.logger.trace("Begginning the run function")
+        self.application.logger.trace("Beginning the run function")
 
         // shutdown future
         let promise = self.application.eventLoopGroup.next().makePromise(of: Void.self)
         self.application.running = .start(using: promise)
-        
+
         // setup signal sources for shutdown
         let signalQueue = DispatchQueue(label: "codes.vapor.jobs.command")
         func makeSignalSource(_ code: Int32) {
@@ -72,7 +72,7 @@ public final class QueuesCommand: Command {
         }
         makeSignalSource(SIGTERM)
         makeSignalSource(SIGINT)
-        
+
         if signature.scheduled {
             self.application.logger.info("Starting scheduled jobs worker")
             try self.startScheduledJobs()
@@ -83,7 +83,7 @@ public final class QueuesCommand: Command {
             try self.startJobs(on: queue)
         }
     }
-    
+
     /// Starts an in-process jobs worker for queued tasks
     /// - Parameter queueName: The queue to run the jobs on
     public func startJobs(on queueName: QueueName) throws {
@@ -113,7 +113,7 @@ public final class QueuesCommand: Command {
                 // run task
                 return worker.run().map {
                     self.application.logger.trace("Worker ran the task successfully")
-                    //Check if shutting down
+                    // Check if shutting down
                     if self.isShuttingDown.load() {
                         self.application.logger.trace("Shutting down, cancelling the task")
                         task.cancel()
@@ -127,23 +127,50 @@ public final class QueuesCommand: Command {
 
         self.application.logger.trace("Finished adding jobTasks, total count: \(jobTasks.count)")
     }
-    
+
     /// Starts the scheduled jobs in-process
     public func startScheduledJobs() throws {
         self.application.logger.trace("Checking for scheduled jobs to begin the worker")
 
-        guard !self.application.queues.configuration.scheduledJobs.isEmpty else {
+        /// Adding builders of the containers who have the same `ScheduledJob`
+        /// together to avoid unnecessary memory usage by the containers
+        let containers = self.application.queues.configuration.scheduledJobsContainers
+        var unneededContainersIndices: Set<Int> = .init()
+        for (index, container) in containers.enumerated() {
+            for (idx, cont) in containers.enumerated() {
+                if (idx > index)
+                    && (container.job.name == cont.job.name)
+                    && !unneededContainersIndices.contains(index) {
+                    let builders = cont.builders.map {
+                        builder -> ScheduleContainer.Builder in
+                        /// Setting builder's container to its new container
+                        builder.container = container
+                        return builder
+                    }
+                    container.builders += builders
+                    unneededContainersIndices.insert(idx)
+                }
+            }
+        }
+        /// Removing the containers whose builders are added to another container
+        for (idx, containerIndex) in unneededContainersIndices.sorted().enumerated() {
+            self.application.queues.configuration.scheduledJobsContainers
+                .remove(at: containerIndex - idx)
+        }
+
+        let scheduledJobs = self.application.queues.configuration.scheduledJobs
+        guard !scheduledJobs.isEmpty else {
             self.application.logger.warning("No scheduled jobs exist, exiting scheduled jobs worker.")
             return
         }
 
         self.application.logger.trace("Beginning the scheduling process")
-        self.application.queues.configuration.scheduledJobs.forEach {
+        scheduledJobs.forEach {
             self.application.logger.trace("Scheduling \($0.job.name)")
             self.schedule($0)
         }
     }
-    
+
     private func schedule(_ job: AnyScheduledJob) {
         if self.isShuttingDown.load() {
             self.application.logger.trace("Application is shutting down, cancelling scheduling \(job.job.name)")
@@ -152,7 +179,7 @@ public final class QueuesCommand: Command {
 
         self.lock.lock()
         defer { self.lock.unlock() }
-        
+
         let context = QueueContext(
             queueName: QueueName(string: "scheduled"),
             configuration: self.application.queues.configuration,
@@ -160,7 +187,7 @@ public final class QueuesCommand: Command {
             logger: self.application.logger,
             on: self.eventLoopGroup.next()
         )
-        
+
         if let task = job.schedule(context: context) {
             self.application.logger.trace("Job \(job.job.name) was scheduled successfully")
             self.scheduledTasks[job.job.name] = task
@@ -174,7 +201,7 @@ public final class QueuesCommand: Command {
             }
         }
     }
-    
+
     /// Shuts down the jobs worker
     public func shutdown() {
         self.lock.lock()
@@ -182,14 +209,14 @@ public final class QueuesCommand: Command {
 
         self.isShuttingDown.store(true)
         self.didShutdown = true
-        
+
         // stop running in case shutting downf rom signal
         self.application.running?.stop()
-        
+
         // clear signal sources
         self.signalSources.forEach { $0.cancel() } // clear refs
         self.signalSources = []
-        
+
         // stop all job queue workers
         self.jobTasks.forEach {
             $0.syncCancel(on: self.eventLoopGroup.next())
@@ -199,7 +226,7 @@ public final class QueuesCommand: Command {
             $0.task.syncCancel(on: self.eventLoopGroup.next())
         }
     }
-    
+
     deinit {
         assert(self.didShutdown, "JobsCommand did not shutdown before deinit")
     }

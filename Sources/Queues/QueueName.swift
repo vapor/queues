@@ -15,9 +15,9 @@ public struct QueueName {
 
     /// Makes the name of the queue
     ///
-    /// - Parameter persistanceKey: The base persistence key
+    /// - Parameter persistenceKey: The base persistence key
     /// - Returns: A string of the queue's fully qualified name
-    public func makeKey(with persistanceKey: String) -> String {
-        return persistanceKey + "[\(self.string)]"
+    public func makeKey(with persistenceKey: String) -> String {
+        return persistenceKey + "[\(self.string)]"
     }
 }

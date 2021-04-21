@@ -12,7 +12,7 @@ import NIO
 public enum QueuesEventLoopPreference {
     /// The caller accepts connections and callbacks on any EventLoop.
     case indifferent
-    
+
     /// The caller accepts connections on any event loop, but must be
     /// called back (delegated to) on the supplied EventLoop.
     /// If possible, the connection should also be on this EventLoop for

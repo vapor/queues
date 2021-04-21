@@ -11,7 +11,7 @@ public struct QueueWorker {
     init(queue: Queue) {
         self.queue = queue
     }
-    
+
     /// Logic to run the queue
     public func run() -> EventLoopFuture<Void> {
         queue.logger.trace("Popping job from queue")
