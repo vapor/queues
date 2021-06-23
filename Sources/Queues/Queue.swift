@@ -83,14 +83,14 @@ extension Queue {
         logger.trace("Adding the ID to the storage")
         return self.set(id, to: storage).flatMap {
             self.push(id)
-        }.map { _ in
+        }.flatMap { _ in
             self.logger.info("Dispatched queue job", metadata: [
                 "job_id": .string(id.string),
                 "job_name": .string(job.name),
                 "queue": .string(self.queueName.string)
             ])
 
-            _ = self.configuration.notificationHooks.map {
+            return self.configuration.notificationHooks.map {
                 $0.dispatched(job: .init(id: id.string, queueName: self.queueName.string, jobData: storage), eventLoop: self.eventLoop)
             }.flatten(on: self.eventLoop).flatMapError { error in
                 self.logger.error("Could not send dispatched notification: \(error)")
