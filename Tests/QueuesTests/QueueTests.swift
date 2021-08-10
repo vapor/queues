@@ -234,6 +234,7 @@ final class QueueTests: XCTestCase {
         app.queues.add(Bar())
         app.queues.add(SuccessHook())
         app.queues.add(ErrorHook())
+        ErrorHook.errorCount = 0
 
         app.get("foo") { req in
             req.queue.dispatch(Bar.self, .init(foo: "bar"), maxRetryCount: 3)
@@ -252,6 +253,51 @@ final class QueueTests: XCTestCase {
         let job = app.queues.test.first(Bar.self)
         XCTAssert(app.queues.test.contains(Bar.self))
         XCTAssertNotNil(job)
+
+        try app.queues.queue.worker.run().wait()
+        XCTAssertEqual(SuccessHook.successHit, false)
+        XCTAssertEqual(ErrorHook.errorCount, 1)
+        XCTAssertEqual(app.queues.test.queue.count, 0)
+        XCTAssertEqual(app.queues.test.jobs.count, 0)
+    }
+
+    func testFailureHooksWithDelay() throws {
+        let app = Application(.testing)
+        defer { app.shutdown() }
+        app.queues.use(.test)
+        app.queues.add(Baz())
+        app.queues.add(SuccessHook())
+        app.queues.add(ErrorHook())
+        ErrorHook.errorCount = 0
+
+        app.get("foo") { req in
+            req.queue.dispatch(Baz.self, .init(foo: "baz"), maxRetryCount: 1)
+                    .map { _ in "done" }
+        }
+
+        try app.testable().test(.GET, "foo") { res in
+            XCTAssertEqual(res.status, .ok)
+            XCTAssertEqual(res.body.string, "done")
+        }
+
+        XCTAssertEqual(SuccessHook.successHit, false)
+        XCTAssertEqual(ErrorHook.errorCount, 0)
+        XCTAssertEqual(app.queues.test.queue.count, 1)
+        XCTAssertEqual(app.queues.test.jobs.count, 1)
+        var job = app.queues.test.first(Baz.self)
+        XCTAssert(app.queues.test.contains(Baz.self))
+        XCTAssertNotNil(job)
+
+        try app.queues.queue.worker.run().wait()
+        XCTAssertEqual(SuccessHook.successHit, false)
+        XCTAssertEqual(ErrorHook.errorCount, 0)
+        XCTAssertEqual(app.queues.test.queue.count, 1)
+        XCTAssertEqual(app.queues.test.jobs.count, 1)
+        job = app.queues.test.first(Baz.self)
+        XCTAssert(app.queues.test.contains(Baz.self))
+        XCTAssertNotNil(job)
+
+        sleep(2)
 
         try app.queues.queue.worker.run().wait()
         XCTAssertEqual(SuccessHook.successHit, false)
@@ -408,3 +454,22 @@ struct Bar: Job {
         return context.eventLoop.makeSucceededFuture(())
     }
 }
+
+struct Baz: Job {
+    struct Data: Codable {
+        var foo: String
+    }
+
+    func dequeue(_ context: QueueContext, _ data: Data) -> EventLoopFuture<Void> {
+        return context.eventLoop.makeFailedFuture(Abort(.badRequest))
+    }
+
+    func error(_ context: QueueContext, _ error: Error, _ data: Data) -> EventLoopFuture<Void> {
+        return context.eventLoop.makeSucceededFuture(())
+    }
+
+    func nextRetryIn(attempt: Int) -> Int {
+        return 2*attempt
+    }
+}
+
