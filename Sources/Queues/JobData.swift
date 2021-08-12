@@ -6,7 +6,7 @@ public struct JobData: Codable {
     /// The maxRetryCount for the `Job`.
     public let maxRetryCount: Int
 
-    /// The attempts done to run the `Job`.
+    /// The number of attempts made to run the `Job`.
     public let attempts: Int?
     
     /// A date to execute this job after

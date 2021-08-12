@@ -297,7 +297,7 @@ final class QueueTests: XCTestCase {
         XCTAssert(app.queues.test.contains(Baz.self))
         XCTAssertNotNil(job)
 
-        sleep(2)
+        sleep(1)
 
         try app.queues.queue.worker.run().wait()
         XCTAssertEqual(SuccessHook.successHit, false)
@@ -469,7 +469,7 @@ struct Baz: Job {
     }
 
     func nextRetryIn(attempt: Int) -> Int {
-        return 2*attempt
+        return attempt
     }
 }
 
