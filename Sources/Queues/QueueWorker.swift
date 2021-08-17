@@ -145,7 +145,7 @@ public struct QueueWorker {
     ) -> EventLoopFuture<Void> {
         let attempts = attempts ?? 0
         let delayInSeconds = job._nextRetryIn(attempt: attempts + 1)
-        if delayInSeconds == 0 {
+        if delayInSeconds == -1 {
             logger.error("Job failed, retrying... \(error)", metadata: [
                 "job_id": .string(id.string),
                 "job_name": .string(name),

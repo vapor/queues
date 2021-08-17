@@ -31,7 +31,8 @@ public protocol Job: AnyJob {
     ///
     /// - Parameters:
     ///     - attempt: Number of job attempts which failed
-    /// - Returns: Number of seconds for which next retry will be delayed
+    /// - Returns: Number of seconds for which next retry will be delayed.
+    ///   Return `-1` if you want to retry job immediately without putting it back to the queue.
     func nextRetryIn(attempt: Int) -> Int
     
     static func serializePayload(_ payload: Payload) throws -> [UInt8]
@@ -70,7 +71,7 @@ extension Job {
 
     /// See `Job`.`nextRetryIn`
     public func nextRetryIn(attempt: Int) -> Int {
-        return 0
+        return -1
     }
 
     public func _nextRetryIn(attempt: Int) -> Int {
