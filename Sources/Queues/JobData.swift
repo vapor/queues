@@ -5,6 +5,9 @@ public struct JobData: Codable {
     
     /// The maxRetryCount for the `Job`.
     public let maxRetryCount: Int
+
+    /// The number of attempts made to run the `Job`.
+    public let attempts: Int?
     
     /// A date to execute this job after
     public let delayUntil: Date?
@@ -21,12 +24,14 @@ public struct JobData: Codable {
         maxRetryCount: Int,
         jobName: String,
         delayUntil: Date?,
-        queuedAt: Date
+        queuedAt: Date,
+        attempts: Int = 0
     ) {
         self.payload = payload
         self.maxRetryCount = maxRetryCount
         self.jobName = jobName
         self.delayUntil = delayUntil
         self.queuedAt = queuedAt
+        self.attempts = attempts
     }
 }

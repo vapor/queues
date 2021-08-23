@@ -26,6 +26,14 @@ public protocol Job: AnyJob {
         _ error: Error,
         _ payload: Payload
     ) -> EventLoopFuture<Void>
+
+    /// Called when there was an error and job will be retired.
+    ///
+    /// - Parameters:
+    ///     - attempt: Number of job attempts which failed
+    /// - Returns: Number of seconds for which next retry will be delayed.
+    ///   Return `-1` if you want to retry job immediately without putting it back to the queue.
+    func nextRetryIn(attempt: Int) -> Int
     
     static func serializePayload(_ payload: Payload) throws -> [UInt8]
     static func parsePayload(_ bytes: [UInt8]) throws -> Payload
@@ -60,7 +68,16 @@ extension Job {
     ) -> EventLoopFuture<Void> {
         context.eventLoop.makeSucceededFuture(())
     }
-    
+
+    /// See `Job`.`nextRetryIn`
+    public func nextRetryIn(attempt: Int) -> Int {
+        return -1
+    }
+
+    public func _nextRetryIn(attempt: Int) -> Int {
+        return nextRetryIn(attempt: attempt)
+    }
+
     public func _error(_ context: QueueContext, id: String, _ error: Error, payload: [UInt8]) -> EventLoopFuture<Void> {
         var contextCopy = context
         contextCopy.logger[metadataKey: "job_id"] = .string(id)
@@ -88,4 +105,5 @@ public protocol AnyJob {
     static var name: String { get }
     func _dequeue(_ context: QueueContext, id: String, payload: [UInt8]) -> EventLoopFuture<Void>
     func _error(_ context: QueueContext, id: String, _ error: Error, payload: [UInt8]) -> EventLoopFuture<Void>
+    func _nextRetryIn(attempt: Int) -> Int
 }
