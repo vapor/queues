@@ -157,7 +157,7 @@ public struct QueueWorker {
                     job: job,
                     payload: payload,
                     logger: logger,
-                    remainingTries: remainingTries - 1 ,
+                    remainingTries: remainingTries - 1,
                     attempts: attempts + 1,
                     jobData: jobData
             )
@@ -175,7 +175,9 @@ public struct QueueWorker {
                     queuedAt: jobData.queuedAt,
                     attempts: attempts + 1
             )
-            return self.queue.set(id, to: storage).flatMap {
+            return self.queue.clear(id).flatMap {
+                self.queue.set(id, to: storage)
+            }.flatMap {
                 self.queue.push(id)
             }
         }
