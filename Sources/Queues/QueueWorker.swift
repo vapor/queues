@@ -133,15 +133,15 @@ public struct QueueWorker {
     }
 
     private func retry(
-            id: JobIdentifier,
-            name: String,
-            job: AnyJob,
-            payload: [UInt8],
-            logger: Logger,
-            remainingTries: Int,
-            attempts: Int?,
-            jobData: JobData,
-            error: Error
+        id: JobIdentifier,
+        name: String,
+        job: AnyJob,
+        payload: [UInt8],
+        logger: Logger,
+        remainingTries: Int,
+        attempts: Int?,
+        jobData: JobData,
+        error: Error
     ) -> EventLoopFuture<Void> {
         let attempts = attempts ?? 0
         let delayInSeconds = job._nextRetryIn(attempt: attempts + 1)
@@ -152,14 +152,14 @@ public struct QueueWorker {
                 "queue": .string(self.queue.queueName.string)
             ])
             return self.run(
-                    id: id,
-                    name: name,
-                    job: job,
-                    payload: payload,
-                    logger: logger,
-                    remainingTries: remainingTries - 1,
-                    attempts: attempts + 1,
-                    jobData: jobData
+                id: id,
+                name: name,
+                job: job,
+                payload: payload,
+                logger: logger,
+                remainingTries: remainingTries - 1,
+                attempts: attempts + 1,
+                jobData: jobData
             )
         } else {
             logger.error("Job failed, retrying in \(delayInSeconds)s... \(error)", metadata: [
@@ -168,12 +168,12 @@ public struct QueueWorker {
                 "queue": .string(self.queue.queueName.string)
             ])
             let storage = JobData(
-                    payload: jobData.payload,
-                    maxRetryCount: remainingTries - 1,
-                    jobName: jobData.jobName,
-                    delayUntil: Date(timeIntervalSinceNow: Double(delayInSeconds)),
-                    queuedAt: jobData.queuedAt,
-                    attempts: attempts + 1
+                payload: jobData.payload,
+                maxRetryCount: remainingTries - 1,
+                jobName: jobData.jobName,
+                delayUntil: Date(timeIntervalSinceNow: Double(delayInSeconds)),
+                queuedAt: jobData.queuedAt,
+                attempts: attempts + 1
             )
             return self.queue.clear(id).flatMap {
                 self.queue.set(id, to: storage)
