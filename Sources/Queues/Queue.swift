@@ -57,6 +57,7 @@ extension Queue {
     ///   - payload: The payload data to be dispatched
     ///   - maxRetryCount: Number of times to retry this job on failure
     ///   - delayUntil: Delay the processing of this job until a certain date
+    @discardableResult
     public func dispatch<J>(
         _ job: J.Type,
         _ payload: J.Payload,
