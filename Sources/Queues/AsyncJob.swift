@@ -1,5 +1,5 @@
 import Vapor
-import NIO
+import NIOCore
 import Foundation
 
 #if compiler(>=5.5) && canImport(_Concurrency)
