@@ -11,7 +11,7 @@ let package = Package(
         .library(name: "XCTQueues", targets: ["XCTQueues"])
     ],
     dependencies: [
-        .package(url: "https://github.com/vapor/vapor.git", from: "4.0.0")
+        .package(url: "https://github.com/vapor/vapor.git", .branch("async-await"))
     ],
     targets: [
         .target(name: "Queues", dependencies: [
