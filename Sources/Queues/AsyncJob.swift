@@ -5,7 +5,7 @@ import Foundation
 #if compiler(>=5.5) && canImport(_Concurrency)
 /// A task that can be queued for future execution.
 @available(macOS 12, iOS 15, watchOS 8, tvOS 15, *)
-public protocol AsyncJob: AnyAsyncJob, AnyJob {
+public protocol AsyncJob: Job {
     /// The data associated with a job
     associatedtype Payload
     
@@ -122,15 +122,5 @@ extension AsyncJob {
         }
         return promise.futureResult
     }
-}
-
-/// A type-erased version of `Job`
-@available(macOS 12, iOS 15, watchOS 8, tvOS 15, *)
-public protocol AnyAsyncJob {
-    /// The name of the `Job`
-    static var name: String { get }
-    func _dequeue(_ context: QueueContext, id: String, payload: [UInt8]) async throws
-    func _error(_ context: QueueContext, id: String, _ error: Error, payload: [UInt8]) async throws
-    func _nextRetryIn(attempt: Int) -> Int
 }
 #endif
