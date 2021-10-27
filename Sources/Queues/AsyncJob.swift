@@ -5,7 +5,7 @@ import Foundation
 #if compiler(>=5.5) && canImport(_Concurrency)
 /// A task that can be queued for future execution.
 @available(macOS 12, iOS 15, watchOS 8, tvOS 15, *)
-public protocol AsyncJob: AnyAsyncJob, AnyJob {
+public protocol AsyncJob: Job {
     /// The data associated with a job
     associatedtype Payload
     
@@ -64,15 +64,6 @@ extension AsyncJob {
         return String(describing: Self.self)
     }
     
-    /// See `Job`.`error`
-    public func error(
-        _ context: QueueContext,
-        _ error: Error,
-        _ payload: Payload
-    ) async throws {
-        return
-    }
-
     /// See `Job`.`nextRetryIn`
     public func nextRetryIn(attempt: Int) -> Int {
         return -1
@@ -81,56 +72,25 @@ extension AsyncJob {
     public func _nextRetryIn(attempt: Int) -> Int {
         return nextRetryIn(attempt: attempt)
     }
-
-    public func _error(_ context: QueueContext, id: String, _ error: Error, payload: [UInt8]) async throws {
-        var contextCopy = context
-        contextCopy.logger[metadataKey: "job_id"] = .string(id)
-        return try await self.error(contextCopy, error, Self.parsePayload(payload))
+    
+    public func dequeue(_ context: QueueContext, _ payload: Payload) -> EventLoopFuture<Void> {
+        let promise = context.eventLoop.makePromise(of: Void.self)
+        promise.completeWithTask {
+            try await self.dequeue(context, payload)
+        }
+        return promise.futureResult
     }
     
-    public func _dequeue(_ context: QueueContext, id: String, payload: [UInt8]) async throws {
-        var contextCopy = context
-        contextCopy.logger[metadataKey: "job_id"] = .string(id)
-        return try await self.dequeue(contextCopy, Self.parsePayload(payload))
-    }
-    
-    /// See `Job`.`error`
-    public func error(
-        _ context: QueueContext,
-        _ error: Error,
-        _ payload: Payload
-    ) -> EventLoopFuture<Void> {
+    public func error(_ context: QueueContext, _ error: Error, _ payload: Payload) -> EventLoopFuture<Void> {
         let promise = context.eventLoop.makePromise(of: Void.self)
         promise.completeWithTask {
             try await self.error(context, error, payload)
         }
         return promise.futureResult
     }
-
-    public func _error(_ context: QueueContext, id: String, _ error: Error, payload: [UInt8]) -> EventLoopFuture<Void> {
-        let promise = context.eventLoop.makePromise(of: Void.self)
-        promise.completeWithTask {
-            try await self._error(context, id: id, error, payload: payload)
-        }
-        return promise.futureResult
-    }
     
-    public func _dequeue(_ context: QueueContext, id: String, payload: [UInt8]) -> EventLoopFuture<Void> {
-        let promise = context.eventLoop.makePromise(of: Void.self)
-        promise.completeWithTask {
-            try await self._dequeue(context, id: id, payload: payload)
-        }
-        return promise.futureResult
+    public func error(_ context: QueueContext, _ error: Error, _ payload: Payload) async throws {
+        return
     }
-}
-
-/// A type-erased version of `Job`
-@available(macOS 12, iOS 15, watchOS 8, tvOS 15, *)
-public protocol AnyAsyncJob {
-    /// The name of the `Job`
-    static var name: String { get }
-    func _dequeue(_ context: QueueContext, id: String, payload: [UInt8]) async throws
-    func _error(_ context: QueueContext, id: String, _ error: Error, payload: [UInt8]) async throws
-    func _nextRetryIn(attempt: Int) -> Int
 }
 #endif
