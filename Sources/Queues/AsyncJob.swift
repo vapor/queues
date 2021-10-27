@@ -72,7 +72,7 @@ extension AsyncJob {
     public func _nextRetryIn(attempt: Int) -> Int {
         return nextRetryIn(attempt: attempt)
     }
-
+    
     public func dequeue(_ context: QueueContext, _ payload: Payload) -> EventLoopFuture<Void> {
         let promise = context.eventLoop.makePromise(of: Void.self)
         promise.completeWithTask {
@@ -87,6 +87,10 @@ extension AsyncJob {
             try await self.error(context, error, payload)
         }
         return promise.futureResult
+    }
+    
+    public func error(_ context: QueueContext, _ error: Error, _ payload: Payload) async throws {
+        return
     }
 }
 #endif
