@@ -64,15 +64,6 @@ extension AsyncJob {
         return String(describing: Self.self)
     }
     
-    /// See `Job`.`error`
-    public func error(
-        _ context: QueueContext,
-        _ error: Error,
-        _ payload: Payload
-    ) async throws {
-        return
-    }
-
     /// See `Job`.`nextRetryIn`
     public func nextRetryIn(attempt: Int) -> Int {
         return -1
@@ -82,43 +73,18 @@ extension AsyncJob {
         return nextRetryIn(attempt: attempt)
     }
 
-    public func _error(_ context: QueueContext, id: String, _ error: Error, payload: [UInt8]) async throws {
-        var contextCopy = context
-        contextCopy.logger[metadataKey: "job_id"] = .string(id)
-        return try await self.error(contextCopy, error, Self.parsePayload(payload))
+    public func dequeue(_ context: QueueContext, _ payload: Payload) -> EventLoopFuture<Void> {
+        let promise = context.eventLoop.makePromise(of: Void.self)
+        promise.completeWithTask {
+            try await self.dequeue(context, payload)
+        }
+        return promise.futureResult
     }
     
-    public func _dequeue(_ context: QueueContext, id: String, payload: [UInt8]) async throws {
-        var contextCopy = context
-        contextCopy.logger[metadataKey: "job_id"] = .string(id)
-        return try await self.dequeue(contextCopy, Self.parsePayload(payload))
-    }
-    
-    /// See `Job`.`error`
-    public func error(
-        _ context: QueueContext,
-        _ error: Error,
-        _ payload: Payload
-    ) -> EventLoopFuture<Void> {
+    public func error(_ context: QueueContext, _ error: Error, _ payload: Payload) -> EventLoopFuture<Void> {
         let promise = context.eventLoop.makePromise(of: Void.self)
         promise.completeWithTask {
             try await self.error(context, error, payload)
-        }
-        return promise.futureResult
-    }
-
-    public func _error(_ context: QueueContext, id: String, _ error: Error, payload: [UInt8]) -> EventLoopFuture<Void> {
-        let promise = context.eventLoop.makePromise(of: Void.self)
-        promise.completeWithTask {
-            try await self._error(context, id: id, error, payload: payload)
-        }
-        return promise.futureResult
-    }
-    
-    public func _dequeue(_ context: QueueContext, id: String, payload: [UInt8]) -> EventLoopFuture<Void> {
-        let promise = context.eventLoop.makePromise(of: Void.self)
-        promise.completeWithTask {
-            try await self._dequeue(context, id: id, payload: payload)
         }
         return promise.futureResult
     }
