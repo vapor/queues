@@ -2,22 +2,8 @@ name: test
 on: { pull_request: {} }
 
 jobs:
-  getcidata:
-    runs-on: ubuntu-latest
-    outputs:
-      environments: ${{ steps.output.outputs.environments }}
-    steps:
-      - id: output
-        run: |
-          envblob="$(curl -fsSL https://raw.githubusercontent.com/vapor/ci/main/pr-environments.json | jq -cMj '.')"
-          echo "::set-output name=environments::${envblob}"
-        
-  test-queues:
-    runs-on: ubuntu-latest
-    container: swiftlang/swift:nightly-5.5-focal
-    steps: 
-      - name: Check out Queues
-        uses: actions/checkout@v2
-      - name: Run tests with Thread Sanitizer
-        timeout-minutes: 30
-        run: swift test --enable-test-discovery --sanitize=thread
+  unit-tests:
+     uses: vapor/ci/.github/workflows/run-unit-tests.yml@reusable-workflows
+     with:
+       with_coverage: false
+       with_tsan: true
