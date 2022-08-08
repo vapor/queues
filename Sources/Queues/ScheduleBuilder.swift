@@ -3,6 +3,7 @@ import struct Foundation.Calendar
 
 /// An object that can be used to build a scheduled job
 public final class ScheduleBuilder {
+    
     /// Months of the year
     public enum Month: Int {
         case january = 1
@@ -374,12 +375,15 @@ public final class ScheduleBuilder {
         if let month = self.month {
             components.month = month.rawValue
         }
-        return Calendar.current.nextDate(
+        return calendar.nextDate(
             after: current,
             matching: components,
             matchingPolicy: .strict
         )
     }
+    
+    /// The caledar used to compute the next date
+    let calendar: Calendar
     
     /// Date to perform task (one-off job)
     var date: Date?
@@ -391,7 +395,9 @@ public final class ScheduleBuilder {
     var second: Second?
     var millisecond: Int?
 
-    public init() { }
+    public init(calendar: Calendar = .current) {
+        self.calendar = calendar
+    }
 
     // MARK: Helpers
     

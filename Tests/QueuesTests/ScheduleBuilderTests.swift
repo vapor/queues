@@ -133,6 +133,27 @@ final class ScheduleBuilderTests: XCTestCase {
             Date(year: 2020, month: 5, day: 23, hour: 14, minute: 58)
         )
     }
+    
+    func testCustomCalendarBuilder() throws {
+        
+        let est = Calendar.calendar(timezone: "EST")
+        let mst = Calendar.calendar(timezone: "MST")
+        
+        // Create a date at 8:00pm EST
+        let estDate = Date(calendar: est, hour: 20, minute: 00)
+        
+        // Schedule it for 7:00pm MST
+        let builder = ScheduleBuilder(calendar: mst)
+        builder.daily().at("7:00pm")
+        
+        XCTAssertEqual(
+            builder.nextDate(current: estDate),
+            // one hour later
+            Date(calendar: est, hour: 21, minute: 00)
+        )
+    
+    }
+    
 }
 
 
@@ -144,35 +165,8 @@ final class Cleanup: ScheduledJob {
 }
 
 extension Date {
-    var year: Int {
-        Calendar.current.component(.year, from: self)
-    }
-    
-    var month: Int {
-        Calendar.current.component(.month, from: self)
-    }
-    
-    var weekday: Int {
-        Calendar.current.component(.weekday, from: self)
-    }
-    
-    var day: Int {
-        Calendar.current.component(.day, from: self)
-    }
-    
-    var hour: Int {
-        Calendar.current.component(.hour, from: self)
-    }
-    
-    var minute: Int {
-        Calendar.current.component(.minute, from: self)
-    }
-    
-    var second: Int {
-        Calendar.current.component(.second, from: self)
-    }
-    
     init(
+        calendar: Calendar = .current,
         year: Int = 2020,
         month: Int = 1,
         day: Int = 1,
@@ -181,8 +175,16 @@ extension Date {
         second: Int = 0
     ) {
         self = DateComponents(
-            calendar: .current,
+            calendar: calendar,
             year: year, month: month, day: day, hour: hour, minute: minute, second: second
         ).date!
+    }
+}
+
+extension Calendar {
+    fileprivate static func calendar(timezone identifier: String) -> Calendar {
+        var calendar = Calendar.current
+        calendar.timeZone = TimeZone(identifier: identifier)!
+        return calendar
     }
 }
