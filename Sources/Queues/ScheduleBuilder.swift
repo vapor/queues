@@ -402,8 +402,9 @@ public final class ScheduleBuilder {
     // MARK: Helpers
     
     /// Schedules a job using a specific `Calendar`
-    public func using(_ calendar: Calendar) {
+    public func using(_ calendar: Calendar) -> ScheduleBuilder {
         self.calendar = calendar
+        return self
     }
     
     /// Schedules a job at a specific date
