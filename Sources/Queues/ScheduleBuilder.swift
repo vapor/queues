@@ -383,7 +383,7 @@ public final class ScheduleBuilder {
     }
     
     /// The caledar used to compute the next date
-    let calendar: Calendar
+    var calendar: Calendar
     
     /// Date to perform task (one-off job)
     var date: Date?
@@ -401,8 +401,14 @@ public final class ScheduleBuilder {
 
     // MARK: Helpers
     
+    /// Schedules a job using a specific `Calendar`
+    public func using(_ calendar: Calendar) -> ScheduleBuilder {
+        self.calendar = calendar
+        return self
+    }
+    
     /// Schedules a job at a specific date
-    public func at(_ date: Date) -> Void {
+    public func at(_ date: Date) {
         self.date = date
     }
     
