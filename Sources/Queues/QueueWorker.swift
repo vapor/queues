@@ -33,7 +33,7 @@ public struct QueueWorker {
                 // If the job has a delay, we must check to make sure we can execute.
                 // If the delay has not passed yet, requeue the job
                 if let delay = data.delayUntil, delay >= Date() {
-                    logger.trace("Requeing job \(id) for execution later because the delayUntil value of \(delay) has not passed yet")
+                    logger.trace("Requeueing job \(id) for execution later because the delayUntil value of \(delay) has not passed yet")
                     return self.queue.push(id)
                 }
 
@@ -50,7 +50,7 @@ public struct QueueWorker {
                     logger.error("Could not send didDequeue notification: \(error)")
                     return self.queue.eventLoop.future()
                 }.flatMap { _ in
-                    logger.info("Dequeing job", metadata: [
+                    logger.info("Dequeueing job", metadata: [
                         "job_id": .string(id.string),
                         "job_name": .string(data.jobName),
                         "queue": .string(self.queue.queueName.string)
