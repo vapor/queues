@@ -14,10 +14,10 @@ final class AsyncQueueTests: XCTestCase {
         app.queues.use(.test)
         
         let promise = app.eventLoopGroup.next().makePromise(of: Void.self)
-        app.queues.add(MyAsyncJob(promise: promise))
+        app.queues.add(AsyncFoo(promise: promise))
         
         app.get("foo") { req in
-            req.queue.dispatch(MyAsyncJob.self, .init(foo: "bar"))
+            req.queue.dispatch(AsyncFoo.self, .init(foo: "bar"))
                 .map { _ in "done" }
         }
         
@@ -28,8 +28,8 @@ final class AsyncQueueTests: XCTestCase {
         
         XCTAssertEqual(app.queues.test.queue.count, 1)
         XCTAssertEqual(app.queues.test.jobs.count, 1)
-        let job = app.queues.test.first(MyAsyncJob.self)
-        XCTAssert(app.queues.test.contains(MyAsyncJob.self))
+        let job = app.queues.test.first(AsyncFoo.self)
+        XCTAssert(app.queues.test.contains(AsyncFoo.self))
         XCTAssertNotNil(job)
         XCTAssertEqual(job!.foo, "bar")
         
@@ -38,20 +38,6 @@ final class AsyncQueueTests: XCTestCase {
         XCTAssertEqual(app.queues.test.jobs.count, 0)
         
         try XCTAssertNoThrow(promise.futureResult.wait())
-    }
-}
-
-@available(macOS 12, iOS 15, watchOS 8, tvOS 15, *)
-struct MyAsyncJob: AsyncJob {
-    let promise: EventLoopPromise<Void>
-    
-    struct Data: Codable {
-        var foo: String
-    }
-    
-    func dequeue(_ context: QueueContext, _ payload: Data) async throws {
-        promise.succeed(())
-        return
     }
 }
 #endif

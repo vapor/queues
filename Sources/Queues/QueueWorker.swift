@@ -1,3 +1,6 @@
+import Metrics
+import Dispatch
+
 extension Queue {
     public var worker: QueueWorker {
         .init(queue: self)
@@ -81,6 +84,7 @@ public struct QueueWorker {
         attempts: Int?,
         jobData: JobData
     ) -> EventLoopFuture<Void> {
+        let startTime = DispatchTime.now().uptimeNanoseconds
         logger.trace("Running the queue job (remaining tries: \(remainingTries)")
         let futureJob = job._dequeue(self.queue.context, id: id.string, payload: payload)
         return futureJob.flatMap { complete in
@@ -93,6 +97,7 @@ public struct QueueWorker {
                 return self.queue.context.eventLoop.future()
             }.flatMap {
                 logger.trace("Job done being run")
+                updateMetrics(for: id, name: name, startTime: startTime, queue: queue)
                 return self.queue.clear(id)
             }
         }.flatMapError { error in
@@ -113,6 +118,7 @@ public struct QueueWorker {
                         return self.queue.context.eventLoop.future()
                     }.flatMap {
                         logger.trace("Job done being run")
+                        updateMetrics(for: id, name: name, startTime: startTime, queue: queue, error: error)
                         return self.queue.clear(id)
                     }
                 }
@@ -131,7 +137,7 @@ public struct QueueWorker {
             }
         }
     }
-
+    
     private func retry(
         id: JobIdentifier,
         name: String,
@@ -180,6 +186,40 @@ public struct QueueWorker {
             }.flatMap {
                 self.queue.push(id)
             }
+        }
+    }
+    
+    private func updateMetrics(
+        for id: JobIdentifier,
+        name: String,
+        startTime: UInt64,
+        queue: Queue,
+        error: (any Error)? = nil
+    ) {
+        // Checks how long the job took to complete
+        Timer(
+            label: "\(id.string).jobDurationTimer",
+            dimensions: [
+                ("success", "true"),
+                ("id", id.string)
+            ],
+            preferredDisplayUnit: .seconds
+        ).recordNanoseconds(DispatchTime.now().uptimeNanoseconds - startTime)
+        
+        // Adds the completed job to a different counter depending on its result
+        if let error = error {
+            Counter(
+                label: "error.completed.jobs.counter",
+                dimensions: [
+                    ("id", id.string),
+                    ("error", error.localizedDescription)
+                ]
+            ).increment()
+        } else {
+            Counter(
+                label: "success.completed.jobs.counter",
+                dimensions: [("queueName", queue.queueName.string)]
+            ).increment()
         }
     }
 }
