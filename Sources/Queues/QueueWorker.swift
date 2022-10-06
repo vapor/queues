@@ -126,20 +126,17 @@ public struct QueueWorker: Sendable {
         Timer(
             label: "\(id.string).jobDurationTimer",
             dimensions: [
-                ("success", "true"),
+                ("success", error == nil ? "true" : "false"),
                 ("id", id.string),
             ],
             preferredDisplayUnit: .seconds
         ).recordNanoseconds(DispatchTime.now().uptimeNanoseconds - startTime)
 
         // Adds the completed job to a different counter depending on its result
-        if let error = error {
+        if error != nil {
             Counter(
                 label: "error.completed.jobs.counter",
-                dimensions: [
-                    ("id", id.string),
-                    ("error", error.localizedDescription),
-                ]
+                dimensions: [("queueName", queue.queueName.string)]
             ).increment()
         } else {
             Counter(
