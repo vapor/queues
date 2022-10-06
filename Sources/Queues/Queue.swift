@@ -1,29 +1,31 @@
-import NIOCore
-import Logging
+
 import Foundation
+import Logging
+import Metrics
+import NIOCore
 
 /// A type that can store and retrieve jobs from a persistence layer
 public protocol Queue: Sendable {
     /// The job context
     var context: QueueContext { get }
-    
+
     /// Gets the next job to be run
     /// - Parameter id: The ID of the job
     func get(_ id: JobIdentifier) -> EventLoopFuture<JobData>
-    
+
     /// Sets a job that should be run in the future
     /// - Parameters:
     ///   - id: The ID of the job
     ///   - data: Data for the job
     func set(_ id: JobIdentifier, to data: JobData) -> EventLoopFuture<Void>
-    
+
     /// Removes a job from the queue
     /// - Parameter id: The ID of the job
     func clear(_ id: JobIdentifier) -> EventLoopFuture<Void>
 
     /// Pops the next job in the queue
     func pop() -> EventLoopFuture<JobIdentifier?>
-    
+
     /// Pushes the next job into a queue
     /// - Parameter id: The ID of the job
     func push(_ id: JobIdentifier) -> EventLoopFuture<Void>
@@ -34,27 +36,27 @@ extension Queue {
     public var eventLoop: any EventLoop {
         self.context.eventLoop
     }
-    
+
     /// A logger
     public var logger: Logger {
         self.context.logger
     }
-    
+
     /// The configuration for the queue
     public var configuration: QueuesConfiguration {
         self.context.configuration
     }
-    
+
     /// The queue's name
     public var queueName: QueueName {
         self.context.queueName
     }
-    
+
     /// The key name of the queue
     public var key: String {
         self.queueName.makeKey(with: self.configuration.persistenceKey)
     }
-    
+
     /// Dispatch a job into the queue for processing
     /// - Parameters:
     ///   - job: The Job type
@@ -94,7 +96,12 @@ extension Queue {
             logger.trace("Pusing job to queue")
             return self.push(id)
         }.flatMapWithEventLoop { _, eventLoop in
-            logger.info("Dispatched job")
+            Counter(label: "dispatched.jobs.counter", dimensions: [("queueName", self.queueName.string)]).increment()
+            self.logger.info("Dispatched queue job", metadata: [
+                "job_id": .string(id.string),
+                "job_name": .string(job.name),
+                "queue": .string(self.queueName.string),
+            ])
             return self.sendNotification(of: "dispatch", logger: logger) {
                 $0.dispatched(job: .init(id: id.string, queueName: self.queueName.string, jobData: storage), eventLoop: eventLoop)
             }

@@ -1,6 +1,8 @@
-import NIOCore
-import Logging
+import Dispatch
 import Foundation
+import Logging
+import Metrics
+import NIOCore
 
 extension Queue {
     public var worker: QueueWorker {
@@ -16,7 +18,7 @@ public struct QueueWorker: Sendable {
     /// This is a thin wrapper for ELF-style callers.
     public func run() -> EventLoopFuture<Void> {
         self.queue.eventLoop.makeFutureWithTask {
-            try await run()
+            try await self.run()
         }
     }
 
@@ -25,14 +27,14 @@ public struct QueueWorker: Sendable {
     public func run() async throws {
         while try await self.runOneJob() {}
     }
-    
+
     /// Pop a job off the queue and try to run it. If no jobs are available, do
     /// nothing. Returns whether a job was run.
     private func runOneJob() async throws -> Bool {
         var logger = self.queue.logger
         logger[metadataKey: "queue"] = "\(self.queue.queueName.string)"
         logger.trace("Popping job from queue")
-        
+
         guard let id = try await self.queue.pop().get() else {
             // No job found, go around again.
             logger.trace("No pending jobs")
@@ -41,7 +43,7 @@ public struct QueueWorker: Sendable {
 
         logger[metadataKey: "job-id"] = "\(id.string)"
         logger.trace("Found pending job")
-        
+
         let data = try await self.queue.get(id).get()
         logger.trace("Received job data", metadata: ["job-data": "\(data)"])
         logger[metadataKey: "job-name"] = "\(data.jobName)"
@@ -68,11 +70,13 @@ public struct QueueWorker: Sendable {
     }
 
     private func runOneJob(id: JobIdentifier, job: any AnyJob, jobData: JobData, logger: Logger) async throws {
+        let startTime = DispatchTime.now().uptimeNanoseconds
         logger.info("Dequeing and running job", metadata: ["attempt": "\(jobData.currentAttempt)", "retries-left": "\(jobData.remainingAttempts)"])
         do {
             try await job._dequeue(self.queue.context, id: id.string, payload: jobData.payload).get()
 
             logger.trace("Job ran successfully", metadata: ["attempts-made": "\(jobData.currentAttempt)"])
+            self.updateMetrics(for: id, startTime: startTime, queue: self.queue)
             await self.queue.sendNotification(of: "success", logger: logger) {
                 try await $0.success(jobId: id.string, eventLoop: self.queue.context.eventLoop).get()
             }
@@ -82,6 +86,7 @@ public struct QueueWorker: Sendable {
                 return try await self.retry(id: id, job: job, jobData: jobData, error: error, logger: logger)
             } else {
                 logger.warning("Job failed, no retries remaining", metadata: ["error": "\(error)", "attempts-made": "\(jobData.currentAttempt)"])
+                self.updateMetrics(for: id, startTime: startTime, queue: self.queue, error: error)
 
                 try await job._error(self.queue.context, id: id.string, error, payload: jobData.payload).get()
                 await self.queue.sendNotification(of: "failure", logger: logger) {
@@ -102,12 +107,45 @@ public struct QueueWorker: Sendable {
             queuedAt: .init(),
             attempts: jobData.currentAttempt
         )
-        
+
         logger.warning("Job failed, retrying", metadata: [
-            "retry-delay": "\(delay)", "error": "\(error)", "next-attempt": "\(updatedData.currentAttempt)", "retries-left": "\(updatedData.remainingAttempts)"
+            "retry-delay": "\(delay)", "error": "\(error)", "next-attempt": "\(updatedData.currentAttempt)", "retries-left": "\(updatedData.remainingAttempts)",
         ])
         try await self.queue.clear(id).get()
         try await self.queue.set(id, to: updatedData).get()
         try await self.queue.push(id).get()
+    }
+
+    private func updateMetrics(
+        for id: JobIdentifier,
+        startTime: UInt64,
+        queue: any Queue,
+        error: (any Error)? = nil
+    ) {
+        // Checks how long the job took to complete
+        Timer(
+            label: "\(id.string).jobDurationTimer",
+            dimensions: [
+                ("success", "true"),
+                ("id", id.string),
+            ],
+            preferredDisplayUnit: .seconds
+        ).recordNanoseconds(DispatchTime.now().uptimeNanoseconds - startTime)
+
+        // Adds the completed job to a different counter depending on its result
+        if let error = error {
+            Counter(
+                label: "error.completed.jobs.counter",
+                dimensions: [
+                    ("id", id.string),
+                    ("error", error.localizedDescription),
+                ]
+            ).increment()
+        } else {
+            Counter(
+                label: "success.completed.jobs.counter",
+                dimensions: [("queueName", queue.queueName.string)]
+            ).increment()
+        }
     }
 }
