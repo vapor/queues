@@ -21,7 +21,7 @@ final class MetricsTests: XCTestCase {
         let promise = app.eventLoopGroup.next().makePromise(of: Void.self)
         app.queues.add(AsyncFoo(promise: promise))
         
-        app.get("foo") { req async throws in
+        app.get("foo") { req async throws -> String in
             try await req.queue.dispatch(AsyncFoo.self, .init(foo: "bar"), id: JobIdentifier(string: "some-id"))
             return "done"
         }
@@ -59,7 +59,7 @@ final class MetricsTests: XCTestCase {
         ErrorHook.errorCount = 0
         DequeuedHook.successHit = false
         
-        app.get("foo") { req async throws in
+        app.get("foo") { req async throws -> String in
             try await req.queue.dispatch(AsyncFoo.self, .init(foo: "bar"), id: JobIdentifier(string: "first"))
             try await req.queue.dispatch(AsyncFoo.self, .init(foo: "rab"), id: JobIdentifier(string: "second"))
             return "done"
@@ -113,7 +113,7 @@ final class MetricsTests: XCTestCase {
         let promise = app.eventLoopGroup.next().makePromise(of: Void.self)
         app.queues.add(AsyncFoo(promise: promise))
         
-        app.get("foo") { req async throws in
+        app.get("foo") { req async throws -> String in
             try await req.queue.dispatch(AsyncFoo.self, .init(foo: "bar"), id: JobIdentifier(string: "first"))
             try await req.queue.dispatch(AsyncFoo.self, .init(foo: "rab"), id: JobIdentifier(string: "second"))
             return "done"

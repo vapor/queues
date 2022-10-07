@@ -194,7 +194,7 @@ public struct QueueWorker {
         name: String,
         startTime: UInt64,
         queue: Queue,
-        error: (any Error)? = nil
+        error: Error? = nil
     ) {
         // Checks how long the job took to complete
         Timer(
