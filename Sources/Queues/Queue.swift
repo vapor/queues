@@ -1,3 +1,5 @@
+import Metrics
+
 /// A type that can store and retrieve jobs from a persistence layer
 public protocol Queue {
     /// The job context
@@ -84,6 +86,7 @@ extension Queue {
         return self.set(id, to: storage).flatMap {
             self.push(id)
         }.flatMap { _ in
+            Counter(label: "dispatched.jobs.counter", dimensions: [("queueName", queueName.string)]).increment()
             self.logger.info("Dispatched queue job", metadata: [
                 "job_id": .string(id.string),
                 "job_name": .string(job.name),

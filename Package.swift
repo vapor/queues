@@ -12,12 +12,14 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/vapor/vapor.git", from: "4.0.0"),
-        .package(url: "https://github.com/apple/swift-nio.git", from: "2.33.0")
+        .package(url: "https://github.com/apple/swift-nio.git", from: "2.33.0"),
+        .package(url: "https://github.com/apple/swift-metrics.git", "1.0.0" ..< "3.0.0")
     ],
     targets: [
         .target(name: "Queues", dependencies: [
             .product(name: "Vapor", package: "vapor"),
             .product(name: "NIOCore", package: "swift-nio"),
+            .product(name: "Metrics", package: "swift-metrics"),
         ]),
         .target(name: "XCTQueues", dependencies: [
             .target(name: "Queues")
