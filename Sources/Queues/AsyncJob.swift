@@ -4,7 +4,7 @@ import Foundation
 
 #if compiler(>=5.5) && canImport(_Concurrency)
 /// A task that can be queued for future execution.
-@available(macOS 12, iOS 15, watchOS 8, tvOS 15, *)
+@available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
 public protocol AsyncJob: Job {
     /// The data associated with a job
     associatedtype Payload
@@ -41,7 +41,7 @@ public protocol AsyncJob: Job {
     static func parsePayload(_ bytes: [UInt8]) throws -> Payload
 }
 
-@available(macOS 12, iOS 15, watchOS 8, tvOS 15, *)
+@available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
 extension AsyncJob where Payload: Codable {
     
     /// Serialize a payload into Data
@@ -57,7 +57,7 @@ extension AsyncJob where Payload: Codable {
     }
 }
 
-@available(macOS 12, iOS 15, watchOS 8, tvOS 15, *)
+@available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
 extension AsyncJob {
     /// The jobName of the Job
     public static var name: String {

@@ -345,7 +345,7 @@ class DequeuedHook: JobEventDelegate {
 
 final class WorkerCountDriver: QueuesDriver {
     let count: EventLoopPromise<Int>
-    let lock: Lock
+    let lock: NIOLock
     var recordedEventLoops: Set<ObjectIdentifier>
 
     init(count: EventLoopPromise<Int>) {
