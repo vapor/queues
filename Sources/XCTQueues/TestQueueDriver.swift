@@ -1,5 +1,6 @@
 import Queues
 import Vapor
+import NIOConcurrencyHelpers
 
 extension Application.Queues.Provider {
     public static var test: Self {
@@ -11,7 +12,7 @@ extension Application.Queues.Provider {
 }
 
 struct TestQueuesDriver: QueuesDriver {
-    let lock: Lock
+    let lock: NIOLock
 
     init() {
         self.lock = .init()
@@ -80,7 +81,7 @@ extension Application.Queues {
 }
 
 struct TestQueue: Queue {
-    let lock: Lock
+    let lock: NIOLock
     let context: QueueContext
     
     func get(_ id: JobIdentifier) -> EventLoopFuture<JobData> {

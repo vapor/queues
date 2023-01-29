@@ -9,7 +9,7 @@ extension Queue {
     ///   - payload: The payload data to be dispatched
     ///   - maxRetryCount: Number of times to retry this job on failure
     ///   - delayUntil: Delay the processing of this job until a certain date
-    @available(macOS 12, iOS 15, watchOS 8, tvOS 15, *)
+    @available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
     public func dispatch<J>(
         _ job: J.Type,
         _ payload: J.Payload,

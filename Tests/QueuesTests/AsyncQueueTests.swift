@@ -6,7 +6,7 @@ import XCTQueues
 @testable import Vapor
 import NIOConcurrencyHelpers
 
-@available(macOS 12, iOS 15, watchOS 8, tvOS 15, *)
+@available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
 final class AsyncQueueTests: XCTestCase {
     func testAsyncJob() throws {
         let app = Application(.testing)
@@ -41,7 +41,7 @@ final class AsyncQueueTests: XCTestCase {
     }
 }
 
-@available(macOS 12, iOS 15, watchOS 8, tvOS 15, *)
+@available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
 struct MyAsyncJob: AsyncJob {
     let promise: EventLoopPromise<Void>
     

@@ -1,6 +1,6 @@
 import Vapor
-import class NIOConcurrencyHelpers.NIOAtomic
-import class NIO.RepeatedTask
+import NIOConcurrencyHelpers
+import NIOCore
 
 /// The command to start the Queue job
 public final class QueuesCommand: Command {
@@ -26,7 +26,7 @@ public final class QueuesCommand: Command {
     private let application: Application
     private var jobTasks: [RepeatedTask]
     private var scheduledTasks: [String: AnyScheduledJob.Task]
-    private var lock: Lock
+    private var lock: NIOLock
     private var signalSources: [DispatchSourceSignal]
     private var didShutdown: Bool
     
