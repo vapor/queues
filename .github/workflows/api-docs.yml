@@ -10,5 +10,5 @@ jobs:
      secrets: inherit
      with:
        package_name: queues
-       modules: Queues, XCTQueues
+       modules: Queues,XCTQueues
        pathsToInvalidate: /queues /xctqueues
