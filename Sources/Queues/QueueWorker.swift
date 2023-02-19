@@ -1,3 +1,7 @@
+import NIOCore
+import Logging
+import Foundation
+
 extension Queue {
     public var worker: QueueWorker {
         .init(queue: self)

@@ -1,4 +1,4 @@
-import class NIO.RepeatedTask
+import NIOCore
 
 extension RepeatedTask {
     func syncCancel(on eventLoop: EventLoop) {
