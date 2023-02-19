@@ -1,4 +1,4 @@
-import class NIO.RepeatedTask
+import NIOCore
 
 /// Describes a job that can be scheduled and repeated
 public protocol ScheduledJob {

@@ -1,3 +1,5 @@
+import Foundation
+
 /// Holds information about the Job that is to be encoded to the persistence store.
 public struct JobData: Codable {
     /// The job data to be encoded.

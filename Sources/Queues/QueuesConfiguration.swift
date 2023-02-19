@@ -1,3 +1,6 @@
+import Logging
+import NIOCore
+
 /// A `Service` to configure `Queues`s
 public struct QueuesConfiguration {
     /// The number of seconds to wait before checking for the next job. Defaults to `1`

@@ -1,5 +1,4 @@
-import struct Foundation.DateComponents
-import struct Foundation.Calendar
+import Foundation
 
 /// An object that can be used to build a scheduled job
 public final class ScheduleBuilder {

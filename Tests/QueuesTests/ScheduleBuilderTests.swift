@@ -1,5 +1,6 @@
 import Queues
 import XCTest
+import NIOCore
 
 final class ScheduleBuilderTests: XCTestCase {
     func testHourlyBuilder() throws {

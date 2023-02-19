@@ -1,4 +1,5 @@
-import NIO
+import NIOCore
+import Foundation
 
 /// Represents an object that can receive notifications about job statuses
 public protocol JobEventDelegate {
