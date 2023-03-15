@@ -26,11 +26,18 @@ extension AnyScheduledJob {
     struct Task {
         let task: RepeatedTask
         let done: EventLoopFuture<Void>
+        let scheduledDate: Date
     }
 
-    func schedule(context: QueueContext) -> Task? {
+    func schedule(context: QueueContext, minCurrentDate: Date?) -> Task? {
         context.logger.trace("Beginning the scheduler process")
-        guard let date = self.scheduler.nextDate() else {
+
+        var current = Date()
+        if let minCurrentDate = minCurrentDate {
+            current = max(minCurrentDate, current)
+        }
+
+        guard let date = self.scheduler.nextDate(current: current) else {
             context.logger.debug("No date scheduled for \(self.job.name)")
             return nil
         }
@@ -45,6 +52,10 @@ extension AnyScheduledJob {
             context.logger.trace("Running the scheduled job \(self.job.name)")
             self.job.run(context: context).cascade(to: promise)
         }
-        return .init(task: task, done: promise.futureResult)
+        return .init(
+            task: task,
+            done: promise.futureResult,
+            scheduledDate: date
+        )
     }
 }
