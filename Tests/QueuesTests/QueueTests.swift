@@ -1,9 +1,12 @@
 import Queues
 import Vapor
+import Foundation
+import XCTest
 import XCTVapor
 import XCTQueues
-@testable import Vapor
+import NIOCore
 import NIOConcurrencyHelpers
+@testable import Vapor
 
 final class QueueTests: XCTestCase {
     func testVaporIntegrationWithInProcessJob() throws {

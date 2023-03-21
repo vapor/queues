@@ -1,3 +1,4 @@
+import Foundation
 import Vapor
 import NIOCore
 

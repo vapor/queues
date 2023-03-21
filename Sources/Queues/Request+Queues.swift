@@ -1,6 +1,6 @@
 import Foundation
 import Vapor
-import NIO
+import NIOCore
 
 extension Request {
     /// Returns the default job `Queue`

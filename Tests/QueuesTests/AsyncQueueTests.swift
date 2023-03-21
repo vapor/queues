@@ -1,9 +1,12 @@
 #if compiler(>=5.5) && canImport(_Concurrency)
 import Queues
+import Foundation
 import Vapor
+import XCTest
 import XCTVapor
 import XCTQueues
 @testable import Vapor
+import NIOCore
 import NIOConcurrencyHelpers
 
 @available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)

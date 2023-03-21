@@ -1,3 +1,5 @@
+import ConsoleKit
+import Dispatch
 import Vapor
 import NIOConcurrencyHelpers
 import NIOCore

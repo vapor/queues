@@ -24,7 +24,7 @@ public final class ScheduleBuilder {
         case first
         case last
         case exact(Int)
-
+     
         public init(integerLiteral value: Int) {
             self = .exact(value)
         }
