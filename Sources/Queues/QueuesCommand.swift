@@ -4,6 +4,11 @@ import Vapor
 import NIOConcurrencyHelpers
 import NIOCore
 import Atomics
+#if os(Linux)
+import Glibc
+#else
+import Darwin.C
+#endif
 
 /// The command to start the Queue job
 public final class QueuesCommand: Command {
