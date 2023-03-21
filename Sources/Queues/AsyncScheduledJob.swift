@@ -2,9 +2,7 @@ import Vapor
 import NIOCore
 import Foundation
 
-#if compiler(>=5.5) && canImport(_Concurrency)
 /// Describes a job that can be scheduled and repeated
-@available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
 public protocol AsyncScheduledJob: ScheduledJob {
     var name: String { get }
     
@@ -13,7 +11,6 @@ public protocol AsyncScheduledJob: ScheduledJob {
     func run(context: QueueContext) async throws
 }
 
-@available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
 extension AsyncScheduledJob {
     public var name: String { "\(Self.self)" }
     
@@ -25,4 +22,3 @@ extension AsyncScheduledJob {
         return promise.futureResult
     }
 }
-#endif
