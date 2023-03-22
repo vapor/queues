@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import NIO
+import NIOCore
 
 /// Determines which event loop the jobs worker uses while executing jobs.
 public enum QueuesEventLoopPreference {

@@ -1,8 +1,6 @@
-#if compiler(>=5.5) && canImport(_Concurrency)
 import NIOCore
 
 /// Represents an object that can receive notifications about job statuses
-@available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
 public protocol AsyncJobEventDelegate: JobEventDelegate {
     /// Called when the job is first dispatched
     /// - Parameters:
@@ -26,7 +24,6 @@ public protocol AsyncJobEventDelegate: JobEventDelegate {
     func error(jobId: String, error: Error) async throws
 }
 
-@available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
 extension AsyncJobEventDelegate {
     public func dispatched(job: JobEventData) async throws { }
     public func didDequeue(jobId: String) async throws { }
@@ -57,4 +54,3 @@ extension AsyncJobEventDelegate {
         }
     }
 }
-#endif

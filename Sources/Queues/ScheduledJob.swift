@@ -1,4 +1,6 @@
 import NIOCore
+import Foundation
+import Logging
 
 /// Describes a job that can be scheduled and repeated
 public protocol ScheduledJob {

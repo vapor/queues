@@ -1,19 +1,20 @@
-#if compiler(>=5.5) && canImport(_Concurrency)
 import Queues
+import Foundation
 import Vapor
+import XCTest
 import XCTVapor
 import XCTQueues
 @testable import Vapor
+import NIOCore
 import NIOConcurrencyHelpers
 
-@available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
 final class AsyncQueueTests: XCTestCase {
     func testAsyncJob() throws {
         let app = Application(.testing)
         defer { app.shutdown() }
         app.queues.use(.test)
         
-        let promise = app.eventLoopGroup.next().makePromise(of: Void.self)
+        let promise = app.eventLoopGroup.any().makePromise(of: Void.self)
         app.queues.add(MyAsyncJob(promise: promise))
         
         app.get("foo") { req in
@@ -41,7 +42,6 @@ final class AsyncQueueTests: XCTestCase {
     }
 }
 
-@available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
 struct MyAsyncJob: AsyncJob {
     let promise: EventLoopPromise<Void>
     
@@ -54,4 +54,3 @@ struct MyAsyncJob: AsyncJob {
         return
     }
 }
-#endif

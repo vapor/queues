@@ -1,3 +1,4 @@
+import Foundation
 import Queues
 import XCTest
 import NIOCore
@@ -156,8 +157,6 @@ final class ScheduleBuilderTests: XCTestCase {
     }
     
 }
-
-
 
 final class Cleanup: ScheduledJob {
     func run(context: QueueContext) -> EventLoopFuture<Void> {

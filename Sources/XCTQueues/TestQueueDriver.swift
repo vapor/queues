@@ -1,5 +1,6 @@
 import Queues
 import Vapor
+import NIOCore
 import NIOConcurrencyHelpers
 
 extension Application.Queues.Provider {

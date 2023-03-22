@@ -1,6 +1,14 @@
+import ConsoleKit
+import Dispatch
 import Vapor
 import NIOConcurrencyHelpers
 import NIOCore
+import Atomics
+#if os(Linux)
+import Glibc
+#else
+import Darwin.C
+#endif
 
 /// The command to start the Queue job
 public final class QueuesCommand: Command {
@@ -30,7 +38,7 @@ public final class QueuesCommand: Command {
     private var signalSources: [DispatchSourceSignal]
     private var didShutdown: Bool
     
-    private let isShuttingDown: NIOAtomic<Bool>
+    private let isShuttingDown: ManagedAtomic<Bool>
     
     private var eventLoopGroup: EventLoopGroup {
         self.application.eventLoopGroup
@@ -41,7 +49,7 @@ public final class QueuesCommand: Command {
         self.application = application
         self.jobTasks = []
         self.scheduledTasks = [:]
-        self.isShuttingDown = .makeAtomic(value: false)
+        self.isShuttingDown = .init(false)
         self.signalSources = []
         self.didShutdown = false
         self.lock = .init()
@@ -114,7 +122,7 @@ public final class QueuesCommand: Command {
                 return worker.run().map {
                     self.application.logger.trace("Worker ran the task successfully")
                     //Check if shutting down
-                    if self.isShuttingDown.load() {
+                    if self.isShuttingDown.load(ordering: .relaxed) {
                         self.application.logger.trace("Shutting down, cancelling the task")
                         task.cancel()
                     }
@@ -145,7 +153,7 @@ public final class QueuesCommand: Command {
     }
     
     private func schedule(_ job: AnyScheduledJob) {
-        if self.isShuttingDown.load() {
+        if self.isShuttingDown.load(ordering: .relaxed) {
             self.application.logger.trace("Application is shutting down, cancelling scheduling \(job.job.name)")
             return
         }
@@ -180,7 +188,7 @@ public final class QueuesCommand: Command {
         self.lock.lock()
         defer { self.lock.unlock() }
 
-        self.isShuttingDown.store(true)
+        self.isShuttingDown.store(true, ordering: .relaxed)
         self.didShutdown = true
         
         // stop running in case shutting downf rom signal

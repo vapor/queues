@@ -1,4 +1,5 @@
 import Foundation
+import Logging
 import Vapor
 import NIO
 

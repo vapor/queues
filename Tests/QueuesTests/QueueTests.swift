@@ -1,9 +1,13 @@
+import Atomics
 import Queues
 import Vapor
+import Foundation
+import XCTest
 import XCTVapor
 import XCTQueues
-@testable import Vapor
+import NIOCore
 import NIOConcurrencyHelpers
+@testable import Vapor
 
 final class QueueTests: XCTestCase {
     func testVaporIntegrationWithInProcessJob() throws {
@@ -137,13 +141,13 @@ final class QueueTests: XCTestCase {
         let app = Application(.testing)
         defer { app.shutdown() }
         
-        XCTAssertEqual(TestingScheduledJob.count.load(), 0)
+        XCTAssertEqual(TestingScheduledJob.count.load(ordering: .relaxed), 0)
         app.queues.schedule(TestingScheduledJob()).everySecond()
         try app.queues.startScheduledJobs()
         
         let promise = app.eventLoopGroup.next().makePromise(of: Void.self)
         app.eventLoopGroup.next().scheduleTask(in: .seconds(5)) { () -> Void in
-            XCTAssert(TestingScheduledJob.count.load() > 4)
+            XCTAssert(TestingScheduledJob.count.load(ordering: .relaxed) > 4)
             promise.succeed(())
         }
         
@@ -408,10 +412,10 @@ struct FailingScheduledJob: ScheduledJob {
 }
 
 struct TestingScheduledJob: ScheduledJob {
-    static var count = NIOAtomic<Int>.makeAtomic(value: 0)
+    static var count = ManagedAtomic<Int>(0)
     
     func run(context: QueueContext) -> EventLoopFuture<Void> {
-        TestingScheduledJob.count.add(1)
+        TestingScheduledJob.count.wrappingIncrement(ordering: .relaxed)
         return context.eventLoop.future()
     }
 }

@@ -1,5 +1,6 @@
-import NIO
+import NIOCore
 import Foundation
+import Logging
 import Vapor
 
 /// A task that can be queued for future execution.
