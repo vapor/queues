@@ -11,4 +11,4 @@ jobs:
      with:
        package_name: queues
        modules: Queues,XCTQueues
-       pathsToInvalidate: /queues /xctqueues
+       pathsToInvalidate: /queues/* /xctqueues/*
