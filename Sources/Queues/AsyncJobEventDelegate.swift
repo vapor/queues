@@ -47,7 +47,7 @@ extension AsyncJobEventDelegate {
     public func success(jobId: String) async throws { }
     public func success(job: JobEventData) async throws { }
     public func error(jobId: String, error: Error) async throws { }
-    public func error(job: JobEventData) async throws { }
+    public func error(job: JobEventData, error: Error) async throws { }
     
     public func dispatched(job: JobEventData, eventLoop: EventLoop) -> EventLoopFuture<Void> {
         eventLoop.makeFutureWithTask {
