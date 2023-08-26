@@ -48,8 +48,10 @@ public struct QueueWorker {
 
                 logger.trace("Sending dequeued notification hooks")
 
-                return self.queue.configuration.notificationHooks.map {
-                    $0.didDequeue(jobId: id.string, eventLoop: self.queue.eventLoop)
+                return self.queue.configuration.notificationHooks.map { hook in
+                    hook.didDequeue(jobId: id.string, eventLoop: self.queue.eventLoop).flatMap {
+                        hook.didDequeue(job: .init(id: id.string, queueName: self.queue.queueName.string, jobData: data), eventLoop: self.queue.eventLoop)
+                    }
                 }.flatten(on: self.queue.eventLoop).flatMapError { error in
                     logger.error("Could not send didDequeue notification: \(error)")
                     return self.queue.eventLoop.future()
@@ -90,8 +92,10 @@ public struct QueueWorker {
         return futureJob.flatMap { complete in
             logger.trace("Ran job successfully")
             logger.trace("Sending success notification hooks")
-            return self.queue.configuration.notificationHooks.map {
-                $0.success(jobId: id.string, eventLoop: self.queue.context.eventLoop)
+            return self.queue.configuration.notificationHooks.map { hook in
+                hook.success(jobId: id.string, eventLoop: self.queue.context.eventLoop).flatMap {
+                    hook.success(job: .init(id: id.string, queueName: self.queue.queueName.string, jobData: jobData), eventLoop: self.queue.context.eventLoop)
+                }
             }.flatten(on: self.queue.context.eventLoop).flatMapError { error in
                 self.queue.logger.error("Could not send success notification: \(error)")
                 return self.queue.context.eventLoop.future()
@@ -110,8 +114,10 @@ public struct QueueWorker {
 
                 logger.trace("Sending failure notification hooks")
                 return job._error(self.queue.context, id: id.string, error, payload: payload).flatMap { _ in
-                    return self.queue.configuration.notificationHooks.map {
-                        $0.error(jobId: id.string, error: error, eventLoop: self.queue.context.eventLoop)
+                    return self.queue.configuration.notificationHooks.map { hook in
+                        hook.error(jobId: id.string, error: error, eventLoop: self.queue.context.eventLoop).flatMap {
+                            hook.error(job: .init(id: id.string, queueName: self.queue.queueName.string, jobData: jobData), error: error, eventLoop: self.queue.context.eventLoop)
+                        }
                     }.flatten(on: self.queue.context.eventLoop).flatMapError { error in
                         self.queue.logger.error("Failed to send error notification: \(error)")
                         return self.queue.context.eventLoop.future()

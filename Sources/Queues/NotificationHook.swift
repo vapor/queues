@@ -16,6 +16,12 @@ public protocol JobEventDelegate {
     ///   - eventLoop: The eventLoop
     func didDequeue(jobId: String, eventLoop: EventLoop) -> EventLoopFuture<Void>
 
+    /// Called when the job is dequeued
+    /// - Parameters:
+    ///   - job: The `JobData` associated with the job
+    ///   - eventLoop: The eventLoop
+    func didDequeue(job: JobEventData, eventLoop: EventLoop) -> EventLoopFuture<Void>
+
 
     /// Called when the job succeeds
     /// - Parameters:
@@ -23,12 +29,26 @@ public protocol JobEventDelegate {
     ///   - eventLoop: The eventLoop
     func success(jobId: String, eventLoop: EventLoop) -> EventLoopFuture<Void>
 
+    /// Called when the job succeeds
+    /// - Parameters:
+    ///   - job: The `JobData` associated with the job
+    ///   - eventLoop: The eventLoop
+    func success(job: JobEventData, eventLoop: EventLoop) -> EventLoopFuture<Void>
+
+    
     /// Called when the job returns an error
     /// - Parameters:
     ///   - jobId: The id of the Job
     ///   - error: The error that caused the job to fail
     ///   - eventLoop: The eventLoop
     func error(jobId: String, error: Error, eventLoop: EventLoop) -> EventLoopFuture<Void>
+    
+    /// Called when the job returns an error
+    /// - Parameters:
+    ///   - job: The `JobData` associated with the job
+    ///   - error: The error that caused the job to fail
+    ///   - eventLoop: The eventLoop
+    func error(job: JobEventData, error: Error, eventLoop: EventLoop) -> EventLoopFuture<Void>
 }
 
 extension JobEventDelegate {
@@ -40,11 +60,23 @@ extension JobEventDelegate {
         eventLoop.future()
     }
 
+    public func didDequeue(job: JobEventData, eventLoop: EventLoop) -> EventLoopFuture<Void> {
+        eventLoop.future()
+    }
+
     public func success(jobId: String, eventLoop: EventLoop) -> EventLoopFuture<Void> {
         eventLoop.future()
     }
 
+    public func success(job: JobEventData, eventLoop: EventLoop) -> EventLoopFuture<Void> {
+        eventLoop.future()
+    }
+
     public func error(jobId: String, error: Error, eventLoop: EventLoop) -> EventLoopFuture<Void> {
+        eventLoop.future()
+    }
+    
+    public func error(job: JobEventData, error: Error, eventLoop: EventLoop) -> EventLoopFuture<Void> {
         eventLoop.future()
     }
 }

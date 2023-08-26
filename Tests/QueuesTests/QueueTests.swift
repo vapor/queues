@@ -198,6 +198,7 @@ final class QueueTests: XCTestCase {
         app.queues.add(DequeuedHook())
         ErrorHook.errorCount = 0
         DequeuedHook.successHit = false
+        DequeuedHook.foo = ""
 
         app.get("foo") { req in
             req.queue.dispatch(Foo.self, .init(foo: "bar"))
@@ -223,10 +224,12 @@ final class QueueTests: XCTestCase {
 
         try app.queues.queue.worker.run().wait()
         XCTAssertEqual(SuccessHook.successHit, true)
+        XCTAssertEqual(SuccessHook.foo, "bar")
         XCTAssertEqual(ErrorHook.errorCount, 0)
         XCTAssertEqual(app.queues.test.queue.count, 0)
         XCTAssertEqual(app.queues.test.jobs.count, 0)
         XCTAssertEqual(DequeuedHook.successHit, true)
+        XCTAssertEqual(DequeuedHook.foo, "bar")
         
         try XCTAssertEqual(promise.futureResult.wait(), "bar")
     }
@@ -239,6 +242,7 @@ final class QueueTests: XCTestCase {
         app.queues.add(SuccessHook())
         app.queues.add(ErrorHook())
         ErrorHook.errorCount = 0
+        ErrorHook.foo = ""
 
         app.get("foo") { req in
             req.queue.dispatch(Bar.self, .init(foo: "bar"), maxRetryCount: 3)
@@ -261,6 +265,7 @@ final class QueueTests: XCTestCase {
         try app.queues.queue.worker.run().wait()
         XCTAssertEqual(SuccessHook.successHit, false)
         XCTAssertEqual(ErrorHook.errorCount, 1)
+        XCTAssertEqual(ErrorHook.foo, "bar")
         XCTAssertEqual(app.queues.test.queue.count, 0)
         XCTAssertEqual(app.queues.test.jobs.count, 0)
     }
@@ -322,28 +327,62 @@ class DispatchHook: JobEventDelegate {
 
 class SuccessHook: JobEventDelegate {
     static var successHit = false
-
+    static var foo = ""
+    
     func success(jobId: String, eventLoop: EventLoop) -> EventLoopFuture<Void> {
         Self.successHit = true
         return eventLoop.future()
+    }
+    
+    func success(job: JobEventData, eventLoop: EventLoop) -> EventLoopFuture<Void> {
+        do {
+            let payload = try JSONDecoder().decode(Foo.Data.self, from: .init(job.payload))
+            Self.foo = payload.foo
+            return eventLoop.future()
+        } catch {
+            return eventLoop.makeFailedFuture(error)
+        }
     }
 }
 
 class ErrorHook: JobEventDelegate {
     static var errorCount = 0
+    static var foo = ""
 
     func error(jobId: String, error: Error, eventLoop: EventLoop) -> EventLoopFuture<Void> {
         Self.errorCount += 1
         return eventLoop.future()
     }
+    
+    func error(job: JobEventData, error: Error, eventLoop: EventLoop) -> EventLoopFuture<Void> {
+        do {
+            let payload = try JSONDecoder().decode(Bar.Data.self, from: .init(job.payload))
+            Self.foo = payload.foo
+            return eventLoop.future()
+        } catch {
+            return eventLoop.makeFailedFuture(error)
+        }
+    }
+
 }
 
 class DequeuedHook: JobEventDelegate {
     static var successHit = false
+    static var foo = ""
 
     func didDequeue(jobId: String, eventLoop: EventLoop) -> EventLoopFuture<Void> {
         Self.successHit = true
         return eventLoop.future()
+    }
+    
+    func didDequeue(job: JobEventData, eventLoop: EventLoop) -> EventLoopFuture<Void> {
+        do {
+            let payload = try JSONDecoder().decode(Bar.Data.self, from: .init(job.payload))
+            Self.foo = payload.foo
+            return eventLoop.future()
+        } catch {
+            return eventLoop.makeFailedFuture(error)
+        }
     }
 }
 
