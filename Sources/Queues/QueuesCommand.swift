@@ -204,7 +204,7 @@ public final class QueuesCommand: Command {
         }
         // stop all scheduled jobs
         self.scheduledTasks.values.forEach {
-            $0.task.syncCancel(on: self.eventLoopGroup.next())
+            $0.syncCancel(on: self.eventLoopGroup.next())
         }
     }
     
