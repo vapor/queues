@@ -3,7 +3,7 @@ import NIOCore
 import Vapor
 
 /// The context for a queue.
-public struct QueueContext {
+public struct QueueContext: Sendable {
     /// The name of the queue
     public let queueName: QueueName
     

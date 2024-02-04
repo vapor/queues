@@ -3,7 +3,7 @@ import Foundation
 import Logging
 
 /// Describes a job that can be scheduled and repeated
-public protocol ScheduledJob {
+public protocol ScheduledJob: Sendable {
     var name: String { get }
     /// The method called when the job is run
     /// - Parameter context: A `JobContext` that can be used
@@ -14,8 +14,8 @@ extension ScheduledJob {
     public var name: String { "\(Self.self)" }
 }
 
-class AnyScheduledJob {
-    let job: ScheduledJob
+final class AnyScheduledJob: Sendable {
+    let job: any ScheduledJob
     let scheduler: ScheduleBuilder
     
     init(job: any ScheduledJob, scheduler: ScheduleBuilder) {

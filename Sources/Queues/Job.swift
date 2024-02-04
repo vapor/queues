@@ -6,7 +6,7 @@ import Vapor
 /// A task that can be queued for future execution.
 public protocol Job: AnyJob {
     /// The data associated with a job
-    associatedtype Payload
+    associatedtype Payload: Sendable
     
     /// Called when it's this Job's turn to be dequeued.
     /// - Parameters:
@@ -101,7 +101,7 @@ extension Job {
 }
 
 /// A type-erased version of `Job`
-public protocol AnyJob {
+public protocol AnyJob: Sendable {
     /// The name of the `Job`
     static var name: String { get }
     func _dequeue(_ context: QueueContext, id: String, payload: [UInt8]) -> EventLoopFuture<Void>

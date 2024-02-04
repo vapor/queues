@@ -1,8 +1,7 @@
 import struct Foundation.UUID
 
 /// An identifier for a job
-public struct JobIdentifier: Hashable, Equatable {
-    
+public struct JobIdentifier: Hashable, Equatable, Sendable {
     /// The string value of the ID
     public let string: String
     

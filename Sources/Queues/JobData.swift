@@ -1,7 +1,7 @@
 import Foundation
 
 /// Holds information about the Job that is to be encoded to the persistence store.
-public struct JobData: Codable {
+public struct JobData: Codable, Sendable {
     /// The job data to be encoded.
     public let payload: [UInt8]
     

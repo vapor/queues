@@ -1,8 +1,7 @@
 import Foundation
 
 /// An object that can be used to build a scheduled job
-public final class ScheduleBuilder {
-    
+public final class ScheduleBuilder: @unchecked Sendable {
     /// Months of the year
     public enum Month: Int {
         case january = 1

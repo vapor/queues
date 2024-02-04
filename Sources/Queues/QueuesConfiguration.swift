@@ -1,16 +1,37 @@
+import ConsoleKitTerminal
 import Logging
 import NIOCore
+import NIOConcurrencyHelpers
 
-/// A `Service` to configure `Queues`s
-public struct QueuesConfiguration {
+/// Configuration parameters for the Queues module as a whole.
+public struct QueuesConfiguration: Sendable {
+    private struct DataBox: Sendable {
+        var refreshInterval: TimeAmount = .seconds(1)
+        var persistenceKey: String = "vapor_queues"
+        var workerCount: WorkerCount = .default
+        var userInfo: [AnySendableHashable: any Sendable] = [:]
+        
+        var jobs: [String: any AnyJob] = [:]
+        var scheduledJobs: [AnyScheduledJob] = []
+        var notificationHooks: [any JobEventDelegate] = []
+    }
+    
+    private let dataBox: NIOLockedValueBox<DataBox> = .init(.init())
+    
     /// The number of seconds to wait before checking for the next job. Defaults to `1`
-    public var refreshInterval: TimeAmount
+    public var refreshInterval: TimeAmount {
+        get { self.dataBox.withLockedValue { $0.refreshInterval } }
+        set { self.dataBox.withLockedValue { $0.refreshInterval = newValue } }
+    }
 
     /// The key that stores the data about a job. Defaults to `vapor_queues`
-    public var persistenceKey: String
+    public var persistenceKey: String {
+        get { self.dataBox.withLockedValue { $0.persistenceKey } }
+        set { self.dataBox.withLockedValue { $0.persistenceKey = newValue } }
+    }
 
     /// Supported options for number of job handling workers. 
-    public enum WorkerCount: ExpressibleByIntegerLiteral {
+    public enum WorkerCount: ExpressibleByIntegerLiteral, Sendable {
         /// One worker per event loop.
         case `default`
 
@@ -24,17 +45,34 @@ public struct QueuesConfiguration {
     }
 
     /// Sets the number of workers used for handling jobs.
-    public var workerCount: WorkerCount
+    public var workerCount: WorkerCount {
+        get { self.dataBox.withLockedValue { $0.workerCount } }
+        set { self.dataBox.withLockedValue { $0.workerCount = newValue } }
+    }
     
     /// A logger
     public let logger: Logger
     
     // Arbitrary user info to be stored
-    public var userInfo: [AnyHashable: Any]
+    public var userInfo: [AnySendableHashable: any Sendable] {
+        get { self.dataBox.withLockedValue { $0.userInfo } }
+        set { self.dataBox.withLockedValue { $0.userInfo = newValue } }
+    }
     
-    var jobs: [String: AnyJob]
-    var scheduledJobs: [AnyScheduledJob]
-    var notificationHooks: [JobEventDelegate]
+    var jobs: [String: any AnyJob] {
+        get { self.dataBox.withLockedValue { $0.jobs } }
+        set { self.dataBox.withLockedValue { $0.jobs = newValue } }
+    }
+    
+    var scheduledJobs: [AnyScheduledJob] {
+        get { self.dataBox.withLockedValue { $0.scheduledJobs } }
+        set { self.dataBox.withLockedValue { $0.scheduledJobs = newValue } }
+    }
+    
+    var notificationHooks: [any JobEventDelegate] {
+        get { self.dataBox.withLockedValue { $0.notificationHooks } }
+        set { self.dataBox.withLockedValue { $0.notificationHooks = newValue } }
+    }
     
     /// Creates an empty `JobsConfig`
     public init(
@@ -43,14 +81,10 @@ public struct QueuesConfiguration {
         workerCount: WorkerCount = .default,
         logger: Logger = .init(label: "codes.vapor.queues")
     ) {
-        self.jobs = [:]
-        self.scheduledJobs = []
         self.logger = logger
         self.refreshInterval = refreshInterval
         self.persistenceKey = persistenceKey
         self.workerCount = workerCount
-        self.userInfo = [:]
-        self.notificationHooks = []
     }
     
     /// Adds a new `Job` to the queue configuration.

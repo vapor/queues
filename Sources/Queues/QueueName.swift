@@ -1,5 +1,5 @@
 /// A specific queue that jobs are run on.
-public struct QueueName {
+public struct QueueName: Sendable {
     /// The default queue that jobs are run on
     public static let `default` = Self(string: "default")
 

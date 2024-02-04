@@ -29,7 +29,7 @@ struct TestQueuesDriver: QueuesDriver {
 }
 
 extension Application.Queues {
-    public final class TestQueueStorage {
+    public final class TestQueueStorage: @unchecked Sendable {
         public var jobs: [JobIdentifier: JobData] = [:]
         public var queue: [JobIdentifier] = []
 

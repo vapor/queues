@@ -21,7 +21,7 @@ extension Application {
             }
         }
 
-        final class Storage {
+        final class Storage: @unchecked Sendable {
             public var configuration: QueuesConfiguration
             private (set) var commands: [QueuesCommand]
             var driver: (any QueuesDriver)?
