@@ -3,7 +3,7 @@ import Logging
 import Foundation
 
 /// A type that can store and retrieve jobs from a persistence layer
-public protocol Queue {
+public protocol Queue: Sendable {
     /// The job context
     var context: QueueContext { get }
     

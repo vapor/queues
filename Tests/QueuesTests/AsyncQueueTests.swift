@@ -12,8 +12,8 @@ final class AsyncQueueTests: XCTestCase {
         app.queues.add(MyAsyncJob(promise: promise))
         
         app.get("foo") { req in
-            req.queue.dispatch(MyAsyncJob.self, .init(foo: "bar"))
-                .map { _ in "done" }
+            try await req.queue.dispatch(MyAsyncJob.self, .init(foo: "bar"))
+            return "done"
         }
         
         try app.testable().test(.GET, "foo") { res in

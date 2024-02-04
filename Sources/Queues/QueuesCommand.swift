@@ -11,7 +11,7 @@ import Darwin.C
 #endif
 
 /// The command to start the Queue job
-public final class QueuesCommand: Command {
+public final class QueuesCommand: Command, @unchecked Sendable {
     /// See `Command.signature`
     public let signature = Signature()
     

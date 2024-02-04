@@ -2,7 +2,7 @@ import NIOCore
 import Foundation
 
 /// Represents an object that can receive notifications about job statuses
-public protocol JobEventDelegate {
+public protocol JobEventDelegate: Sendable {
 
     /// Called when the job is first dispatched
     /// - Parameters:
@@ -50,7 +50,7 @@ extension JobEventDelegate {
 }
 
 /// Data on a job sent via a notification
-public struct JobEventData {
+public struct JobEventData: Sendable {
     /// The id of the job, assigned at dispatch
     public var id: String
 
