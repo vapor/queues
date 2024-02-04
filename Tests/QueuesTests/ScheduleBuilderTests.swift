@@ -1,7 +1,6 @@
 import Foundation
 import Queues
 import XCTest
-import NIOCore
 
 final class ScheduleBuilderTests: XCTestCase {
     func testHourlyBuilder() throws {
@@ -137,7 +136,6 @@ final class ScheduleBuilderTests: XCTestCase {
     }
     
     func testCustomCalendarBuilder() throws {
-        
         let est = Calendar.calendar(timezone: "EST")
         let mst = Calendar.calendar(timezone: "MST")
         
@@ -160,7 +158,7 @@ final class ScheduleBuilderTests: XCTestCase {
 
 final class Cleanup: ScheduledJob {
     func run(context: QueueContext) -> EventLoopFuture<Void> {
-        return context.eventLoop.makeSucceededFuture(())
+        context.eventLoop.makeSucceededFuture(())
     }
 }
 

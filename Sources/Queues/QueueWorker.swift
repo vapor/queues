@@ -9,10 +9,10 @@ extension Queue {
 }
 
 /// The worker that runs the `Job`
-public struct QueueWorker {
-    let queue: Queue
+public struct QueueWorker: Sendable {
+    let queue: any Queue
 
-    init(queue: Queue) {
+    init(queue: any Queue) {
         self.queue = queue
     }
     
@@ -30,9 +30,10 @@ public struct QueueWorker {
             self.queue.logger.trace("Getting data for job \(id)")
 
             return self.queue.get(id).flatMap { data in
-                var logger = self.queue.logger
-                logger[metadataKey: "job_id"] = .string(id.string)
-
+                var _logger = self.queue.logger
+                _logger[metadataKey: "job_id"] = .string(id.string)
+                let logger = _logger
+                
                 logger.trace("Received job data for \(id): \(data)")
                 // If the job has a delay, we must check to make sure we can execute.
                 // If the delay has not passed yet, requeue the job
@@ -78,7 +79,7 @@ public struct QueueWorker {
     private func run(
         id: JobIdentifier,
         name: String,
-        job: AnyJob,
+        job: any AnyJob,
         payload: [UInt8],
         logger: Logger,
         remainingTries: Int,
@@ -139,13 +140,13 @@ public struct QueueWorker {
     private func retry(
         id: JobIdentifier,
         name: String,
-        job: AnyJob,
+        job: any AnyJob,
         payload: [UInt8],
         logger: Logger,
         remainingTries: Int,
         attempts: Int?,
         jobData: JobData,
-        error: Error
+        error: any Error
     ) -> EventLoopFuture<Void> {
         let attempts = attempts ?? 0
         let delayInSeconds = job._nextRetryIn(attempt: attempts + 1)

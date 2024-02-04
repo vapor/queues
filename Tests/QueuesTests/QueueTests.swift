@@ -1,13 +1,9 @@
 import Atomics
 import Queues
-import Vapor
-import Foundation
 import XCTest
 import XCTVapor
 import XCTQueues
-import NIOCore
 import NIOConcurrencyHelpers
-@testable import Vapor
 
 final class QueueTests: XCTestCase {
     func testVaporIntegrationWithInProcessJob() throws {
@@ -15,7 +11,7 @@ final class QueueTests: XCTestCase {
         app.queues.use(.test)
         defer { app.shutdown() }
         
-        let jobSignal = app.eventLoopGroup.next().makePromise(of: String.self)
+        let jobSignal = app.eventLoopGroup.any().makePromise(of: String.self)
         app.queues.add(Foo(promise: jobSignal))
         try app.queues.startInProcessJobs(on: .default)
     
@@ -37,7 +33,7 @@ final class QueueTests: XCTestCase {
         defer { app.shutdown() }
         app.queues.use(.test)
         
-        let promise = app.eventLoopGroup.next().makePromise(of: String.self)
+        let promise = app.eventLoopGroup.any().makePromise(of: String.self)
         app.queues.add(Foo(promise: promise))
         
         app.get("foo") { req in
@@ -69,7 +65,7 @@ final class QueueTests: XCTestCase {
         defer { app.shutdown() }
         app.queues.use(.test)
         
-        let promise = app.eventLoopGroup.next().makePromise(of: String.self)
+        let promise = app.eventLoopGroup.any().makePromise(of: String.self)
         app.queues.add(Foo(promise: promise))
         
         app.get("foo") { req in
@@ -141,13 +137,14 @@ final class QueueTests: XCTestCase {
         let app = Application(.testing)
         defer { app.shutdown() }
         
-        XCTAssertEqual(TestingScheduledJob.count.load(ordering: .relaxed), 0)
-        app.queues.schedule(TestingScheduledJob()).everySecond()
+        let scheduledJob = TestingScheduledJob()
+        XCTAssertEqual(scheduledJob.count.load(ordering: .relaxed), 0)
+        app.queues.schedule(scheduledJob).everySecond()
         try app.queues.startScheduledJobs()
         
-        let promise = app.eventLoopGroup.next().makePromise(of: Void.self)
-        app.eventLoopGroup.next().scheduleTask(in: .seconds(5)) { () -> Void in
-            XCTAssert(TestingScheduledJob.count.load(ordering: .relaxed) > 4)
+        let promise = app.eventLoopGroup.any().makePromise(of: Void.self)
+        app.eventLoopGroup.any().scheduleTask(in: .seconds(5)) { () -> Void in
+            XCTAssert(scheduledJob.count.load(ordering: .relaxed) > 4)
             promise.succeed(())
         }
         
@@ -161,8 +158,8 @@ final class QueueTests: XCTestCase {
         app.queues.schedule(FailingScheduledJob()).everySecond()
         try app.queues.startScheduledJobs()
         
-        let promise = app.eventLoopGroup.next().makePromise(of: Void.self)
-        app.eventLoopGroup.next().scheduleTask(in: .seconds(1)) { () -> Void in
+        let promise = app.eventLoopGroup.any().makePromise(of: Void.self)
+        app.eventLoopGroup.any().scheduleTask(in: .seconds(1)) { () -> Void in
             promise.succeed(())
         }
         try promise.futureResult.wait()
@@ -176,7 +173,7 @@ final class QueueTests: XCTestCase {
         let app = Application(.testing, .shared(eventLoopGroup))
         defer { app.shutdown() }
 
-        let count = app.eventLoopGroup.next().makePromise(of: Int.self)
+        let count = app.eventLoopGroup.any().makePromise(of: Int.self)
         app.queues.use(custom: WorkerCountDriver(count: count))
         // Limit worker count to less than 4 threads
         app.queues.configuration.workerCount = 2
@@ -190,43 +187,45 @@ final class QueueTests: XCTestCase {
         defer { app.shutdown() }
         app.queues.use(.test)
 
-        let promise = app.eventLoopGroup.next().makePromise(of: String.self)
+        let promise = app.eventLoopGroup.any().makePromise(of: String.self)
+        let successHook = SuccessHook()
+        let errorHook = ErrorHook()
+        let dispatchHook = DispatchHook()
+        let dequeuedHook = DequeuedHook()
         app.queues.add(Foo(promise: promise))
-        app.queues.add(SuccessHook())
-        app.queues.add(ErrorHook())
-        app.queues.add(DispatchHook())
-        app.queues.add(DequeuedHook())
-        ErrorHook.errorCount = 0
-        DequeuedHook.successHit = false
+        app.queues.add(successHook)
+        app.queues.add(errorHook)
+        app.queues.add(dispatchHook)
+        app.queues.add(dequeuedHook)
 
         app.get("foo") { req in
             req.queue.dispatch(Foo.self, .init(foo: "bar"))
                 .map { _ in "done" }
         }
 
-        XCTAssertEqual(DispatchHook.successHit, false)
+        XCTAssertFalse(dispatchHook.successHit)
         try app.testable().test(.GET, "foo") { res in
             XCTAssertEqual(res.status, .ok)
             XCTAssertEqual(res.body.string, "done")
-            XCTAssertEqual(DispatchHook.successHit, true)
+            XCTAssertTrue(dispatchHook.successHit)
         }
 
-        XCTAssertEqual(SuccessHook.successHit, false)
-        XCTAssertEqual(ErrorHook.errorCount, 0)
+        XCTAssertFalse(successHook.successHit)
+        XCTAssertEqual(errorHook.errorCount, 0)
         XCTAssertEqual(app.queues.test.queue.count, 1)
         XCTAssertEqual(app.queues.test.jobs.count, 1)
         let job = app.queues.test.first(Foo.self)
         XCTAssert(app.queues.test.contains(Foo.self))
         XCTAssertNotNil(job)
         XCTAssertEqual(job!.foo, "bar")
-        XCTAssertEqual(DequeuedHook.successHit, false)
+        XCTAssertFalse(dequeuedHook.successHit)
 
         try app.queues.queue.worker.run().wait()
-        XCTAssertEqual(SuccessHook.successHit, true)
-        XCTAssertEqual(ErrorHook.errorCount, 0)
+        XCTAssertTrue(successHook.successHit)
+        XCTAssertEqual(errorHook.errorCount, 0)
         XCTAssertEqual(app.queues.test.queue.count, 0)
         XCTAssertEqual(app.queues.test.jobs.count, 0)
-        XCTAssertEqual(DequeuedHook.successHit, true)
+        XCTAssertTrue(dequeuedHook.successHit)
         
         try XCTAssertEqual(promise.futureResult.wait(), "bar")
     }
@@ -236,10 +235,11 @@ final class QueueTests: XCTestCase {
         defer { app.shutdown() }
         app.queues.use(.test)
         app.queues.add(Bar())
-        app.queues.add(SuccessHook())
-        app.queues.add(ErrorHook())
-        ErrorHook.errorCount = 0
-
+        let successHook = SuccessHook()
+        let errorHook = ErrorHook()
+        app.queues.add(successHook)
+        app.queues.add(errorHook)
+        
         app.get("foo") { req in
             req.queue.dispatch(Bar.self, .init(foo: "bar"), maxRetryCount: 3)
                 .map { _ in "done" }
@@ -250,8 +250,8 @@ final class QueueTests: XCTestCase {
             XCTAssertEqual(res.body.string, "done")
         }
 
-        XCTAssertEqual(SuccessHook.successHit, false)
-        XCTAssertEqual(ErrorHook.errorCount, 0)
+        XCTAssertFalse(successHook.successHit)
+        XCTAssertEqual(errorHook.errorCount, 0)
         XCTAssertEqual(app.queues.test.queue.count, 1)
         XCTAssertEqual(app.queues.test.jobs.count, 1)
         let job = app.queues.test.first(Bar.self)
@@ -259,8 +259,8 @@ final class QueueTests: XCTestCase {
         XCTAssertNotNil(job)
 
         try app.queues.queue.worker.run().wait()
-        XCTAssertEqual(SuccessHook.successHit, false)
-        XCTAssertEqual(ErrorHook.errorCount, 1)
+        XCTAssertFalse(successHook.successHit)
+        XCTAssertEqual(errorHook.errorCount, 1)
         XCTAssertEqual(app.queues.test.queue.count, 0)
         XCTAssertEqual(app.queues.test.jobs.count, 0)
     }
@@ -270,9 +270,10 @@ final class QueueTests: XCTestCase {
         defer { app.shutdown() }
         app.queues.use(.test)
         app.queues.add(Baz())
-        app.queues.add(SuccessHook())
-        app.queues.add(ErrorHook())
-        ErrorHook.errorCount = 0
+        let successHook = SuccessHook()
+        let errorHook = ErrorHook()
+        app.queues.add(successHook)
+        app.queues.add(errorHook)
 
         app.get("foo") { req in
             req.queue.dispatch(Baz.self, .init(foo: "baz"), maxRetryCount: 1)
@@ -284,8 +285,8 @@ final class QueueTests: XCTestCase {
             XCTAssertEqual(res.body.string, "done")
         }
 
-        XCTAssertEqual(SuccessHook.successHit, false)
-        XCTAssertEqual(ErrorHook.errorCount, 0)
+        XCTAssertFalse(successHook.successHit)
+        XCTAssertEqual(errorHook.errorCount, 0)
         XCTAssertEqual(app.queues.test.queue.count, 1)
         XCTAssertEqual(app.queues.test.jobs.count, 1)
         var job = app.queues.test.first(Baz.self)
@@ -293,8 +294,8 @@ final class QueueTests: XCTestCase {
         XCTAssertNotNil(job)
 
         try app.queues.queue.worker.run().wait()
-        XCTAssertEqual(SuccessHook.successHit, false)
-        XCTAssertEqual(ErrorHook.errorCount, 0)
+        XCTAssertFalse(successHook.successHit)
+        XCTAssertEqual(errorHook.errorCount, 0)
         XCTAssertEqual(app.queues.test.queue.count, 1)
         XCTAssertEqual(app.queues.test.jobs.count, 1)
         job = app.queues.test.first(Baz.self)
@@ -304,50 +305,50 @@ final class QueueTests: XCTestCase {
         sleep(1)
 
         try app.queues.queue.worker.run().wait()
-        XCTAssertEqual(SuccessHook.successHit, false)
-        XCTAssertEqual(ErrorHook.errorCount, 1)
+        XCTAssertFalse(successHook.successHit)
+        XCTAssertEqual(errorHook.errorCount, 1)
         XCTAssertEqual(app.queues.test.queue.count, 0)
         XCTAssertEqual(app.queues.test.jobs.count, 0)
     }
 }
 
-class DispatchHook: JobEventDelegate {
-    static var successHit = false
+final class DispatchHook: JobEventDelegate, @unchecked Sendable {
+    var successHit = false
 
-    func dispatched(job: JobEventData, eventLoop: EventLoop) -> EventLoopFuture<Void> {
-        Self.successHit = true
+    func dispatched(job: JobEventData, eventLoop: any EventLoop) -> EventLoopFuture<Void> {
+        self.successHit = true
         return eventLoop.future()
     }
 }
 
-class SuccessHook: JobEventDelegate {
-    static var successHit = false
+final class SuccessHook: JobEventDelegate, @unchecked Sendable {
+    var successHit = false
 
-    func success(jobId: String, eventLoop: EventLoop) -> EventLoopFuture<Void> {
-        Self.successHit = true
+    func success(jobId: String, eventLoop: any EventLoop) -> EventLoopFuture<Void> {
+        self.successHit = true
         return eventLoop.future()
     }
 }
 
-class ErrorHook: JobEventDelegate {
-    static var errorCount = 0
+final class ErrorHook: JobEventDelegate, @unchecked Sendable {
+    var errorCount = 0
 
-    func error(jobId: String, error: Error, eventLoop: EventLoop) -> EventLoopFuture<Void> {
-        Self.errorCount += 1
+    func error(jobId: String, error: any Error, eventLoop: any EventLoop) -> EventLoopFuture<Void> {
+        self.errorCount += 1
         return eventLoop.future()
     }
 }
 
-class DequeuedHook: JobEventDelegate {
-    static var successHit = false
+final class DequeuedHook: JobEventDelegate, @unchecked Sendable {
+    var successHit = false
 
-    func didDequeue(jobId: String, eventLoop: EventLoop) -> EventLoopFuture<Void> {
-        Self.successHit = true
+    func didDequeue(jobId: String, eventLoop: any EventLoop) -> EventLoopFuture<Void> {
+        self.successHit = true
         return eventLoop.future()
     }
 }
 
-final class WorkerCountDriver: QueuesDriver {
+final class WorkerCountDriver: QueuesDriver, @unchecked Sendable {
     let count: EventLoopPromise<Int>
     let lock: NIOLock
     var recordedEventLoops: Set<ObjectIdentifier>
@@ -358,11 +359,11 @@ final class WorkerCountDriver: QueuesDriver {
         self.recordedEventLoops = []
     }
 
-    func makeQueue(with context: QueueContext) -> Queue {
+    func makeQueue(with context: QueueContext) -> any Queue {
         WorkerCountQueue(driver: self, context: context)
     }
 
-    func record(eventLoop: EventLoop) {
+    func record(eventLoop: any EventLoop) {
         self.lock.lock()
         defer { self.lock.unlock() }
         let previousCount = self.recordedEventLoops.count
@@ -412,17 +413,17 @@ struct FailingScheduledJob: ScheduledJob {
 }
 
 struct TestingScheduledJob: ScheduledJob {
-    static var count = ManagedAtomic<Int>(0)
+    var count = ManagedAtomic<Int>(0)
     
     func run(context: QueueContext) -> EventLoopFuture<Void> {
-        TestingScheduledJob.count.wrappingIncrement(ordering: .relaxed)
+        self.count.wrappingIncrement(ordering: .relaxed)
         return context.eventLoop.future()
     }
 }
 
 extension ByteBuffer {
     var string: String {
-        return .init(decoding: self.readableBytesView, as: UTF8.self)
+        .init(decoding: self.readableBytesView, as: UTF8.self)
     }
 }
 
@@ -439,7 +440,7 @@ struct Foo: Job {
         return context.eventLoop.makeSucceededFuture(())
     }
     
-    func error(_ context: QueueContext, _ error: Error, _ data: Data) -> EventLoopFuture<Void> {
+    func error(_ context: QueueContext, _ error: any Error, _ data: Data) -> EventLoopFuture<Void> {
         self.promise.fail(error)
         return context.eventLoop.makeSucceededFuture(())
     }
@@ -454,7 +455,7 @@ struct Bar: Job {
         return context.eventLoop.makeFailedFuture(Abort(.badRequest))
     }
 
-    func error(_ context: QueueContext, _ error: Error, _ data: Data) -> EventLoopFuture<Void> {
+    func error(_ context: QueueContext, _ error: any Error, _ data: Data) -> EventLoopFuture<Void> {
         return context.eventLoop.makeSucceededFuture(())
     }
 }
@@ -468,7 +469,7 @@ struct Baz: Job {
         return context.eventLoop.makeFailedFuture(Abort(.badRequest))
     }
 
-    func error(_ context: QueueContext, _ error: Error, _ data: Data) -> EventLoopFuture<Void> {
+    func error(_ context: QueueContext, _ error: any Error, _ data: Data) -> EventLoopFuture<Void> {
         return context.eventLoop.makeSucceededFuture(())
     }
 
