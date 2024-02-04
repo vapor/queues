@@ -1,7 +1,7 @@
 import NIOCore
 
 extension RepeatedTask {
-    func syncCancel(on eventLoop: EventLoop) {
+    func syncCancel(on eventLoop: any EventLoop) {
         do {
             let promise = eventLoop.makePromise(of: Void.self)
             self.cancel(promise: promise)

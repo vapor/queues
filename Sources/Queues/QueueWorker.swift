@@ -12,7 +12,7 @@ extension Queue {
 public struct QueueWorker {
     let queue: Queue
 
-    init(queue: Queue) {
+    init(queue: any Queue) {
         self.queue = queue
     }
     
@@ -78,7 +78,7 @@ public struct QueueWorker {
     private func run(
         id: JobIdentifier,
         name: String,
-        job: AnyJob,
+        job: any AnyJob,
         payload: [UInt8],
         logger: Logger,
         remainingTries: Int,
@@ -139,13 +139,13 @@ public struct QueueWorker {
     private func retry(
         id: JobIdentifier,
         name: String,
-        job: AnyJob,
+        job: any AnyJob,
         payload: [UInt8],
         logger: Logger,
         remainingTries: Int,
         attempts: Int?,
         jobData: JobData,
-        error: Error
+        error: any Error
     ) -> EventLoopFuture<Void> {
         let attempts = attempts ?? 0
         let delayInSeconds = job._nextRetryIn(attempt: attempts + 1)

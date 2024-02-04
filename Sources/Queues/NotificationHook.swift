@@ -8,43 +8,43 @@ public protocol JobEventDelegate {
     /// - Parameters:
     ///   - job: The `JobData` associated with the job
     ///   - eventLoop: The eventLoop
-    func dispatched(job: JobEventData, eventLoop: EventLoop) -> EventLoopFuture<Void>
+    func dispatched(job: JobEventData, eventLoop: any EventLoop) -> EventLoopFuture<Void>
 
     /// Called when the job is dequeued
     /// - Parameters:
     ///   - jobId: The id of the Job
     ///   - eventLoop: The eventLoop
-    func didDequeue(jobId: String, eventLoop: EventLoop) -> EventLoopFuture<Void>
+    func didDequeue(jobId: String, eventLoop: any EventLoop) -> EventLoopFuture<Void>
 
 
     /// Called when the job succeeds
     /// - Parameters:
     ///   - jobId: The id of the Job
     ///   - eventLoop: The eventLoop
-    func success(jobId: String, eventLoop: EventLoop) -> EventLoopFuture<Void>
+    func success(jobId: String, eventLoop: any EventLoop) -> EventLoopFuture<Void>
 
     /// Called when the job returns an error
     /// - Parameters:
     ///   - jobId: The id of the Job
     ///   - error: The error that caused the job to fail
     ///   - eventLoop: The eventLoop
-    func error(jobId: String, error: Error, eventLoop: EventLoop) -> EventLoopFuture<Void>
+    func error(jobId: String, error: any Error, eventLoop: any EventLoop) -> EventLoopFuture<Void>
 }
 
 extension JobEventDelegate {
-    public func dispatched(job: JobEventData, eventLoop: EventLoop) -> EventLoopFuture<Void> {
+    public func dispatched(job: JobEventData, eventLoop: any EventLoop) -> EventLoopFuture<Void> {
         eventLoop.future()
     }
 
-    public func didDequeue(jobId: String, eventLoop: EventLoop) -> EventLoopFuture<Void> {
+    public func didDequeue(jobId: String, eventLoop: any EventLoop) -> EventLoopFuture<Void> {
         eventLoop.future()
     }
 
-    public func success(jobId: String, eventLoop: EventLoop) -> EventLoopFuture<Void> {
+    public func success(jobId: String, eventLoop: any EventLoop) -> EventLoopFuture<Void> {
         eventLoop.future()
     }
 
-    public func error(jobId: String, error: Error, eventLoop: EventLoop) -> EventLoopFuture<Void> {
+    public func error(jobId: String, error: any Error, eventLoop: any EventLoop) -> EventLoopFuture<Void> {
         eventLoop.future()
     }
 }

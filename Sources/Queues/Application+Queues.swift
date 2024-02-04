@@ -24,7 +24,7 @@ extension Application {
         final class Storage {
             public var configuration: QueuesConfiguration
             private (set) var commands: [QueuesCommand]
-            var driver: QueuesDriver?
+            var driver: (any QueuesDriver)?
 
             public init(_ application: Application) {
                 self.configuration = .init(logger: application.logger)
@@ -67,12 +67,12 @@ extension Application {
         }
 
         /// Returns the default `Queue`
-        public var queue: Queue {
+        public var queue: any Queue {
             self.queue(.default)
         }
 
         /// The selected `QueuesDriver`
-        public var driver: QueuesDriver {
+        public var driver: any QueuesDriver {
             guard let driver = self.storage.driver else {
                 fatalError("No Queues driver configured. Configure with app.queues.use(...)")
             }
@@ -96,8 +96,8 @@ extension Application {
         public func queue(
             _ name: QueueName,
             logger: Logger? = nil,
-            on eventLoop: EventLoop? = nil
-        ) -> Queue {
+            on eventLoop: (any EventLoop)? = nil
+        ) -> any Queue {
             return self.driver.makeQueue(
                 with: .init(
                     queueName: name,
@@ -129,7 +129,7 @@ extension Application {
 
         /// Choose which driver to use
         /// - Parameter driver: The driver
-        public func use(custom driver: QueuesDriver) {
+        public func use(custom driver: any QueuesDriver) {
             self.storage.driver = driver
         }
 

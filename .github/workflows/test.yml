@@ -5,7 +5,7 @@ on:
 
 jobs:
   unit-tests:
-     uses: vapor/ci/.github/workflows/run-unit-tests.yml@reusable-workflows
+     uses: vapor/ci/.github/workflows/run-unit-tests.yml@main
      with:
-       with_coverage: true
        with_tsan: false
+     secrets: inherit

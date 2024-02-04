@@ -23,7 +23,7 @@ public protocol AsyncJob: Job {
     ///   - payload: The typed payload for the job
     func error(
         _ context: QueueContext,
-        _ error: Error,
+        _ error: any Error,
         _ payload: Payload
     ) async throws
 
@@ -77,7 +77,7 @@ extension AsyncJob {
         return promise.futureResult
     }
     
-    public func error(_ context: QueueContext, _ error: Error, _ payload: Payload) -> EventLoopFuture<Void> {
+    public func error(_ context: QueueContext, _ error: any Error, _ payload: Payload) -> EventLoopFuture<Void> {
         let promise = context.eventLoop.makePromise(of: Void.self)
         promise.completeWithTask {
             try await self.error(context, error, payload)
@@ -85,7 +85,7 @@ extension AsyncJob {
         return promise.futureResult
     }
     
-    public func error(_ context: QueueContext, _ error: Error, _ payload: Payload) async throws {
+    public func error(_ context: QueueContext, _ error: any Error, _ payload: Payload) async throws {
         return
     }
 }

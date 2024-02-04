@@ -35,12 +35,12 @@ public final class QueuesCommand: Command {
     private var jobTasks: [RepeatedTask]
     private var scheduledTasks: [String: AnyScheduledJob.Task]
     private var lock: NIOLock
-    private var signalSources: [DispatchSourceSignal]
+    private var signalSources: [any DispatchSourceSignal]
     private var didShutdown: Bool
     
     private let isShuttingDown: ManagedAtomic<Bool>
     
-    private var eventLoopGroup: EventLoopGroup {
+    private var eventLoopGroup: any EventLoopGroup {
         self.application.eventLoopGroup
     }
 

@@ -1,12 +1,6 @@
 import Queues
-import Foundation
-import Vapor
 import XCTest
 import XCTVapor
-import XCTQueues
-@testable import Vapor
-import NIOCore
-import NIOConcurrencyHelpers
 
 final class AsyncQueueTests: XCTestCase {
     var app: Application!
@@ -58,7 +52,7 @@ struct MyAsyncJob: AsyncJob {
     }
     
     func dequeue(_ context: QueueContext, _ payload: Data) async throws {
-        promise.succeed(())
+        self.promise.succeed(())
         return
     }
 }

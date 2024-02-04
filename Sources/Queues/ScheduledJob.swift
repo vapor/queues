@@ -18,7 +18,7 @@ class AnyScheduledJob {
     let job: ScheduledJob
     let scheduler: ScheduleBuilder
     
-    init(job: ScheduledJob, scheduler: ScheduleBuilder) {
+    init(job: any ScheduledJob, scheduler: ScheduleBuilder) {
         self.job = job
         self.scheduler = scheduler
     }

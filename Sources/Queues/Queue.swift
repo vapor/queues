@@ -31,7 +31,7 @@ public protocol Queue {
 
 extension Queue {
     /// The EventLoop for a job queue
-    public var eventLoop: EventLoop {
+    public var eventLoop: any EventLoop {
         self.context.eventLoop
     }
     
