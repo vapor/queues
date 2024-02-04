@@ -1,13 +1,9 @@
 import Atomics
 import Queues
-import Vapor
-import Foundation
 import XCTest
 import XCTVapor
 import XCTQueues
-import NIOCore
 import NIOConcurrencyHelpers
-@testable import Vapor
 
 final class QueueTests: XCTestCase {
     func testVaporIntegrationWithInProcessJob() throws {
@@ -15,7 +11,7 @@ final class QueueTests: XCTestCase {
         app.queues.use(.test)
         defer { app.shutdown() }
         
-        let jobSignal = app.eventLoopGroup.next().makePromise(of: String.self)
+        let jobSignal = app.eventLoopGroup.any().makePromise(of: String.self)
         app.queues.add(Foo(promise: jobSignal))
         try app.queues.startInProcessJobs(on: .default)
     
@@ -37,7 +33,7 @@ final class QueueTests: XCTestCase {
         defer { app.shutdown() }
         app.queues.use(.test)
         
-        let promise = app.eventLoopGroup.next().makePromise(of: String.self)
+        let promise = app.eventLoopGroup.any().makePromise(of: String.self)
         app.queues.add(Foo(promise: promise))
         
         app.get("foo") { req in
@@ -69,7 +65,7 @@ final class QueueTests: XCTestCase {
         defer { app.shutdown() }
         app.queues.use(.test)
         
-        let promise = app.eventLoopGroup.next().makePromise(of: String.self)
+        let promise = app.eventLoopGroup.any().makePromise(of: String.self)
         app.queues.add(Foo(promise: promise))
         
         app.get("foo") { req in
@@ -161,8 +157,8 @@ final class QueueTests: XCTestCase {
         app.queues.schedule(FailingScheduledJob()).everySecond()
         try app.queues.startScheduledJobs()
         
-        let promise = app.eventLoopGroup.next().makePromise(of: Void.self)
-        app.eventLoopGroup.next().scheduleTask(in: .seconds(1)) { () -> Void in
+        let promise = app.eventLoopGroup.any().makePromise(of: Void.self)
+        app.eventLoopGroup.any().scheduleTask(in: .seconds(1)) { () -> Void in
             promise.succeed(())
         }
         try promise.futureResult.wait()
@@ -176,7 +172,7 @@ final class QueueTests: XCTestCase {
         let app = Application(.testing, .shared(eventLoopGroup))
         defer { app.shutdown() }
 
-        let count = app.eventLoopGroup.next().makePromise(of: Int.self)
+        let count = app.eventLoopGroup.any().makePromise(of: Int.self)
         app.queues.use(custom: WorkerCountDriver(count: count))
         // Limit worker count to less than 4 threads
         app.queues.configuration.workerCount = 2
@@ -190,7 +186,7 @@ final class QueueTests: XCTestCase {
         defer { app.shutdown() }
         app.queues.use(.test)
 
-        let promise = app.eventLoopGroup.next().makePromise(of: String.self)
+        let promise = app.eventLoopGroup.any().makePromise(of: String.self)
         app.queues.add(Foo(promise: promise))
         app.queues.add(SuccessHook())
         app.queues.add(ErrorHook())
@@ -358,11 +354,11 @@ final class WorkerCountDriver: QueuesDriver {
         self.recordedEventLoops = []
     }
 
-    func makeQueue(with context: QueueContext) -> Queue {
+    func makeQueue(with context: QueueContext) -> any Queue {
         WorkerCountQueue(driver: self, context: context)
     }
 
-    func record(eventLoop: EventLoop) {
+    func record(eventLoop: any EventLoop) {
         self.lock.lock()
         defer { self.lock.unlock() }
         let previousCount = self.recordedEventLoops.count
@@ -439,7 +435,7 @@ struct Foo: Job {
         return context.eventLoop.makeSucceededFuture(())
     }
     
-    func error(_ context: QueueContext, _ error: Error, _ data: Data) -> EventLoopFuture<Void> {
+    func error(_ context: QueueContext, _ error: any Error, _ data: Data) -> EventLoopFuture<Void> {
         self.promise.fail(error)
         return context.eventLoop.makeSucceededFuture(())
     }
@@ -454,7 +450,7 @@ struct Bar: Job {
         return context.eventLoop.makeFailedFuture(Abort(.badRequest))
     }
 
-    func error(_ context: QueueContext, _ error: Error, _ data: Data) -> EventLoopFuture<Void> {
+    func error(_ context: QueueContext, _ error: any Error, _ data: Data) -> EventLoopFuture<Void> {
         return context.eventLoop.makeSucceededFuture(())
     }
 }
@@ -468,7 +464,7 @@ struct Baz: Job {
         return context.eventLoop.makeFailedFuture(Abort(.badRequest))
     }
 
-    func error(_ context: QueueContext, _ error: Error, _ data: Data) -> EventLoopFuture<Void> {
+    func error(_ context: QueueContext, _ error: any Error, _ data: Data) -> EventLoopFuture<Void> {
         return context.eventLoop.makeSucceededFuture(())
     }
 

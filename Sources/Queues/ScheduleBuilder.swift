@@ -447,4 +447,3 @@ public final class ScheduleBuilder {
         self.millisecond = 0
     }
 }
-

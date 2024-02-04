@@ -24,7 +24,7 @@ public protocol Job: AnyJob {
     ///   - payload: The typed payload for the job
     func error(
         _ context: QueueContext,
-        _ error: Error,
+        _ error: any Error,
         _ payload: Payload
     ) -> EventLoopFuture<Void>
 
@@ -64,7 +64,7 @@ extension Job {
     /// See `Job`.`error`
     public func error(
         _ context: QueueContext,
-        _ error: Error,
+        _ error: any Error,
         _ payload: Payload
     ) -> EventLoopFuture<Void> {
         context.eventLoop.makeSucceededFuture(())
@@ -79,7 +79,7 @@ extension Job {
         return nextRetryIn(attempt: attempt)
     }
 
-    public func _error(_ context: QueueContext, id: String, _ error: Error, payload: [UInt8]) -> EventLoopFuture<Void> {
+    public func _error(_ context: QueueContext, id: String, _ error: any Error, payload: [UInt8]) -> EventLoopFuture<Void> {
         var contextCopy = context
         contextCopy.logger[metadataKey: "job_id"] = .string(id)
         do {
@@ -105,6 +105,6 @@ public protocol AnyJob {
     /// The name of the `Job`
     static var name: String { get }
     func _dequeue(_ context: QueueContext, id: String, payload: [UInt8]) -> EventLoopFuture<Void>
-    func _error(_ context: QueueContext, id: String, _ error: Error, payload: [UInt8]) -> EventLoopFuture<Void>
+    func _error(_ context: QueueContext, id: String, _ error: any Error, payload: [UInt8]) -> EventLoopFuture<Void>
     func _nextRetryIn(attempt: Int) -> Int
 }

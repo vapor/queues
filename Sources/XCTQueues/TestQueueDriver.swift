@@ -19,7 +19,7 @@ struct TestQueuesDriver: QueuesDriver {
         self.lock = .init()
     }
 
-    func makeQueue(with context: QueueContext) -> Queue {
+    func makeQueue(with context: QueueContext) -> any Queue {
         TestQueue(lock: self.lock, context: context)
     }
     
