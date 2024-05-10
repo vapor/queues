@@ -11,7 +11,6 @@ extension Application {
     
     /// Represents a `Queues` configuration object
     public struct Queues {
-        
         /// The provider of the `Queues` configuration
         public struct Provider {
             let run: (Application) -> ()
@@ -44,10 +43,8 @@ extension Application {
 
         struct Lifecycle: LifecycleHandler {
             func shutdown(_ application: Application) {
-                application.queues.storage.commands.forEach({$0.shutdown()})
-                if let driver = application.queues.storage.driver {
-                    driver.shutdown()
-                }
+                application.queues.storage.commands.forEach { $0.shutdown() }
+                application.queues.storage.driver?.shutdown()
             }
             
             func shutdownAsync(_ application: Application) async {
@@ -60,18 +57,18 @@ extension Application {
             }
         }
 
-        /// The `QueuesConfiguration` object
+        /// The ``QueuesConfiguration`` object.
         public var configuration: QueuesConfiguration {
             get { self.storage.configuration }
             nonmutating set { self.storage.configuration = newValue }
         }
 
-        /// Returns the default `Queue`
+        /// Returns the default ``Queue``.
         public var queue: any Queue {
             self.queue(.default)
         }
 
-        /// The selected `QueuesDriver`
+        /// The selected ``QueuesDriver``.
         public var driver: any QueuesDriver {
             guard let driver = self.storage.driver else {
                 fatalError("No Queues driver configured. Configure with app.queues.use(...)")
@@ -88,7 +85,8 @@ extension Application {
 
         public let application: Application
 
-        /// Returns a `JobsQueue`
+        /// Return a ``Queue``.
+        ///
         /// - Parameters:
         ///   - name: The name of the queue
         ///   - logger: A logger object
@@ -98,7 +96,7 @@ extension Application {
             logger: Logger? = nil,
             on eventLoop: (any EventLoop)? = nil
         ) -> any Queue {
-            return self.driver.makeQueue(
+            self.driver.makeQueue(
                 with: .init(
                     queueName: name,
                     configuration: self.configuration,
@@ -109,25 +107,29 @@ extension Application {
             )
         }
         
-        /// Adds a new queued job
-        /// - Parameter job: The job to add
-        public func add<J>(_ job: J) where J: Job {
+        /// Add a new queued job.
+        ///
+        /// - Parameter job: The job to add.
+        public func add(_ job: some Job) {
             self.configuration.add(job)
         }
 
-        /// Adds a new notification hook
-        /// - Parameter hook: The hook object to add
-        public func add<N>(_ hook: N) where N: JobEventDelegate {
+        /// Add a new notification hook.
+        ///
+        /// - Parameter hook: The hook to add.
+        public func add(_ hook: some JobEventDelegate) {
             self.configuration.add(hook)
         }
 
-        /// Choose which provider to use
-        /// - Parameter provider: The provider
+        /// Choose which provider to use.
+        ///
+        /// - Parameter provider: The provider.
         public func use(_ provider: Provider) {
             provider.run(self.application)
         }
 
-        /// Choose which driver to use
+        /// Configure a driver.
+        ///
         /// - Parameter driver: The driver
         public func use(custom driver: any QueuesDriver) {
             self.storage.driver = driver
@@ -143,7 +145,8 @@ extension Application {
             return builder
         }
 
-        /// Starts an in-process worker to dequeue and run jobs
+        /// Starts an in-process worker to dequeue and run jobs.
+        ///
         /// - Parameter queue: The queue to run the jobs on. Defaults to `default`
         public func startInProcessJobs(on queue: QueueName = .default) throws {
             let inProcessJobs = QueuesCommand(application: application, scheduled: false)
@@ -151,7 +154,7 @@ extension Application {
             self.storage.add(command: inProcessJobs)
         }
         
-        /// Starts an in-process worker to run scheduled jobs
+        /// Starts an in-process worker to run scheduled jobs.
         public func startScheduledJobs() throws {
             let scheduledJobs = QueuesCommand(application: application, scheduled: true)
             try scheduledJobs.startScheduledJobs()
@@ -160,7 +163,7 @@ extension Application {
         
         func initialize() {
             self.application.lifecycle.use(Lifecycle())
-            self.application.storage[Key.self] = .init(application)
+            self.application.storage[Key.self] = .init(self.application)
         }
     }
 }

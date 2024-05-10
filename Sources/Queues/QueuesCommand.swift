@@ -4,20 +4,15 @@ import Vapor
 import NIOConcurrencyHelpers
 import NIOCore
 import Atomics
-#if os(Linux)
-import Glibc
-#else
-import Darwin.C
-#endif
 
 /// The command to start the Queue job
 public final class QueuesCommand: Command, @unchecked Sendable {
-    /// See `Command.signature`
+    // See `Command.signature`.
     public let signature = Signature()
     
-    /// See `Command.Signature`
+    // See `Command.Signature`.
     public struct Signature: CommandSignature {
-        public init() { }
+        public init() {}
         
         @Option(name: "queue", help: "Specifies a single queue to run")
         var queue: String?
@@ -26,10 +21,8 @@ public final class QueuesCommand: Command, @unchecked Sendable {
         var scheduled: Bool
     }
     
-    /// See `Command.help`
-    public var help: String {
-        return "Starts the Vapor Queues worker"
-    }
+    // See `Command.help`.
+    public var help: String { "Starts the Vapor Queues worker" }
     
     private let application: Application
     private var jobTasks: [RepeatedTask]
@@ -44,7 +37,11 @@ public final class QueuesCommand: Command, @unchecked Sendable {
         self.application.eventLoopGroup
     }
 
-    /// Create a new `QueueCommand`
+    /// Create a new ``QueuesCommand``.
+    /// 
+    /// - Parameters:
+    ///   - application: The active Vapor `Application`.
+    ///   - scheduled: This parameter is a historical artifact and has no effect.
     public init(application: Application, scheduled: Bool = false) {
         self.application = application
         self.jobTasks = []
@@ -55,12 +52,9 @@ public final class QueuesCommand: Command, @unchecked Sendable {
         self.lock = .init()
     }
     
-    /// Runs the command
-    /// - Parameters:
-    ///   - context: A `CommandContext` for the command to run on
-    ///   - signature: The signature of the command
+    // See `Command.run(using:signature:)`.
     public func run(using context: CommandContext, signature: QueuesCommand.Signature) throws {
-        self.application.logger.trace("Begginning the run function")
+        self.application.logger.trace("Entering QueuesCommand.run()")
 
         // shutdown future
         let promise = self.application.eventLoopGroup.next().makePromise(of: Void.self)
@@ -85,8 +79,8 @@ public final class QueuesCommand: Command, @unchecked Sendable {
             self.application.logger.info("Starting scheduled jobs worker")
             try self.startScheduledJobs()
         } else {
-            let queue: QueueName = signature.queue
-                .flatMap { .init(string: $0) } ?? .default
+            let queue: QueueName = signature.queue.map { .init(string: $0) } ?? .default
+            
             self.application.logger.info("Starting jobs worker", metadata: ["queue": .string(queue.string)])
             try self.startJobs(on: queue)
         }
