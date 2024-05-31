@@ -208,6 +208,32 @@ public final class QueuesCommand: Command {
         }
     }
     
+    public func asyncShutdown() async {
+        self.lock.lock()
+
+        self.isShuttingDown.store(true, ordering: .relaxed)
+        self.didShutdown = true
+        
+        // stop running in case shutting downf rom signal
+        self.application.running?.stop()
+        
+        // clear signal sources
+        self.signalSources.forEach { $0.cancel() } // clear refs
+        self.signalSources = []
+        
+        // Release the lock before we start any suspensions
+        self.lock.unlock()
+        
+        // stop all job queue workers
+        for jobTask in self.jobTasks {
+            await jobTask.asyncCancel(on: self.eventLoopGroup.any())
+        }
+        // stop all scheduled jobs
+        for scheduledTask in self.scheduledTasks.values {
+            await scheduledTask.task.asyncCancel(on: self.eventLoopGroup.any())
+        }
+    }
+    
     deinit {
         assert(self.didShutdown, "JobsCommand did not shutdown before deinit")
     }

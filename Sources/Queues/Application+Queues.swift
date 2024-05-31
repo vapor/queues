@@ -49,6 +49,15 @@ extension Application {
                     driver.shutdown()
                 }
             }
+            
+            func shutdownAsync(_ application: Application) async {
+                for command in application.queues.storage.commands {
+                    await command.asyncShutdown()
+                }
+                if let driver = application.queues.storage.driver {
+                    await driver.asyncShutdown()
+                }
+            }
         }
 
         /// The `QueuesConfiguration` object
