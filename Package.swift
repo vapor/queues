@@ -1,4 +1,4 @@
-// swift-tools-version:5.6
+// swift-tools-version:5.8
 import PackageDescription
 
 let package = Package(
@@ -14,7 +14,7 @@ let package = Package(
         .library(name: "XCTQueues", targets: ["XCTQueues"])
     ],
     dependencies: [
-        .package(url: "https://github.com/vapor/vapor.git", from: "4.76.2"),
+        .package(url: "https://github.com/vapor/vapor.git", from: "4.101.1"),
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.53.0"),
     ],
     targets: [
