@@ -51,7 +51,9 @@ extension Application {
             }
             
             func shutdownAsync(_ application: Application) async {
-                application.queues.storage.commands.forEach({$0.shutdown()})
+                for command in application.queues.storage.commands {
+                    await command.asyncShutdown()
+                }
                 if let driver = application.queues.storage.driver {
                     await driver.asyncShutdown()
                 }
