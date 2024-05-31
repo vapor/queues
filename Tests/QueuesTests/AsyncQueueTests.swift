@@ -9,9 +9,17 @@ import NIOCore
 import NIOConcurrencyHelpers
 
 final class AsyncQueueTests: XCTestCase {
-    func testAsyncJob() throws {
-        let app = Application(.testing)
-        defer { app.shutdown() }
+    var app: Application!
+    
+    override func setUp() async throws {
+        app = try await Application.make(.testing)
+    }
+    
+    override func tearDown() async throws {
+        try await app.asyncShutdown()
+    }
+    
+    func testAsyncJob() async throws {
         app.queues.use(.test)
         
         let promise = app.eventLoopGroup.any().makePromise(of: Void.self)
@@ -22,7 +30,7 @@ final class AsyncQueueTests: XCTestCase {
                 .map { _ in "done" }
         }
         
-        try app.testable().test(.GET, "foo") { res in
+        try await app.testable().test(.GET, "foo") { res async in
             XCTAssertEqual(res.status, .ok)
             XCTAssertEqual(res.body.string, "done")
         }
@@ -34,7 +42,7 @@ final class AsyncQueueTests: XCTestCase {
         XCTAssertNotNil(job)
         XCTAssertEqual(job!.foo, "bar")
         
-        try app.queues.queue.worker.run().wait()
+        try await app.queues.queue.worker.run().get()
         XCTAssertEqual(app.queues.test.queue.count, 0)
         XCTAssertEqual(app.queues.test.jobs.count, 0)
         
