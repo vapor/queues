@@ -99,6 +99,31 @@ extension Queue {
             }.flatten(on: self.eventLoop).flatMapError { error in
                 self.logger.error("Could not send dispatched notification: \(error)")
                 return self.eventLoop.future()
+
+extension Queue {
+    func sendNotification(
+        of kind: String, logger: Logger,
+        _ notification: @escaping @Sendable (_ hook: any JobEventDelegate) -> EventLoopFuture<Void>
+    ) -> EventLoopFuture<Void> {
+        logger.trace("Sending notification", metadata: ["kind": "\(kind)"])
+        return self.configuration.notificationHooks.map {
+            notification($0).flatMapErrorWithEventLoop { error, eventLoop in
+                logger.warning("Failed to send notification", metadata: ["kind": "\(kind)", "error": "\(error)"])
+                return eventLoop.makeSucceededVoidFuture()
+            }
+        }.flatten(on: self.eventLoop)
+    }
+
+    func sendNotification(
+        of kind: String, logger: Logger,
+        _ notification: @escaping @Sendable (_ hook: any JobEventDelegate) async throws -> Void
+    ) async {
+        logger.trace("Sending notification", metadata: ["kind": "\(kind)"])
+        for hook in self.configuration.notificationHooks {
+            do {
+                try await notification(hook)
+            } catch {
+                logger.warning("Failed to send notification", metadata: ["kind": "\(kind)", "error": "\(error)"])
             }
         }
     }
