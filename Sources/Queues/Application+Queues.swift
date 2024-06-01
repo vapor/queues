@@ -4,14 +4,14 @@ import Vapor
 import NIO
 
 extension Application {
-    /// The `Queues` object
+    /// The application-global ``Queues`` accessor.
     public var queues: Queues {
         .init(application: self)
     }
     
-    /// Represents a `Queues` configuration object
+    /// Contains global configuration for queues and provides methods for registering jobs and retrieving queues.
     public struct Queues {
-        /// The provider of the `Queues` configuration
+        /// A provider for a ``Queues`` driver.
         public struct Provider {
             let run: @Sendable (Application) -> ()
 
@@ -22,7 +22,7 @@ extension Application {
 
         final class Storage: @unchecked Sendable {
             public var configuration: QueuesConfiguration
-            private (set) var commands: [QueuesCommand]
+            private(set) var commands: [QueuesCommand]
             var driver: (any QueuesDriver)?
 
             public init(_ application: Application) {
@@ -60,11 +60,6 @@ extension Application {
             nonmutating set { self.storage.configuration = newValue }
         }
 
-        /// Returns the default ``Queue``.
-        public var queue: any Queue {
-            self.queue(.default)
-        }
-
         /// The selected ``QueuesDriver``.
         public var driver: any QueuesDriver {
             guard let driver = self.storage.driver else {
@@ -82,7 +77,12 @@ extension Application {
 
         public let application: Application
 
-        /// Return a ``Queue``.
+        /// Get the default ``Queue``.
+        public var queue: any Queue {
+            self.queue(.default)
+        }
+
+        /// Create or look up an instance of a named ``Queue``.
         ///
         /// - Parameters:
         ///   - name: The name of the queue
@@ -93,18 +93,18 @@ extension Application {
             logger: Logger? = nil,
             on eventLoop: (any EventLoop)? = nil
         ) -> any Queue {
-            self.driver.makeQueue(
-                with: .init(
-                    queueName: name,
-                    configuration: self.configuration,
-                    application: self.application,
-                    logger: logger ?? self.application.logger,
-                    on: eventLoop ?? self.application.eventLoopGroup.next()
-                )
-            )
+            self.driver.makeQueue(with: .init(
+                queueName: name,
+                configuration: self.configuration,
+                application: self.application,
+                logger: logger ?? self.application.logger,
+                on: eventLoop ?? self.application.eventLoopGroup.any()
+            ))
         }
         
-        /// Add a new queued job.
+        /// Add a new queueable job.
+        ///
+        /// This must be called once for each job type that can be queued.
         ///
         /// - Parameter job: The job to add.
         public func add(_ job: some Job) {
@@ -132,19 +132,16 @@ extension Application {
             self.storage.driver = driver
         }
 
-        /// Schedule a new job
-        /// - Parameter job: The job to schedule
-        public func schedule<J>(_ job: J) -> ScheduleBuilder
-            where J: ScheduledJob
-        {
-            let builder = ScheduleBuilder()
-            _ = self.storage.configuration.schedule(job, builder: builder)
-            return builder
+        /// Schedule a new job.
+        ///
+        /// - Parameter job: The job to schedule.
+        public func schedule(_ job: some ScheduledJob) -> ScheduleBuilder {
+            self.storage.configuration.schedule(job)
         }
 
         /// Starts an in-process worker to dequeue and run jobs.
         ///
-        /// - Parameter queue: The queue to run the jobs on. Defaults to `default`
+        /// - Parameter queue: The queue to run the jobs on. Defaults to ``QueueName/default``.
         public func startInProcessJobs(on queue: QueueName = .default) throws {
             let inProcessJobs = QueuesCommand(application: self.application)
             

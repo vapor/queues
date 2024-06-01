@@ -29,38 +29,29 @@ extension Application.Queues {
         public var jobs: [JobIdentifier: JobData] = [:]
         public var queue: [JobIdentifier] = []
 
-        /// Returns all jobs in the queue of the specific `J` type.
-        public func all<J>(_ job: J.Type) -> [J.Payload]
-            where J: Job
-        {
-            let filteredJobIds = jobs.filter { $1.jobName == J.name }.map { $0.0 }
+        /// Returns the payloads of all jobs in the queue having type `J`.
+        public func all<J: Job>(_ job: J.Type) -> [J.Payload] {
+            let filteredJobIds = self.jobs.filter { $1.jobName == J.name }.map { $0.0 }
 
-            return queue
+            return self.queue
                 .filter { filteredJobIds.contains($0) }
                 .compactMap { jobs[$0] }
                 .compactMap { try? J.parsePayload($0.payload) }
         }
 
-        /// Returns the first job in the queue of the specific `J` type.
-        public func first<J>(_ job: J.Type) -> J.Payload?
-            where J: Job
-        {
+        /// Returns the payload of the first job in the queue having type `J`.
+        public func first<J: Job>(_ job: J.Type) -> J.Payload? {
             let filteredJobIds = jobs.filter { $1.jobName == J.name }.map { $0.0 }
-            guard
-                let queueJob = queue.first(where: { filteredJobIds.contains($0) }),
-                let jobData = jobs[queueJob]
-                else {
-                    return nil
-            }
             
+            guard let queueJob = self.queue.first(where: { filteredJobIds.contains($0) }), let jobData = self.jobs[queueJob] else {
+                return nil
+            }
             return try? J.parsePayload(jobData.payload)
         }
         
         /// Checks whether a job of type `J` was dispatched to queue
-        public func contains<J>(_ job: J.Type) -> Bool
-            where J: Job
-        {
-            return first(job) != nil
+        public func contains<J: Job>(_ job: J.Type) -> Bool {
+            self.first(job) != nil
         }
     }
     

@@ -9,59 +9,69 @@ public protocol Job: AnyJob {
     associatedtype Payload: Sendable
     
     /// Called when it's this Job's turn to be dequeued.
+    ///
     /// - Parameters:
-    ///   - context: The JobContext. Can be used to store and retrieve services
-    ///   - payload: The data for this handler
+    ///   - context: The ``QueueContext``.
+    ///   - payload: The typed job payload.
     func dequeue(
         _ context: QueueContext,
         _ payload: Payload
     ) -> EventLoopFuture<Void>
     
     /// Called when there is an error at any stage of the Job's execution.
+    ///
     /// - Parameters:
-    ///   - context: The JobContext. Can be used to store and retrieve services
+    ///   - context: The ``QueueContext``.
     ///   - error: The error returned by the job.
-    ///   - payload: The typed payload for the job
+    ///   - payload: The typed job payload.
     func error(
         _ context: QueueContext,
         _ error: any Error,
         _ payload: Payload
     ) -> EventLoopFuture<Void>
 
-    /// Called when there was an error and job will be retired.
+    /// Called when there was an error and the job will be retried.
     ///
-    /// - Parameters:
-    ///     - attempt: Number of job attempts which failed
-    /// - Returns: Number of seconds for which next retry will be delayed.
-    ///   Return `-1` if you want to retry job immediately without putting it back to the queue.
+    /// - Parameter attempt: Number of job attempts which have failed so far.
+    /// - Returns: Number of seconds to delay the next retry. Return `-1` to retry immediately without returning the
+    ///   job to the queue first. Return `0` to place the job back on the queue with no delay added. If this method
+    ///   is not implemented, the default is `0`.
     func nextRetryIn(attempt: Int) -> Int
     
+    /// Serialize a typed payload to an array of bytes. When `Payload` is `Codable`, this method will default to
+    /// encoding to JSON.
+    ///
+    /// - Parameter payload: The payload to serialize.
+    /// - Returns: The array of serialized bytes.
     static func serializePayload(_ payload: Payload) throws -> [UInt8]
+    
+    /// Deserialize an array of bytes into a typed payload. When `Payload` is `Codable`, this method will default to
+    /// decoding from JSON.
+    ///
+    /// - Parameter bytes: The serialized bytes to decode.
+    /// - Returns: A decoded payload.
     static func parsePayload(_ bytes: [UInt8]) throws -> Payload
 }
 
-extension Job where Payload: Codable {
-    
-    /// Serialize a payload into Data
-    /// - Parameter payload: The payload
+extension Job where Payload: Codable {    
+    /// Default implementation for ``Job/serializePayload(_:)-4uro2``.
     public static func serializePayload(_ payload: Payload) throws -> [UInt8] {
         try .init(JSONEncoder().encode(payload))
     }
     
-    /// Parse bytes into the payload
-    /// - Parameter bytes: The Payload
+    /// Default implementation for ``Job/parsePayload(_:)-9tn3a``.
     public static func parsePayload(_ bytes: [UInt8]) throws -> Payload {
         try JSONDecoder().decode(Payload.self, from: .init(bytes))
     }
 }
 
 extension Job {
-    /// The jobName of the Job
+    /// Default implementation for ``AnyJob/name``.
     public static var name: String {
-        return String(describing: Self.self)
+        String(describing: Self.self)
     }
     
-    /// See `Job`.`error`
+    /// Default implementation for ``Job/error(_:_:_:)-jzgw``.
     public func error(
         _ context: QueueContext,
         _ error: any Error,
@@ -70,15 +80,35 @@ extension Job {
         context.eventLoop.makeSucceededVoidFuture()
     }
 
-    /// See `Job`.`nextRetryIn`
+    /// Default implementation for ``Job/nextRetryIn(attempt:)-5gc93``.
     public func nextRetryIn(attempt: Int) -> Int {
-        return -1
+        0
     }
+}
 
+/// A type-erased version of ``Job``.
+public protocol AnyJob: Sendable {
+    /// The name of the job.
+    static var name: String { get }
+
+    /// Perform ``Job/dequeue(_:_:)`` after deserializing the raw payload bytes.
+    func _dequeue(_ context: QueueContext, id: String, payload: [UInt8]) -> EventLoopFuture<Void>
+    
+    /// Perform ``Job/error(_:_:_:)-2brrj`` after deserializing the raw payload bytes.
+    func _error(_ context: QueueContext, id: String, _ error: any Error, payload: [UInt8]) -> EventLoopFuture<Void>
+    
+    /// Type-erased accessor for ``Job/nextRetryIn(attempt:)-5gc93``.
+    func _nextRetryIn(attempt: Int) -> Int
+}
+
+// N.B. These should really not be public.
+extension Job/*: AnyJob*/ {
+    // See `AnyJob._nextRetryIn(attempt:)`.
     public func _nextRetryIn(attempt: Int) -> Int {
-        return nextRetryIn(attempt: attempt)
+        self.nextRetryIn(attempt: attempt)
     }
 
+    // See `AnyJob._error(_:id:_:payload:)`.
     public func _error(_ context: QueueContext, id: String, _ error: any Error, payload: [UInt8]) -> EventLoopFuture<Void> {
         var context = context
         context.logger[metadataKey: "queue"] = "\(context.queueName.string)"
@@ -90,6 +120,7 @@ extension Job {
         }
     }
     
+    // See `AnyJob._dequeue(_:id:payload:)`.
     public func _dequeue(_ context: QueueContext, id: String, payload: [UInt8]) -> EventLoopFuture<Void> {
         var context = context
         context.logger[metadataKey: "queue"] = "\(context.queueName.string)"
@@ -102,11 +133,3 @@ extension Job {
     }
 }
 
-/// A type-erased version of `Job`
-public protocol AnyJob: Sendable {
-    /// The name of the `Job`
-    static var name: String { get }
-    func _dequeue(_ context: QueueContext, id: String, payload: [UInt8]) -> EventLoopFuture<Void>
-    func _error(_ context: QueueContext, id: String, _ error: any Error, payload: [UInt8]) -> EventLoopFuture<Void>
-    func _nextRetryIn(attempt: Int) -> Int
-}

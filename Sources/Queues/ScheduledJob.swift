@@ -5,8 +5,10 @@ import Logging
 /// Describes a job that can be scheduled and repeated
 public protocol ScheduledJob: Sendable {
     var name: String { get }
-    /// The method called when the job is run
-    /// - Parameter context: A `JobContext` that can be used
+    
+    /// The method called when the job is run.
+    ///
+    /// - Parameter context: The ``QueueContext``.
     func run(context: QueueContext) -> EventLoopFuture<Void>
 }
 

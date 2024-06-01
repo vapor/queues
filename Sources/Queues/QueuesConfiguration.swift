@@ -74,7 +74,7 @@ public struct QueuesConfiguration: Sendable {
         set { self.dataBox.withLockedValue { $0.notificationHooks = newValue } }
     }
     
-    /// Creates an empty `JobsConfig`
+    /// Creates an empty ``QueuesConfiguration``.
     public init(
         refreshInterval: TimeAmount = .seconds(1),
         persistenceKey: String = "vapor_queues",
@@ -87,20 +87,18 @@ public struct QueuesConfiguration: Sendable {
         self.workerCount = workerCount
     }
     
-    /// Adds a new `Job` to the queue configuration.
-    /// This must be called on all `Job` objects before they can be run in a queue.
+    /// Adds a new ``Job`` to the queue configuration.
     ///
-    /// - Parameter job: The `Job` to add.
-    mutating public func add<J>(_ job: J)
-        where J: Job
-    {
+    /// This must be called on all ``Job`` objects before they can be run in a queue.
+    ///
+    /// - Parameter job: The ``Job`` to add.
+    mutating public func add<J: Job>(_ job: J) {
         self.logger.trace("Adding job type", metadata: ["name": "\(J.name)"])
         if let existing = self.jobs[J.name] {
             self.logger.warning("Job type is already registered", metadata: ["name": "\(J.name)", "existing": "\(existing)"])
         }
         self.jobs[J.name] = job
     }
-    
     
     /// Schedules a new job for execution at a later date.
     ///
@@ -110,21 +108,20 @@ public struct QueuesConfiguration: Sendable {
     ///     .on(23)
     ///     .at(.noon)
     ///
-    /// - Parameter job: The `ScheduledJob` to be scheduled.
-    mutating internal func schedule<J>(_ job: J, builder: ScheduleBuilder = ScheduleBuilder()) -> ScheduleBuilder
-        where J: ScheduledJob
-    {
-        let storage = AnyScheduledJob(job: job, scheduler: builder)
-        self.scheduledJobs.append(storage)
+    /// - Parameters:
+    ///   - job: The ``ScheduledJob`` to schedule.
+    ///   - builder: A ``ScheduleBuilder`` to use for scheduling.
+    /// - Returns: The passed-in ``ScheduleBuilder``.
+    mutating func schedule(_ job: some ScheduledJob, builder: ScheduleBuilder = .init()) -> ScheduleBuilder {
         self.logger.trace("Scheduling job", metadata: ["job-name": "\(job.name)"])
+        self.scheduledJobs.append(AnyScheduledJob(job: job, scheduler: builder))
         return builder
     }
 
     /// Adds a notification hook that can receive status updates about jobs
-    /// - Parameter hook: The `NotificationHook` object
-    mutating public func add<N>(_ hook: N)
-        where N: JobEventDelegate
-    {
+    ///
+    /// - Parameter hook: A ``JobEventDelegate`` to register.
+    mutating public func add(_ hook: some JobEventDelegate) {
         self.logger.trace("Adding notification hook")
         self.notificationHooks.append(hook)
     }
