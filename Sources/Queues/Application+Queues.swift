@@ -146,14 +146,16 @@ extension Application {
         ///
         /// - Parameter queue: The queue to run the jobs on. Defaults to `default`
         public func startInProcessJobs(on queue: QueueName = .default) throws {
-            let inProcessJobs = QueuesCommand(application: application, scheduled: false)
+            let inProcessJobs = QueuesCommand(application: self.application)
+            
             try inProcessJobs.startJobs(on: queue)
             self.storage.add(command: inProcessJobs)
         }
         
         /// Starts an in-process worker to run scheduled jobs.
         public func startScheduledJobs() throws {
-            let scheduledJobs = QueuesCommand(application: application, scheduled: true)
+            let scheduledJobs = QueuesCommand(application: self.application)
+            
             try scheduledJobs.startScheduledJobs()
             self.storage.add(command: scheduledJobs)
         }

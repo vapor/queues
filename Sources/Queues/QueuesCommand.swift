@@ -54,13 +54,17 @@ public final class QueuesCommand: AsyncCommand, @unchecked Sendable {
         // setup signal sources for shutdown
         let signalQueue = DispatchQueue(label: "codes.vapor.jobs.command")
         func makeSignalSource(_ code: Int32) {
+            #if canImport(Darwin)
+            /// https://github.com/swift-server/swift-service-lifecycle/blob/main/Sources/UnixSignals/UnixSignalsSequence.swift#L77-L82
+            signal(code, SIG_IGN)
+            #endif
+            
             let source = DispatchSource.makeSignalSource(signal: code, queue: signalQueue)
             source.setEventHandler {
                 print() // clear ^C
                 promise.succeed(())
             }
             source.resume()
-            signal(code, SIG_IGN)
             self.box.withLockedValue { $0.signalSources.append(source) }
         }
         makeSignalSource(SIGTERM)
@@ -78,47 +82,45 @@ public final class QueuesCommand: AsyncCommand, @unchecked Sendable {
     }
     
     /// Starts an in-process jobs worker for queued tasks
+    ///
     /// - Parameter queueName: The queue to run the jobs on
     public func startJobs(on queueName: QueueName) throws {
         let workerCount: Int
         switch self.application.queues.configuration.workerCount {
         case .default:
-            var count = 0
-            for _ in self.eventLoopGroup.makeIterator() {
-                count += 1
-            }
-            workerCount = count
-            self.application.logger.trace("Default workerCount, setting to \(workerCount)")
+            workerCount = self.application.eventLoopGroup.makeIterator().reduce(0, { n, _ in n + 1 })
+            self.application.logger.trace("Using default worker count", metadata: ["workerCount": "\(workerCount)"])
         case .custom(let custom):
             workerCount = custom
-            self.application.logger.trace("Custom workerCount, setting to \(workerCount)")
+            self.application.logger.trace("Using custom worker count", metadata: ["workerCount": "\(workerCount)"])
         }
-        for i in 0..<workerCount {
-            self.application.logger.trace("Booting worker: \(i)")
-            let eventLoop = self.eventLoopGroup.next()
+
+        var tasks: [RepeatedTask] = []
+        for eventLoop in self.application.eventLoopGroup.makeIterator().prefix(workerCount) {
+            self.application.logger.trace("Booting worker")
+
             let worker = self.application.queues.queue(queueName, on: eventLoop).worker
             let task = eventLoop.scheduleRepeatedAsyncTask(
-                initialDelay: .seconds(0),
+                initialDelay: .zero,
                 delay: worker.queue.configuration.refreshInterval
             ) { task in
-                self.application.logger.trace("Running refresh task")
-
-                // run task
+                worker.queue.logger.trace("Running refresh task")
                 return worker.run().map {
-                    self.application.logger.trace("Worker ran the task successfully")
-                    //Check if shutting down
-                    if self.isShuttingDown.load(ordering: .relaxed) {
-                        self.application.logger.trace("Shutting down, cancelling the task")
+                    worker.queue.logger.trace("Worker ran the task successfully")
+                }.recover { error in
+                    worker.queue.logger.error("Job run failed", metadata: ["error": "\(error)"])
+                }.map {
+                    if self.box.withLockedValue({ $0.didShutdown }) {
+                        worker.queue.logger.trace("Shutting down, cancelling the task")
                         task.cancel()
                     }
-                }.recover { error in
-                    worker.queue.logger.error("Job run failed: \(error)")
                 }
             }
-            self.jobTasks.append(task)
+            tasks.append(task)
         }
 
-        self.application.logger.trace("Finished adding jobTasks, total count: \(jobTasks.count)")
+        self.box.withLockedValue { $0.jobTasks = tasks }
+        self.application.logger.trace("Finished adding jobTasks, total count: \(tasks.count)")
     }
     
     /// Starts the scheduled jobs in-process
@@ -132,38 +134,43 @@ public final class QueuesCommand: AsyncCommand, @unchecked Sendable {
 
         self.application.logger.trace("Beginning the scheduling process")
         self.application.queues.configuration.scheduledJobs.forEach {
-            self.application.logger.trace("Scheduling \($0.job.name)")
+            self.application.logger.trace("Scheduling job", metadata: ["name": "\($0.job.name)"])
             self.schedule($0)
         }
     }
     
     private func schedule(_ job: AnyScheduledJob) {
-        if self.isShuttingDown.load(ordering: .relaxed) {
-            self.application.logger.trace("Application is shutting down, cancelling scheduling \(job.job.name)")
-            return
-        }
+        self.box.withLockedValue { box in
+            if box.didShutdown {
+                self.application.logger.trace("Application is shutting down, not scheduling job", metadata: ["name": "\(job.job.name)"])
+                return
+            }
 
-        self.lock.lock()
-        defer { self.lock.unlock() }
-        
-        let context = QueueContext(
-            queueName: QueueName(string: "scheduled"),
-            configuration: self.application.queues.configuration,
-            application: self.application,
-            logger: self.application.logger,
-            on: self.eventLoopGroup.next()
-        )
-        
-        if let task = job.schedule(context: context) {
-            self.application.logger.trace("Job \(job.job.name) was scheduled successfully")
-            self.scheduledTasks[job.job.name] = task
+            let context = QueueContext(
+                queueName: QueueName(string: "scheduled"),
+                configuration: self.application.queues.configuration,
+                application: self.application,
+                logger: self.application.logger,
+                on: self.application.eventLoopGroup.any()
+            )
+            
+            guard let task = job.schedule(context: context) else {
+                return
+            }
+
+            self.application.logger.trace("Job was scheduled successfully", metadata: ["name": "\(job.job.name)"])
+            box.scheduledTasks[job.job.name] = task
+
             task.done.whenComplete { result in
                 switch result {
                 case .failure(let error):
-                    context.logger.error("\(job.job.name) failed: \(error)")
+                    context.logger.error("Scheduled job failed", metadata: ["name": "\(job.job.name)", "error": "\(error)"])
                 case .success: break
                 }
-                self.schedule(job)
+                // Explicitly spin the event loop so we don't deadlock on a reentrant call to this method.
+                context.eventLoop.execute {
+                    self.schedule(job)
+                }
             }
         }
     }
