@@ -80,20 +80,22 @@ extension Job {
     }
 
     public func _error(_ context: QueueContext, id: String, _ error: any Error, payload: [UInt8]) -> EventLoopFuture<Void> {
-        var contextCopy = context
-        contextCopy.logger[metadataKey: "job_id"] = .string(id)
+        var context = context
+        context.logger[metadataKey: "queue"] = "\(context.queueName.string)"
+        context.logger[metadataKey: "job_id"] = "\(id)"
         do {
-            return try self.error(contextCopy, error, Self.parsePayload(payload))
+            return try self.error(context, error, Self.parsePayload(payload))
         } catch {
             return context.eventLoop.makeFailedFuture(error)
         }
     }
     
     public func _dequeue(_ context: QueueContext, id: String, payload: [UInt8]) -> EventLoopFuture<Void> {
-        var contextCopy = context
-        contextCopy.logger[metadataKey: "job_id"] = .string(id)
+        var context = context
+        context.logger[metadataKey: "queue"] = "\(context.queueName.string)"
+        context.logger[metadataKey: "job_id"] = "\(id)"
         do {
-            return try self.dequeue(contextCopy, Self.parsePayload(payload))
+            return try self.dequeue(context, Self.parsePayload(payload))
         } catch {
             return context.eventLoop.makeFailedFuture(error)
         }

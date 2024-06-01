@@ -94,9 +94,9 @@ public struct QueuesConfiguration: Sendable {
     mutating public func add<J>(_ job: J)
         where J: Job
     {
-        self.logger.trace("Adding job type: \(J.name)")
+        self.logger.trace("Adding job type", metadata: ["name": "\(J.name)"])
         if let existing = self.jobs[J.name] {
-            self.logger.warning("A job is already registered with key \(J.name): \(existing)")
+            self.logger.warning("Job type is already registered", metadata: ["name": "\(J.name)", "existing": "\(existing)"])
         }
         self.jobs[J.name] = job
     }
@@ -114,9 +114,9 @@ public struct QueuesConfiguration: Sendable {
     mutating internal func schedule<J>(_ job: J, builder: ScheduleBuilder = ScheduleBuilder()) -> ScheduleBuilder
         where J: ScheduledJob
     {
-        self.logger.trace("Scheduling \(job.name)")
         let storage = AnyScheduledJob(job: job, scheduler: builder)
         self.scheduledJobs.append(storage)
+        self.logger.trace("Scheduling job", metadata: ["job-name": "\(job.name)"])
         return builder
     }
 
