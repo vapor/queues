@@ -31,19 +31,15 @@ public protocol AsyncJob: Job {
 extension AsyncJob {
 
     public func dequeue(_ context: QueueContext, _ payload: Payload) -> EventLoopFuture<Void> {
-        let promise = context.eventLoop.makePromise(of: Void.self)
-        promise.completeWithTask {
+        context.eventLoop.makeFutureWithTask {
             try await self.dequeue(context, payload)
         }
-        return promise.futureResult
     }
     
     public func error(_ context: QueueContext, _ error: any Error, _ payload: Payload) -> EventLoopFuture<Void> {
-        let promise = context.eventLoop.makePromise(of: Void.self)
-        promise.completeWithTask {
+        context.eventLoop.makeFutureWithTask {
             try await self.error(context, error, payload)
         }
-        return promise.futureResult
     }
     
     public func error(_ context: QueueContext, _ error: any Error, _ payload: Payload) async throws {

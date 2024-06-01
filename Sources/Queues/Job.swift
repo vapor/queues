@@ -67,7 +67,7 @@ extension Job {
         _ error: any Error,
         _ payload: Payload
     ) -> EventLoopFuture<Void> {
-        context.eventLoop.makeSucceededFuture(())
+        context.eventLoop.makeSucceededVoidFuture()
     }
 
     /// See `Job`.`nextRetryIn`

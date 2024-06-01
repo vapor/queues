@@ -15,10 +15,8 @@ extension AsyncScheduledJob {
     public var name: String { "\(Self.self)" }
     
     public func run(context: QueueContext) -> EventLoopFuture<Void> {
-        let promise = context.eventLoop.makePromise(of: Void.self)
-        promise.completeWithTask {
+        context.eventLoop.makeFutureWithTask {
             try await self.run(context: context)
         }
-        return promise.futureResult
     }
 }

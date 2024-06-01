@@ -3,7 +3,6 @@ import Foundation
 
 /// Represents an object that can receive notifications about job statuses
 public protocol JobEventDelegate: Sendable {
-
     /// Called when the job is first dispatched
     /// - Parameters:
     ///   - job: The `JobData` associated with the job
@@ -33,19 +32,19 @@ public protocol JobEventDelegate: Sendable {
 
 extension JobEventDelegate {
     public func dispatched(job: JobEventData, eventLoop: any EventLoop) -> EventLoopFuture<Void> {
-        eventLoop.future()
+        eventLoop.makeSucceededVoidFuture()
     }
 
     public func didDequeue(jobId: String, eventLoop: any EventLoop) -> EventLoopFuture<Void> {
-        eventLoop.future()
+        eventLoop.makeSucceededVoidFuture()
     }
 
     public func success(jobId: String, eventLoop: any EventLoop) -> EventLoopFuture<Void> {
-        eventLoop.future()
+        eventLoop.makeSucceededVoidFuture()
     }
 
     public func error(jobId: String, error: any Error, eventLoop: any EventLoop) -> EventLoopFuture<Void> {
-        eventLoop.future()
+        eventLoop.makeSucceededVoidFuture()
     }
 }
 

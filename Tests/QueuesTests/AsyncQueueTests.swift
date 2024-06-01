@@ -52,7 +52,6 @@ struct MyAsyncJob: AsyncJob {
     }
     
     func dequeue(_ context: QueueContext, _ payload: Data) async throws {
-        self.promise.succeed(())
-        return
+        self.promise.succeed()
     }
 }

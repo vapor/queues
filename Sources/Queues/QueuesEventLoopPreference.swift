@@ -15,7 +15,7 @@ public enum QueuesEventLoopPreference {
     public func delegate(for eventLoopGroup: any EventLoopGroup) -> any EventLoop {
         switch self {
         case .indifferent:
-            return eventLoopGroup.next()
+            return eventLoopGroup.any()
         case .delegate(let eventLoop):
             return eventLoop
         }

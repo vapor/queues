@@ -317,7 +317,7 @@ final class DispatchHook: JobEventDelegate, @unchecked Sendable {
 
     func dispatched(job: JobEventData, eventLoop: any EventLoop) -> EventLoopFuture<Void> {
         self.successHit = true
-        return eventLoop.future()
+        return eventLoop.makeSucceededVoidFuture()
     }
 }
 
@@ -326,7 +326,7 @@ final class SuccessHook: JobEventDelegate, @unchecked Sendable {
 
     func success(jobId: String, eventLoop: any EventLoop) -> EventLoopFuture<Void> {
         self.successHit = true
-        return eventLoop.future()
+        return eventLoop.makeSucceededVoidFuture()
     }
 }
 
@@ -335,7 +335,7 @@ final class ErrorHook: JobEventDelegate, @unchecked Sendable {
 
     func error(jobId: String, error: any Error, eventLoop: any EventLoop) -> EventLoopFuture<Void> {
         self.errorCount += 1
-        return eventLoop.future()
+        return eventLoop.makeSucceededVoidFuture()
     }
 }
 
@@ -344,7 +344,7 @@ final class DequeuedHook: JobEventDelegate, @unchecked Sendable {
 
     func didDequeue(jobId: String, eventLoop: any EventLoop) -> EventLoopFuture<Void> {
         self.successHit = true
-        return eventLoop.future()
+        return eventLoop.makeSucceededVoidFuture()
     }
 }
 
@@ -417,13 +417,7 @@ struct TestingScheduledJob: ScheduledJob {
     
     func run(context: QueueContext) -> EventLoopFuture<Void> {
         self.count.wrappingIncrement(ordering: .relaxed)
-        return context.eventLoop.future()
-    }
-}
-
-extension ByteBuffer {
-    var string: String {
-        .init(decoding: self.readableBytesView, as: UTF8.self)
+        return context.eventLoop.makeSucceededVoidFuture()
     }
 }
 
@@ -437,12 +431,12 @@ struct Foo: Job {
     
     func dequeue(_ context: QueueContext, _ data: Data) -> EventLoopFuture<Void> {
         self.promise.succeed(data.foo)
-        return context.eventLoop.makeSucceededFuture(())
+        return context.eventLoop.makeSucceededVoidFuture()
     }
     
     func error(_ context: QueueContext, _ error: any Error, _ data: Data) -> EventLoopFuture<Void> {
         self.promise.fail(error)
-        return context.eventLoop.makeSucceededFuture(())
+        return context.eventLoop.makeSucceededVoidFuture()
     }
 }
 
@@ -456,7 +450,7 @@ struct Bar: Job {
     }
 
     func error(_ context: QueueContext, _ error: any Error, _ data: Data) -> EventLoopFuture<Void> {
-        return context.eventLoop.makeSucceededFuture(())
+        context.eventLoop.makeSucceededVoidFuture()
     }
 }
 
@@ -466,11 +460,11 @@ struct Baz: Job {
     }
 
     func dequeue(_ context: QueueContext, _ data: Data) -> EventLoopFuture<Void> {
-        return context.eventLoop.makeFailedFuture(Abort(.badRequest))
+        context.eventLoop.makeFailedFuture(Abort(.badRequest))
     }
 
     func error(_ context: QueueContext, _ error: any Error, _ data: Data) -> EventLoopFuture<Void> {
-        return context.eventLoop.makeSucceededFuture(())
+        context.eventLoop.makeSucceededVoidFuture()
     }
 
     func nextRetryIn(attempt: Int) -> Int {
