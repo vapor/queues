@@ -6,7 +6,7 @@ import NIOCore
 import Atomics
 
 /// The command to start the Queue job
-public final class QueuesCommand: Command, @unchecked Sendable {
+public final class QueuesCommand: AsyncCommand, @unchecked Sendable {
     // See `Command.signature`.
     public let signature = Signature()
     
@@ -25,18 +25,16 @@ public final class QueuesCommand: Command, @unchecked Sendable {
     public var help: String { "Starts the Vapor Queues worker" }
     
     private let application: Application
-    private var jobTasks: [RepeatedTask]
-    private var scheduledTasks: [String: AnyScheduledJob.Task]
-    private var lock: NIOLock
-    private var signalSources: [any DispatchSourceSignal]
-    private var didShutdown: Bool
     
-    private let isShuttingDown: ManagedAtomic<Bool>
+    private let box: NIOLockedValueBox<Box>
     
-    private var eventLoopGroup: any EventLoopGroup {
-        self.application.eventLoopGroup
+    struct Box {
+        var jobTasks: [RepeatedTask]
+        var scheduledTasks: [String: AnyScheduledJob.Task]
+        var signalSources: [any DispatchSourceSignal]
+        var didShutdown: Bool
     }
-
+    
     /// Create a new ``QueuesCommand``.
     /// 
     /// - Parameters:
@@ -44,20 +42,13 @@ public final class QueuesCommand: Command, @unchecked Sendable {
     ///   - scheduled: This parameter is a historical artifact and has no effect.
     public init(application: Application, scheduled: Bool = false) {
         self.application = application
-        self.jobTasks = []
-        self.scheduledTasks = [:]
-        self.isShuttingDown = .init(false)
-        self.signalSources = []
-        self.didShutdown = false
-        self.lock = .init()
+        self.box = .init(.init(jobTasks: [], scheduledTasks: [:], signalSources: [], didShutdown: false))
     }
     
-    // See `Command.run(using:signature:)`.
-    public func run(using context: CommandContext, signature: QueuesCommand.Signature) throws {
-        self.application.logger.trace("Entering QueuesCommand.run()")
-
+    // See `AsyncCommand.run(using:signature:)`.
+    public func run(using context: CommandContext, signature: QueuesCommand.Signature) async throws {
         // shutdown future
-        let promise = self.application.eventLoopGroup.next().makePromise(of: Void.self)
+        let promise = self.application.eventLoopGroup.any().makePromise(of: Void.self)
         self.application.running = .start(using: promise)
         
         // setup signal sources for shutdown
@@ -69,8 +60,8 @@ public final class QueuesCommand: Command, @unchecked Sendable {
                 promise.succeed(())
             }
             source.resume()
-            self.signalSources.append(source)
             signal(code, SIG_IGN)
+            self.box.withLockedValue { $0.signalSources.append(source) }
         }
         makeSignalSource(SIGTERM)
         makeSignalSource(SIGINT)
@@ -179,56 +170,53 @@ public final class QueuesCommand: Command, @unchecked Sendable {
     
     /// Shuts down the jobs worker
     public func shutdown() {
-        self.lock.lock()
-        defer { self.lock.unlock() }
-
-        self.isShuttingDown.store(true, ordering: .relaxed)
-        self.didShutdown = true
+        self.box.withLockedValue { box in
+            box.didShutdown = true
         
-        // stop running in case shutting downf rom signal
-        self.application.running?.stop()
+            // stop running in case shutting downf rom signal
+            self.application.running?.stop()
         
-        // clear signal sources
-        self.signalSources.forEach { $0.cancel() } // clear refs
-        self.signalSources = []
+            // clear signal sources
+            box.signalSources.forEach { $0.cancel() } // clear refs
+            box.signalSources = []
         
-        // stop all job queue workers
-        self.jobTasks.forEach {
-            $0.syncCancel(on: self.eventLoopGroup.next())
-        }
-        // stop all scheduled jobs
-        self.scheduledTasks.values.forEach {
-            $0.task.syncCancel(on: self.eventLoopGroup.next())
+            // stop all job queue workers
+            box.jobTasks.forEach {
+                $0.syncCancel(on: self.application.eventLoopGroup.any())
+            }
+            // stop all scheduled jobs
+            box.scheduledTasks.values.forEach {
+                $0.task.syncCancel(on: self.application.eventLoopGroup.any())
+            }
         }
     }
     
     public func asyncShutdown() async {
-        self.lock.lock()
-
-        self.isShuttingDown.store(true, ordering: .relaxed)
-        self.didShutdown = true
+        let (jobTasks, scheduledTasks) = self.box.withLockedValue { box in
+            box.didShutdown = true
         
-        // stop running in case shutting downf rom signal
-        self.application.running?.stop()
+            // stop running in case shutting downf rom signal
+            self.application.running?.stop()
+            
+            // clear signal sources
+            box.signalSources.forEach { $0.cancel() } // clear refs
+            box.signalSources = []
         
-        // clear signal sources
-        self.signalSources.forEach { $0.cancel() } // clear refs
-        self.signalSources = []
-        
-        // Release the lock before we start any suspensions
-        self.lock.unlock()
+            // Release the lock before we start any suspensions
+            return (box.jobTasks, box.scheduledTasks)
+        }
         
         // stop all job queue workers
-        for jobTask in self.jobTasks {
-            await jobTask.asyncCancel(on: self.eventLoopGroup.any())
+        for jobTask in jobTasks {
+            await jobTask.asyncCancel(on: self.application.eventLoopGroup.any())
         }
         // stop all scheduled jobs
-        for scheduledTask in self.scheduledTasks.values {
-            await scheduledTask.task.asyncCancel(on: self.eventLoopGroup.any())
+        for scheduledTask in scheduledTasks.values {
+            await scheduledTask.task.asyncCancel(on: self.application.eventLoopGroup.any())
         }
     }
     
     deinit {
-        assert(self.didShutdown, "JobsCommand did not shutdown before deinit")
+        assert(self.box.withLockedValue { $0.didShutdown }, "JobsCommand did not shutdown before deinit")
     }
 }

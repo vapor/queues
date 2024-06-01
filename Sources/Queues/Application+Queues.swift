@@ -13,9 +13,9 @@ extension Application {
     public struct Queues {
         /// The provider of the `Queues` configuration
         public struct Provider {
-            let run: (Application) -> ()
+            let run: @Sendable (Application) -> ()
 
-            public init(_ run: @escaping (Application) -> ()) {
+            public init(_ run: @escaping @Sendable (Application) -> ()) {
                 self.run = run
             }
         }
@@ -27,9 +27,8 @@ extension Application {
 
             public init(_ application: Application) {
                 self.configuration = .init(logger: application.logger)
-                let command: QueuesCommand = .init(application: application)
-                self.commands = [command]
-                application.commands.use(command, as: "queues")
+                self.commands = [.init(application: application)]
+                application.asyncCommands.use(self.commands[0], as: "queues")
             }
             
             public func add(command: QueuesCommand) {
@@ -51,9 +50,7 @@ extension Application {
                 for command in application.queues.storage.commands {
                     await command.asyncShutdown()
                 }
-                if let driver = application.queues.storage.driver {
-                    await driver.asyncShutdown()
-                }
+                await application.queues.storage.driver?.asyncShutdown()
             }
         }
 

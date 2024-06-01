@@ -7,12 +7,12 @@ public protocol QueuesDriver {
     /// Shuts down the driver
     func shutdown()
     
-    /// Shut down the driver asyncrhonously. Helps avoid calling `.wait()`
+    /// Shut down the driver asynchronously. Helps avoid calling `.wait()`
     func asyncShutdown() async
 }
 
 extension QueuesDriver {
     public func asyncShutdown() async {
-        shutdown()
+        self.shutdown()
     }
 }
