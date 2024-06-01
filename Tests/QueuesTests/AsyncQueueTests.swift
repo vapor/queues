@@ -2,6 +2,18 @@ import Queues
 import XCTest
 import XCTVapor
 
+func XCTAssertNoThrowAsync<T>(
+    _ expression: @autoclosure () async throws -> T,
+    _ message: @autoclosure () -> String = "",
+    file: StaticString = #filePath, line: UInt = #line
+) async {
+    do {
+        _ = try await expression()
+    } catch {
+        XCTAssertNoThrow(try { throw error }(), message(), file: file, line: line)
+    }
+}
+
 final class AsyncQueueTests: XCTestCase {
     var app: Application!
     
@@ -40,7 +52,7 @@ final class AsyncQueueTests: XCTestCase {
         XCTAssertEqual(app.queues.test.queue.count, 0)
         XCTAssertEqual(app.queues.test.jobs.count, 0)
         
-        try XCTAssertNoThrow(promise.futureResult.wait())
+        await XCTAssertNoThrowAsync(try await promise.futureResult.get())
     }
 }
 
