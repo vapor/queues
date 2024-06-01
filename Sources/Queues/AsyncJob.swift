@@ -26,49 +26,10 @@ public protocol AsyncJob: Job {
         _ error: any Error,
         _ payload: Payload
     ) async throws
-
-    /// Called when there was an error and job will be retired.
-    ///
-    /// - Parameters:
-    ///     - attempt: Number of job attempts which failed
-    /// - Returns: Number of seconds for which next retry will be delayed.
-    ///   Return `-1` if you want to retry job immediately without putting it back to the queue.
-    func nextRetryIn(attempt: Int) -> Int
-    
-    static func serializePayload(_ payload: Payload) throws -> [UInt8]
-    static func parsePayload(_ bytes: [UInt8]) throws -> Payload
-}
-
-extension AsyncJob where Payload: Codable {
-    
-    /// Serialize a payload into Data
-    /// - Parameter payload: The payload
-    public static func serializePayload(_ payload: Payload) throws -> [UInt8] {
-        try .init(JSONEncoder().encode(payload))
-    }
-    
-    /// Parse bytes into the payload
-    /// - Parameter bytes: The Payload
-    public static func parsePayload(_ bytes: [UInt8]) throws -> Payload {
-        try JSONDecoder().decode(Payload.self, from: .init(bytes))
-    }
 }
 
 extension AsyncJob {
-    /// The jobName of the Job
-    public static var name: String {
-        return String(describing: Self.self)
-    }
-    
-    /// See `Job`.`nextRetryIn`
-    public func nextRetryIn(attempt: Int) -> Int {
-        return -1
-    }
 
-    public func _nextRetryIn(attempt: Int) -> Int {
-        return nextRetryIn(attempt: attempt)
-    }
-    
     public func dequeue(_ context: QueueContext, _ payload: Payload) -> EventLoopFuture<Void> {
         let promise = context.eventLoop.makePromise(of: Void.self)
         promise.completeWithTask {
