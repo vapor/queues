@@ -2,55 +2,54 @@ import NIOCore
 import Foundation
 
 /// Represents an object that can receive notifications about job statuses
-public protocol JobEventDelegate {
-
+public protocol JobEventDelegate: Sendable {
     /// Called when the job is first dispatched
     /// - Parameters:
     ///   - job: The `JobData` associated with the job
     ///   - eventLoop: The eventLoop
-    func dispatched(job: JobEventData, eventLoop: EventLoop) -> EventLoopFuture<Void>
+    func dispatched(job: JobEventData, eventLoop: any EventLoop) -> EventLoopFuture<Void>
 
     /// Called when the job is dequeued
     /// - Parameters:
     ///   - jobId: The id of the Job
     ///   - eventLoop: The eventLoop
-    func didDequeue(jobId: String, eventLoop: EventLoop) -> EventLoopFuture<Void>
+    func didDequeue(jobId: String, eventLoop: any EventLoop) -> EventLoopFuture<Void>
 
 
     /// Called when the job succeeds
     /// - Parameters:
     ///   - jobId: The id of the Job
     ///   - eventLoop: The eventLoop
-    func success(jobId: String, eventLoop: EventLoop) -> EventLoopFuture<Void>
+    func success(jobId: String, eventLoop: any EventLoop) -> EventLoopFuture<Void>
 
     /// Called when the job returns an error
     /// - Parameters:
     ///   - jobId: The id of the Job
     ///   - error: The error that caused the job to fail
     ///   - eventLoop: The eventLoop
-    func error(jobId: String, error: Error, eventLoop: EventLoop) -> EventLoopFuture<Void>
+    func error(jobId: String, error: any Error, eventLoop: any EventLoop) -> EventLoopFuture<Void>
 }
 
 extension JobEventDelegate {
-    public func dispatched(job: JobEventData, eventLoop: EventLoop) -> EventLoopFuture<Void> {
-        eventLoop.future()
+    public func dispatched(job: JobEventData, eventLoop: any EventLoop) -> EventLoopFuture<Void> {
+        eventLoop.makeSucceededVoidFuture()
     }
 
-    public func didDequeue(jobId: String, eventLoop: EventLoop) -> EventLoopFuture<Void> {
-        eventLoop.future()
+    public func didDequeue(jobId: String, eventLoop: any EventLoop) -> EventLoopFuture<Void> {
+        eventLoop.makeSucceededVoidFuture()
     }
 
-    public func success(jobId: String, eventLoop: EventLoop) -> EventLoopFuture<Void> {
-        eventLoop.future()
+    public func success(jobId: String, eventLoop: any EventLoop) -> EventLoopFuture<Void> {
+        eventLoop.makeSucceededVoidFuture()
     }
 
-    public func error(jobId: String, error: Error, eventLoop: EventLoop) -> EventLoopFuture<Void> {
-        eventLoop.future()
+    public func error(jobId: String, error: any Error, eventLoop: any EventLoop) -> EventLoopFuture<Void> {
+        eventLoop.makeSucceededVoidFuture()
     }
 }
 
 /// Data on a job sent via a notification
-public struct JobEventData {
+public struct JobEventData: Sendable {
     /// The id of the job, assigned at dispatch
     public var id: String
 

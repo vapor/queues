@@ -3,7 +3,7 @@ import NIOCore
 import Vapor
 
 /// The context for a queue.
-public struct QueueContext {
+public struct QueueContext: Sendable {
     /// The name of the queue
     public let queueName: QueueName
     
@@ -17,7 +17,7 @@ public struct QueueContext {
     public var logger: Logger
     
     /// An event loop to run the process on
-    public let eventLoop: EventLoop
+    public let eventLoop: any EventLoop
     
     /// Creates a new JobContext
     /// - Parameters:
@@ -31,7 +31,7 @@ public struct QueueContext {
         configuration: QueuesConfiguration,
         application: Application,
         logger: Logger,
-        on eventLoop: EventLoop
+        on eventLoop: any EventLoop
     ) {
         self.queueName = queueName
         self.configuration = configuration
@@ -41,13 +41,13 @@ public struct QueueContext {
     }
 
     /// Returns the default job `Queue`
-    public var queue: Queue {
+    public var queue: any Queue {
         self.queues(.default)
     }
 
     /// Returns the specific job `Queue` for the given queue name
     /// - Parameter queue: The queue name
-    public func queues(_ queue: QueueName) -> Queue {
+    public func queues(_ queue: QueueName) -> any Queue {
         self.application.queues.queue(
             queue,
             logger: self.logger,

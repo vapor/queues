@@ -2,39 +2,56 @@ import Foundation
 import Logging
 import Vapor
 import NIO
+import NIOConcurrencyHelpers
 
 extension Application {
-    /// The `Queues` object
+    /// The application-global ``Queues`` accessor.
     public var queues: Queues {
         .init(application: self)
     }
     
-    /// Represents a `Queues` configuration object
+    /// Contains global configuration for queues and provides methods for registering jobs and retrieving queues.
     public struct Queues {
-        
-        /// The provider of the `Queues` configuration
+        /// A provider for a ``Queues`` driver.
         public struct Provider {
-            let run: (Application) -> ()
+            let run: @Sendable (Application) -> ()
 
-            public init(_ run: @escaping (Application) -> ()) {
+            public init(_ run: @escaping @Sendable (Application) -> ()) {
                 self.run = run
             }
         }
 
-        final class Storage {
-            public var configuration: QueuesConfiguration
-            private (set) var commands: [QueuesCommand]
-            var driver: QueuesDriver?
+        final class Storage: Sendable {
+            private struct Box: Sendable {
+                var configuration: QueuesConfiguration
+                var commands: [QueuesCommand]
+                var driver: (any QueuesDriver)?
+            }
+            private let box: NIOLockedValueBox<Box>
+
+            public var configuration: QueuesConfiguration {
+                get { self.box.withLockedValue { $0.configuration } }
+                set { self.box.withLockedValue { $0.configuration = newValue } }
+            }
+            var commands: [QueuesCommand] { self.box.withLockedValue { $0.commands } }
+            var driver: (any QueuesDriver)? {
+                get { self.box.withLockedValue { $0.driver } }
+                set { self.box.withLockedValue { $0.driver = newValue } }
+            }
 
             public init(_ application: Application) {
-                self.configuration = .init(logger: application.logger)
-                let command: QueuesCommand = .init(application: application)
-                self.commands = [command]
-                application.commands.use(command, as: "queues")
+                let command = QueuesCommand(application: application)
+
+                self.box = .init(.init(
+                    configuration: .init(logger: application.logger),
+                    commands: [command],
+                    driver: nil
+                ))
+                application.asyncCommands.use(command, as: "queues")
             }
             
             public func add(command: QueuesCommand) {
-                self.commands.append(command)
+                self.box.withLockedValue { $0.commands.append(command) }
             }
         }
 
@@ -44,35 +61,26 @@ extension Application {
 
         struct Lifecycle: LifecycleHandler {
             func shutdown(_ application: Application) {
-                application.queues.storage.commands.forEach({$0.shutdown()})
-                if let driver = application.queues.storage.driver {
-                    driver.shutdown()
-                }
+                application.queues.storage.commands.forEach { $0.shutdown() }
+                application.queues.storage.driver?.shutdown()
             }
             
             func shutdownAsync(_ application: Application) async {
                 for command in application.queues.storage.commands {
                     await command.asyncShutdown()
                 }
-                if let driver = application.queues.storage.driver {
-                    await driver.asyncShutdown()
-                }
+                await application.queues.storage.driver?.asyncShutdown()
             }
         }
 
-        /// The `QueuesConfiguration` object
+        /// The ``QueuesConfiguration`` object.
         public var configuration: QueuesConfiguration {
             get { self.storage.configuration }
             nonmutating set { self.storage.configuration = newValue }
         }
 
-        /// Returns the default `Queue`
-        public var queue: Queue {
-            self.queue(.default)
-        }
-
-        /// The selected `QueuesDriver`
-        public var driver: QueuesDriver {
+        /// The selected ``QueuesDriver``.
+        public var driver: any QueuesDriver {
             guard let driver = self.storage.driver else {
                 fatalError("No Queues driver configured. Configure with app.queues.use(...)")
             }
@@ -88,7 +96,13 @@ extension Application {
 
         public let application: Application
 
-        /// Returns a `JobsQueue`
+        /// Get the default ``Queue``.
+        public var queue: any Queue {
+            self.queue(.default)
+        }
+
+        /// Create or look up an instance of a named ``Queue``.
+        ///
         /// - Parameters:
         ///   - name: The name of the queue
         ///   - logger: A logger object
@@ -96,71 +110,75 @@ extension Application {
         public func queue(
             _ name: QueueName,
             logger: Logger? = nil,
-            on eventLoop: EventLoop? = nil
-        ) -> Queue {
-            return self.driver.makeQueue(
-                with: .init(
-                    queueName: name,
-                    configuration: self.configuration,
-                    application: self.application,
-                    logger: logger ?? self.application.logger,
-                    on: eventLoop ?? self.application.eventLoopGroup.next()
-                )
-            )
+            on eventLoop: (any EventLoop)? = nil
+        ) -> any Queue {
+            self.driver.makeQueue(with: .init(
+                queueName: name,
+                configuration: self.configuration,
+                application: self.application,
+                logger: logger ?? self.application.logger,
+                on: eventLoop ?? self.application.eventLoopGroup.any()
+            ))
         }
         
-        /// Adds a new queued job
-        /// - Parameter job: The job to add
-        public func add<J>(_ job: J) where J: Job {
+        /// Add a new queueable job.
+        ///
+        /// This must be called once for each job type that can be queued.
+        ///
+        /// - Parameter job: The job to add.
+        public func add(_ job: some Job) {
             self.configuration.add(job)
         }
 
-        /// Adds a new notification hook
-        /// - Parameter hook: The hook object to add
-        public func add<N>(_ hook: N) where N: JobEventDelegate {
+        /// Add a new notification hook.
+        ///
+        /// - Parameter hook: The hook to add.
+        public func add(_ hook: some JobEventDelegate) {
             self.configuration.add(hook)
         }
 
-        /// Choose which provider to use
-        /// - Parameter provider: The provider
+        /// Choose which provider to use.
+        ///
+        /// - Parameter provider: The provider.
         public func use(_ provider: Provider) {
             provider.run(self.application)
         }
 
-        /// Choose which driver to use
+        /// Configure a driver.
+        ///
         /// - Parameter driver: The driver
-        public func use(custom driver: QueuesDriver) {
+        public func use(custom driver: any QueuesDriver) {
             self.storage.driver = driver
         }
 
-        /// Schedule a new job
-        /// - Parameter job: The job to schedule
-        public func schedule<J>(_ job: J) -> ScheduleBuilder
-            where J: ScheduledJob
-        {
-            let builder = ScheduleBuilder()
-            _ = self.storage.configuration.schedule(job, builder: builder)
-            return builder
+        /// Schedule a new job.
+        ///
+        /// - Parameter job: The job to schedule.
+        public func schedule(_ job: some ScheduledJob) -> ScheduleBuilder {
+            self.storage.configuration.schedule(job)
         }
 
-        /// Starts an in-process worker to dequeue and run jobs
-        /// - Parameter queue: The queue to run the jobs on. Defaults to `default`
+        /// Starts an in-process worker to dequeue and run jobs.
+        ///
+        /// - Parameter queue: The queue to run the jobs on. Defaults to ``QueueName/default``.
         public func startInProcessJobs(on queue: QueueName = .default) throws {
-            let inProcessJobs = QueuesCommand(application: application, scheduled: false)
+            let inProcessJobs = QueuesCommand(application: self.application)
+            
             try inProcessJobs.startJobs(on: queue)
             self.storage.add(command: inProcessJobs)
         }
         
-        /// Starts an in-process worker to run scheduled jobs
+        /// Starts an in-process worker to run scheduled jobs.
         public func startScheduledJobs() throws {
-            let scheduledJobs = QueuesCommand(application: application, scheduled: true)
+            let scheduledJobs = QueuesCommand(application: self.application)
+            
             try scheduledJobs.startScheduledJobs()
             self.storage.add(command: scheduledJobs)
         }
         
         func initialize() {
             self.application.lifecycle.use(Lifecycle())
-            self.application.storage[Key.self] = .init(application)
+            self.application.storage[Key.self] = .init(self.application)
         }
     }
 }

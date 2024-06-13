@@ -3,7 +3,7 @@ import Logging
 import Foundation
 
 /// A type that can store and retrieve jobs from a persistence layer
-public protocol Queue {
+public protocol Queue: Sendable {
     /// The job context
     var context: QueueContext { get }
     
@@ -31,7 +31,7 @@ public protocol Queue {
 
 extension Queue {
     /// The EventLoop for a job queue
-    public var eventLoop: EventLoop {
+    public var eventLoop: any EventLoop {
         self.context.eventLoop
     }
     
@@ -61,22 +61,26 @@ extension Queue {
     ///   - payload: The payload data to be dispatched
     ///   - maxRetryCount: Number of times to retry this job on failure
     ///   - delayUntil: Delay the processing of this job until a certain date
-    public func dispatch<J>(
+    public func dispatch<J: Job>(
         _ job: J.Type,
         _ payload: J.Payload,
         maxRetryCount: Int = 0,
         delayUntil: Date? = nil,
-        id: JobIdentifier = JobIdentifier()
-    ) -> EventLoopFuture<Void>
-        where J: Job
-    {
+        id: JobIdentifier = .init()
+    ) -> EventLoopFuture<Void> {
+        var logger_ = self.logger
+        logger_[metadataKey: "queue"] = "\(self.queueName.string)"
+        logger_[metadataKey: "job-id"] = "\(id.string)"
+        logger_[metadataKey: "job-name"] = "\(J.name)"
+        let logger = logger_
+
         let bytes: [UInt8]
         do {
             bytes = try J.serializePayload(payload)
         } catch {
             return self.eventLoop.makeFailedFuture(error)
         }
-        logger.trace("Serialized bytes for payload: \(bytes)")
+
         let storage = JobData(
             payload: bytes,
             maxRetryCount: maxRetryCount,
@@ -84,21 +88,44 @@ extension Queue {
             delayUntil: delayUntil,
             queuedAt: Date()
         )
-        logger.trace("Adding the ID to the storage")
-        return self.set(id, to: storage).flatMap {
-            self.push(id)
-        }.flatMap { _ in
-            self.logger.info("Dispatched queue job", metadata: [
-                "job_id": .string(id.string),
-                "job_name": .string(job.name),
-                "queue": .string(self.queueName.string)
-            ])
 
-            return self.configuration.notificationHooks.map {
-                $0.dispatched(job: .init(id: id.string, queueName: self.queueName.string, jobData: storage), eventLoop: self.eventLoop)
-            }.flatten(on: self.eventLoop).flatMapError { error in
-                self.logger.error("Could not send dispatched notification: \(error)")
-                return self.eventLoop.future()
+        logger.trace("Storing job data")
+        return self.set(id, to: storage).flatMap {
+            logger.trace("Pusing job to queue")
+            return self.push(id)
+        }.flatMapWithEventLoop { _, eventLoop in
+            logger.info("Dispatched job")
+            return self.sendNotification(of: "dispatch", logger: logger) {
+                $0.dispatched(job: .init(id: id.string, queueName: self.queueName.string, jobData: storage), eventLoop: eventLoop)
+            }
+        }
+    }
+}
+
+extension Queue {
+    func sendNotification(
+        of kind: String, logger: Logger,
+        _ notification: @escaping @Sendable (_ hook: any JobEventDelegate) -> EventLoopFuture<Void>
+    ) -> EventLoopFuture<Void> {
+        logger.trace("Sending notification", metadata: ["kind": "\(kind)"])
+        return self.configuration.notificationHooks.map {
+            notification($0).flatMapErrorWithEventLoop { error, eventLoop in
+                logger.warning("Failed to send notification", metadata: ["kind": "\(kind)", "error": "\(error)"])
+                return eventLoop.makeSucceededVoidFuture()
+            }
+        }.flatten(on: self.eventLoop)
+    }
+
+    func sendNotification(
+        of kind: String, logger: Logger,
+        _ notification: @escaping @Sendable (_ hook: any JobEventDelegate) async throws -> Void
+    ) async {
+        logger.trace("Sending notification", metadata: ["kind": "\(kind)"])
+        for hook in self.configuration.notificationHooks {
+            do {
+                try await notification(hook)
+            } catch {
+                logger.warning("Failed to send notification", metadata: ["kind": "\(kind)", "error": "\(error)"])
             }
         }
     }

@@ -21,34 +21,34 @@ public protocol AsyncJobEventDelegate: JobEventDelegate {
     /// - Parameters:
     ///   - jobId: The id of the Job
     ///   - error: The error that caused the job to fail
-    func error(jobId: String, error: Error) async throws
+    func error(jobId: String, error: any Error) async throws
 }
 
 extension AsyncJobEventDelegate {
     public func dispatched(job: JobEventData) async throws { }
     public func didDequeue(jobId: String) async throws { }
     public func success(jobId: String) async throws { }
-    public func error(jobId: String, error: Error) async throws { }
+    public func error(jobId: String, error: any Error) async throws { }
     
-    public func dispatched(job: JobEventData, eventLoop: EventLoop) -> EventLoopFuture<Void> {
+    public func dispatched(job: JobEventData, eventLoop: any EventLoop) -> EventLoopFuture<Void> {
         eventLoop.makeFutureWithTask {
             try await self.dispatched(job: job)
         }
     }
     
-    public func didDequeue(jobId: String, eventLoop: EventLoop) -> EventLoopFuture<Void> {
+    public func didDequeue(jobId: String, eventLoop: any EventLoop) -> EventLoopFuture<Void> {
         eventLoop.makeFutureWithTask {
             try await self.didDequeue(jobId: jobId)
         }
     }
     
-    public func success(jobId: String, eventLoop: EventLoop) -> EventLoopFuture<Void> {
+    public func success(jobId: String, eventLoop: any EventLoop) -> EventLoopFuture<Void> {
         eventLoop.makeFutureWithTask {
             try await self.success(jobId: jobId)
         }
     }
     
-    public func error(jobId: String, error: Error, eventLoop: EventLoop) -> EventLoopFuture<Void> {
+    public func error(jobId: String, error: any Error, eventLoop: any EventLoop) -> EventLoopFuture<Void> {
         eventLoop.makeFutureWithTask {
             try await self.error(jobId: jobId, error: error)
         }

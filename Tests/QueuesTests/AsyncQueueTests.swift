@@ -1,16 +1,26 @@
 import Queues
-import Foundation
-import Vapor
 import XCTest
 import XCTVapor
-import XCTQueues
-@testable import Vapor
-import NIOCore
-import NIOConcurrencyHelpers
+
+func XCTAssertNoThrowAsync<T>(
+    _ expression: @autoclosure () async throws -> T,
+    _ message: @autoclosure () -> String = "",
+    file: StaticString = #filePath, line: UInt = #line
+) async {
+    do {
+        _ = try await expression()
+    } catch {
+        XCTAssertNoThrow(try { throw error }(), message(), file: file, line: line)
+    }
+}
 
 final class AsyncQueueTests: XCTestCase {
     var app: Application!
     
+    override class func setUp() {
+        XCTAssert(isLoggingConfigured)
+    }
+
     override func setUp() async throws {
         app = try await Application.make(.testing)
     }
@@ -19,15 +29,15 @@ final class AsyncQueueTests: XCTestCase {
         try await app.asyncShutdown()
     }
     
-    func testAsyncJob() async throws {
+    func testAsyncJobWithSyncQueue() async throws {
         app.queues.use(.test)
         
         let promise = app.eventLoopGroup.any().makePromise(of: Void.self)
         app.queues.add(MyAsyncJob(promise: promise))
         
         app.get("foo") { req in
-            req.queue.dispatch(MyAsyncJob.self, .init(foo: "bar"))
-                .map { _ in "done" }
+            try await req.queue.dispatch(MyAsyncJob.self, .init(foo: "bar"))
+            return "done"
         }
         
         try await app.testable().test(.GET, "foo") { res async in
@@ -46,7 +56,37 @@ final class AsyncQueueTests: XCTestCase {
         XCTAssertEqual(app.queues.test.queue.count, 0)
         XCTAssertEqual(app.queues.test.jobs.count, 0)
         
-        try XCTAssertNoThrow(promise.futureResult.wait())
+        await XCTAssertNoThrowAsync(try await promise.futureResult.get())
+    }
+
+    func testAsyncJobWithAsyncQueue() async throws {
+        app.queues.use(.asyncTest)
+
+        let promise = app.eventLoopGroup.any().makePromise(of: Void.self)
+        app.queues.add(MyAsyncJob(promise: promise))
+        
+        app.get("foo") { req in
+            try await req.queue.dispatch(MyAsyncJob.self, .init(foo: "bar"))
+            return "done"
+        }
+        
+        try await app.testable().test(.GET, "foo") { res async in
+            XCTAssertEqual(res.status, .ok)
+            XCTAssertEqual(res.body.string, "done")
+        }
+        
+        XCTAssertEqual(app.queues.asyncTest.queue.count, 1)
+        XCTAssertEqual(app.queues.asyncTest.jobs.count, 1)
+        let job = app.queues.asyncTest.first(MyAsyncJob.self)
+        XCTAssert(app.queues.asyncTest.contains(MyAsyncJob.self))
+        XCTAssertNotNil(job)
+        XCTAssertEqual(job!.foo, "bar")
+        
+        try await app.queues.queue.worker.run().get()
+        XCTAssertEqual(app.queues.asyncTest.queue.count, 0)
+        XCTAssertEqual(app.queues.asyncTest.jobs.count, 0)
+
+        await XCTAssertNoThrowAsync(try await promise.futureResult.get())
     }
 }
 
@@ -58,7 +98,6 @@ struct MyAsyncJob: AsyncJob {
     }
     
     func dequeue(_ context: QueueContext, _ payload: Data) async throws {
-        promise.succeed(())
-        return
+        self.promise.succeed()
     }
 }

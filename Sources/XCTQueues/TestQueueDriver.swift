@@ -10,17 +10,20 @@ extension Application.Queues.Provider {
             return $0.queues.use(custom: TestQueuesDriver())
         }
     }
+
+    public static var asyncTest: Self {
+        .init {
+            $0.queues.initializeAsyncTestStorage()
+            return $0.queues.use(custom: AsyncTestQueuesDriver())
+        }
+    }
 }
 
 struct TestQueuesDriver: QueuesDriver {
-    let lock: NIOLock
+    init() {}
 
-    init() {
-        self.lock = .init()
-    }
-
-    func makeQueue(with context: QueueContext) -> Queue {
-        TestQueue(lock: self.lock, context: context)
+    func makeQueue(with context: QueueContext) -> any Queue {
+        TestQueue(_context: .init(context))
     }
     
     func shutdown() {
@@ -28,50 +31,60 @@ struct TestQueuesDriver: QueuesDriver {
     }
 }
 
+struct AsyncTestQueuesDriver: QueuesDriver {
+    init() {}
+    func makeQueue(with context: QueueContext) -> any Queue { AsyncTestQueue(_context: .init(context)) }
+    func shutdown() {}
+}
+
 extension Application.Queues {
-    public final class TestQueueStorage {
-        public var jobs: [JobIdentifier: JobData] = [:]
-        public var queue: [JobIdentifier] = []
+    public final class TestQueueStorage: Sendable {
+        private struct Box: Sendable {
+            var jobs: [JobIdentifier: JobData] = [:]
+            var queue: [JobIdentifier] = []
+        }
+        private let box = NIOLockedValueBox<Box>(.init())
 
-        /// Returns all jobs in the queue of the specific `J` type.
-        public func all<J>(_ job: J.Type) -> [J.Payload]
-            where J: Job
-        {
-            let filteredJobIds = jobs.filter { $1.jobName == J.name }.map { $0.0 }
+        public var jobs: [JobIdentifier: JobData] {
+            get { self.box.withLockedValue { $0.jobs } }
+            set { self.box.withLockedValue { $0.jobs = newValue } }
+        }
 
-            return queue
+        public var queue: [JobIdentifier] {
+            get { self.box.withLockedValue { $0.queue } }
+            set { self.box.withLockedValue { $0.queue = newValue } }
+        }
+
+        /// Returns the payloads of all jobs in the queue having type `J`.
+        public func all<J: Job>(_ job: J.Type) -> [J.Payload] {
+            let filteredJobIds = self.jobs.filter { $1.jobName == J.name }.map { $0.0 }
+
+            return self.queue
                 .filter { filteredJobIds.contains($0) }
                 .compactMap { jobs[$0] }
                 .compactMap { try? J.parsePayload($0.payload) }
         }
 
-        /// Returns the first job in the queue of the specific `J` type.
-        public func first<J>(_ job: J.Type) -> J.Payload?
-            where J: Job
-        {
+        /// Returns the payload of the first job in the queue having type `J`.
+        public func first<J: Job>(_ job: J.Type) -> J.Payload? {
             let filteredJobIds = jobs.filter { $1.jobName == J.name }.map { $0.0 }
-            guard
-                let queueJob = queue.first(where: { filteredJobIds.contains($0) }),
-                let jobData = jobs[queueJob]
-                else {
-                    return nil
-            }
             
+            guard let queueJob = self.queue.first(where: { filteredJobIds.contains($0) }), let jobData = self.jobs[queueJob] else {
+                return nil
+            }
             return try? J.parsePayload(jobData.payload)
         }
         
         /// Checks whether a job of type `J` was dispatched to queue
-        public func contains<J>(_ job: J.Type) -> Bool
-            where J: Job
-        {
-            return first(job) != nil
+        public func contains<J: Job>(_ job: J.Type) -> Bool {
+            self.first(job) != nil
         }
     }
     
     struct TestQueueKey: StorageKey, LockKey {
         typealias Value = TestQueueStorage
     }
-    
+
     public var test: TestQueueStorage {
         self.application.storage[TestQueueKey.self]!
     }
@@ -79,50 +92,66 @@ extension Application.Queues {
     func initializeTestStorage() {
         self.application.storage[TestQueueKey.self] = .init()
     }
+
+    struct AsyncTestQueueKey: StorageKey, LockKey {
+        typealias Value = TestQueueStorage
+    }
+    
+    public var asyncTest: TestQueueStorage {
+        self.application.storage[AsyncTestQueueKey.self]!
+    }
+
+    func initializeAsyncTestStorage() {
+        self.application.storage[AsyncTestQueueKey.self] = .init()
+    }
 }
 
 struct TestQueue: Queue {
-    let lock: NIOLock
-    let context: QueueContext
+    let _context: NIOLockedValueBox<QueueContext>
+    var context: QueueContext { self._context.withLockedValue { $0 } }
     
     func get(_ id: JobIdentifier) -> EventLoopFuture<JobData> {
-        self.lock.lock()
-        defer { self.lock.unlock() }
-
-        return self.context.eventLoop.makeSucceededFuture(
-            self.context.application.queues.test.jobs[id]!
-        )
+        self._context.withLockedValue { context in
+            context.eventLoop.makeSucceededFuture(context.application.queues.test.jobs[id]!)
+        }
     }
     
     func set(_ id: JobIdentifier, to data: JobData) -> EventLoopFuture<Void> {
-        self.lock.lock()
-        defer { self.lock.unlock() }
-
-        self.context.application.queues.test.jobs[id] = data
-        return self.context.eventLoop.makeSucceededFuture(())
+        self._context.withLockedValue { context in
+            context.application.queues.test.jobs[id] = data
+            return context.eventLoop.makeSucceededVoidFuture()
+        }
     }
     
     func clear(_ id: JobIdentifier) -> EventLoopFuture<Void> {
-        self.lock.lock()
-        defer { self.lock.unlock() }
-
-        self.context.application.queues.test.jobs[id] = nil
-        return self.context.eventLoop.makeSucceededFuture(())
+        self._context.withLockedValue { context in
+            context.application.queues.test.jobs[id] = nil
+            return context.eventLoop.makeSucceededVoidFuture()
+        }
     }
     
     func pop() -> EventLoopFuture<JobIdentifier?> {
-        self.lock.lock()
-        defer { self.lock.unlock() }
-
-        let last = context.application.queues.test.queue.popLast()
-        return self.context.eventLoop.makeSucceededFuture(last)
+        self._context.withLockedValue { context in
+            let last = context.application.queues.test.queue.popLast()
+            return context.eventLoop.makeSucceededFuture(last)
+        }
     }
     
     func push(_ id: JobIdentifier) -> EventLoopFuture<Void> {
-        self.lock.lock()
-        defer { self.lock.unlock() }
-        
-        self.context.application.queues.test.queue.append(id)
-        return self.context.eventLoop.makeSucceededFuture(())
+        self._context.withLockedValue { context in
+            context.application.queues.test.queue.append(id)
+            return context.eventLoop.makeSucceededVoidFuture()
+        }
     }
+}
+
+struct AsyncTestQueue: AsyncQueue {
+    let _context: NIOLockedValueBox<QueueContext>
+    var context: QueueContext { self._context.withLockedValue { $0 } }
+    
+    func get(_ id: JobIdentifier) async throws -> JobData { self._context.withLockedValue { $0.application.queues.asyncTest.jobs[id]! } }
+    func set(_ id: JobIdentifier, to data: JobData) async throws { self._context.withLockedValue { $0.application.queues.asyncTest.jobs[id] = data } }
+    func clear(_ id: JobIdentifier) async throws { self._context.withLockedValue { $0.application.queues.asyncTest.jobs[id] = nil } }
+    func pop() async throws -> JobIdentifier? { self._context.withLockedValue { $0.application.queues.asyncTest.queue.popLast() } }
+    func push(_ id: JobIdentifier) async throws { self._context.withLockedValue { $0.application.queues.asyncTest.queue.append(id) } }
 }
