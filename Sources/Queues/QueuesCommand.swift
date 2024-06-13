@@ -1,12 +1,12 @@
 import ConsoleKit
-import Dispatch
+@preconcurrency import Dispatch
 import Vapor
 import NIOConcurrencyHelpers
 import NIOCore
 import Atomics
 
 /// The command to start the Queue job
-public final class QueuesCommand: AsyncCommand, @unchecked Sendable {
+public final class QueuesCommand: AsyncCommand, Sendable {
     // See `Command.signature`.
     public let signature = Signature()
     
@@ -28,7 +28,7 @@ public final class QueuesCommand: AsyncCommand, @unchecked Sendable {
     
     private let box: NIOLockedValueBox<Box>
     
-    struct Box {
+    struct Box: Sendable {
         var jobTasks: [RepeatedTask]
         var scheduledTasks: [String: AnyScheduledJob.Task]
         var signalSources: [any DispatchSourceSignal]

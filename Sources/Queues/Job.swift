@@ -102,7 +102,7 @@ public protocol AnyJob: Sendable {
 }
 
 // N.B. These should really not be public.
-extension Job/*: AnyJob*/ {
+extension Job {
     // See `AnyJob._nextRetryIn(attempt:)`.
     public func _nextRetryIn(attempt: Int) -> Int {
         self.nextRetryIn(attempt: attempt)

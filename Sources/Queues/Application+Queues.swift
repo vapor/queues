@@ -2,6 +2,7 @@ import Foundation
 import Logging
 import Vapor
 import NIO
+import NIOConcurrencyHelpers
 
 extension Application {
     /// The application-global ``Queues`` accessor.
@@ -20,19 +21,37 @@ extension Application {
             }
         }
 
-        final class Storage: @unchecked Sendable {
-            public var configuration: QueuesConfiguration
-            private(set) var commands: [QueuesCommand]
-            var driver: (any QueuesDriver)?
+        final class Storage: Sendable {
+            private struct Box: Sendable {
+                var configuration: QueuesConfiguration
+                var commands: [QueuesCommand]
+                var driver: (any QueuesDriver)?
+            }
+            private let box: NIOLockedValueBox<Box>
+
+            public var configuration: QueuesConfiguration {
+                get { self.box.withLockedValue { $0.configuration } }
+                set { self.box.withLockedValue { $0.configuration = newValue } }
+            }
+            var commands: [QueuesCommand] { self.box.withLockedValue { $0.commands } }
+            var driver: (any QueuesDriver)? {
+                get { self.box.withLockedValue { $0.driver } }
+                set { self.box.withLockedValue { $0.driver = newValue } }
+            }
 
             public init(_ application: Application) {
-                self.configuration = .init(logger: application.logger)
-                self.commands = [.init(application: application)]
-                application.asyncCommands.use(self.commands[0], as: "queues")
+                let command = QueuesCommand(application: application)
+
+                self.box = .init(.init(
+                    configuration: .init(logger: application.logger),
+                    commands: [command],
+                    driver: nil
+                ))
+                application.asyncCommands.use(command, as: "queues")
             }
             
             public func add(command: QueuesCommand) {
-                self.commands.append(command)
+                self.box.withLockedValue { $0.commands.append(command) }
             }
         }
 

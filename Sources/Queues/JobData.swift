@@ -29,8 +29,8 @@ public struct JobData: Codable, Sendable {
         queuedAt: Date,
         attempts: Int = 0
     ) {
-        precondition(maxRetryCount >= 0)
-        precondition(attempts >= 0)
+        assert(maxRetryCount >= 0)
+        assert(attempts >= 0)
         
         self.payload = payload
         self.maxRetryCount = maxRetryCount

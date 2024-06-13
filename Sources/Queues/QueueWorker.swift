@@ -87,7 +87,7 @@ public struct QueueWorker: Sendable {
             maxRetryCount: jobData.maxRetryCount,
             jobName: jobData.jobName,
             delayUntil: .init(timeIntervalSinceNow: Double(delay)),
-            queuedAt: jobData.queuedAt, // TODO: Should we update this?
+            queuedAt: .init(),
             attempts: jobData.currentAttempt
         )
         
