@@ -3,6 +3,10 @@ import Queues
 import XCTest
 
 final class ScheduleBuilderTests: XCTestCase {
+    override class func setUp() {
+        XCTAssert(isLoggingConfigured)
+    }
+
     func testHourlyBuilder() throws {
         let builder = ScheduleBuilder()
         builder.hourly().at(30)
@@ -151,7 +155,6 @@ final class ScheduleBuilderTests: XCTestCase {
             // one hour later
             Date(calendar: est, hour: 21, minute: 00)
         )
-    
     }
     
 }
