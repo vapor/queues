@@ -33,9 +33,8 @@ public protocol Job: AnyJob {
     /// Called when there was an error and the job will be retried.
     ///
     /// - Parameter attempt: Number of job attempts which have failed so far.
-    /// - Returns: Number of seconds to delay the next retry. Return `-1` to retry immediately without returning the
-    ///   job to the queue first. Return `0` to place the job back on the queue with no delay added. If this method
-    ///   is not implemented, the default is `0`.
+    /// - Returns: Number of seconds to delay the next retry. Return `0` to place the job back on the queue with no
+    ///   delay added. If this method is not implemented, the default is `0`. Returning `-1` is the same as `0`.
     func nextRetryIn(attempt: Int) -> Int
     
     /// Serialize a typed payload to an array of bytes. When `Payload` is `Codable`, this method will default to
