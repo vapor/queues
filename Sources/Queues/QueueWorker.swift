@@ -12,18 +12,23 @@ extension Queue {
 public struct QueueWorker: Sendable {
     let queue: any Queue
 
-    /// Actually run the queue. This is a thin wrapper for ELF-style callers.
+    /// Run the queue until there is no more work to be done.
+    /// This is a thin wrapper for ELF-style callers.
     public func run() -> EventLoopFuture<Void> {
         self.queue.eventLoop.makeFutureWithTask {
-            var hasWork = true
-            while hasWork {
-                hasWork = try await self.run()
-            }
+            try await run()
         }
     }
+
+    /// Run the queue until there is no more work to be done.
+    /// This is the main async entrypoint for a queue worker.
+    public func run() async throws {
+        while try await self.runOneJob() {}
+    }
     
-    /// Pop a job off the queue and try to run it. If no jobs are available, do nothing.
-    public func run() async throws -> Bool {
+    /// Pop a job off the queue and try to run it. If no jobs are available, do
+    /// nothing. Returns whether a job was run.
+    private func runOneJob() async throws -> Bool {
         var logger = self.queue.logger
         logger[metadataKey: "queue"] = "\(self.queue.queueName.string)"
         logger.trace("Popping job from queue")
@@ -58,11 +63,11 @@ public struct QueueWorker: Sendable {
             try await $0.didDequeue(jobId: id.string, eventLoop: self.queue.eventLoop).get()
         }
 
-        try await self.run(id: id, job: job, jobData: data, logger: logger)
+        try await self.runOneJob(id: id, job: job, jobData: data, logger: logger)
         return true
     }
 
-    private func run(id: JobIdentifier, job: any AnyJob, jobData: JobData, logger: Logger) async throws {
+    private func runOneJob(id: JobIdentifier, job: any AnyJob, jobData: JobData, logger: Logger) async throws {
         logger.info("Dequeing and running job", metadata: ["attempt": "\(jobData.currentAttempt)", "retries-left": "\(jobData.remainingAttempts)"])
         do {
             try await job._dequeue(self.queue.context, id: id.string, payload: jobData.payload).get()

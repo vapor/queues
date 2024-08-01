@@ -37,6 +37,8 @@ final class AsyncQueueTests: XCTestCase {
         
         app.get("foo") { req in
             try await req.queue.dispatch(MyAsyncJob.self, .init(foo: "bar"))
+            try await req.queue.dispatch(MyAsyncJob.self, .init(foo: "baz"))
+            try await req.queue.dispatch(MyAsyncJob.self, .init(foo: "quux"))
             return "done"
         }
         
@@ -45,8 +47,8 @@ final class AsyncQueueTests: XCTestCase {
             XCTAssertEqual(res.body.string, "done")
         }
         
-        XCTAssertEqual(app.queues.test.queue.count, 1)
-        XCTAssertEqual(app.queues.test.jobs.count, 1)
+        XCTAssertEqual(app.queues.test.queue.count, 3)
+        XCTAssertEqual(app.queues.test.jobs.count, 3)
         let job = app.queues.test.first(MyAsyncJob.self)
         XCTAssert(app.queues.test.contains(MyAsyncJob.self))
         XCTAssertNotNil(job)
@@ -67,6 +69,8 @@ final class AsyncQueueTests: XCTestCase {
         
         app.get("foo") { req in
             try await req.queue.dispatch(MyAsyncJob.self, .init(foo: "bar"))
+            try await req.queue.dispatch(MyAsyncJob.self, .init(foo: "baz"))
+            try await req.queue.dispatch(MyAsyncJob.self, .init(foo: "quux"))
             return "done"
         }
         
@@ -75,8 +79,8 @@ final class AsyncQueueTests: XCTestCase {
             XCTAssertEqual(res.body.string, "done")
         }
         
-        XCTAssertEqual(app.queues.asyncTest.queue.count, 1)
-        XCTAssertEqual(app.queues.asyncTest.jobs.count, 1)
+        XCTAssertEqual(app.queues.asyncTest.queue.count, 3)
+        XCTAssertEqual(app.queues.asyncTest.jobs.count, 3)
         let job = app.queues.asyncTest.first(MyAsyncJob.self)
         XCTAssert(app.queues.asyncTest.contains(MyAsyncJob.self))
         XCTAssertNotNil(job)
