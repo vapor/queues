@@ -119,6 +119,34 @@ final class QueueTests: XCTestCase {
         await XCTAssertEqualAsync(try await promise.futureResult.get(), "bar")
     }
 
+    func testRunUntilEmpty() async throws {
+        let promise1 = self.app.eventLoopGroup.any().makePromise(of: String.self)
+        self.app.queues.add(Foo1(promise: promise1))
+        let promise2 = self.app.eventLoopGroup.any().makePromise(of: String.self)
+        self.app.queues.add(Foo2(promise: promise2))
+
+        self.app.get("foo") { req in
+            try await req.queue.dispatch(Foo1.self, .init(foo: "bar"))
+            try await req.queue.dispatch(Foo1.self, .init(foo: "quux"))
+            try await req.queue.dispatch(Foo2.self, .init(foo: "baz"))
+            return "done"
+        }
+
+        try await self.app.testable().test(.GET, "foo") { res async in
+            XCTAssertEqual(res.status, .ok)
+            XCTAssertEqual(res.body.string, "done")
+        }
+
+        XCTAssertEqual(self.app.queues.test.queue.count, 3)
+        XCTAssertEqual(self.app.queues.test.jobs.count, 3)
+        try await self.app.queues.queue.worker.run()
+        XCTAssertEqual(self.app.queues.test.queue.count, 0)
+        XCTAssertEqual(self.app.queues.test.jobs.count, 0)
+
+        await XCTAssertEqualAsync(try await promise1.futureResult.get(), "quux")
+        await XCTAssertEqualAsync(try await promise2.futureResult.get(), "baz")
+    }
+
     func testSettingCustomId() async throws {
         let promise = self.app.eventLoopGroup.any().makePromise(of: String.self)
         self.app.queues.add(Foo1(promise: promise))
