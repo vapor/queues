@@ -16,92 +16,80 @@ func XCTAssertNoThrowAsync<T>(
 
 final class AsyncQueueTests: XCTestCase {
     var app: Application!
-    
+
     override class func setUp() {
         XCTAssert(isLoggingConfigured)
     }
 
     override func setUp() async throws {
-        app = try await Application.make(.testing)
+        self.app = try await Application.make(.testing)
     }
-    
+
     override func tearDown() async throws {
-        try await app.asyncShutdown()
+        try await self.app.asyncShutdown()
     }
-    
+
     func testAsyncJobWithSyncQueue() async throws {
-        app.queues.use(.test)
-        
-        let promise = app.eventLoopGroup.any().makePromise(of: Void.self)
-        app.queues.add(MyAsyncJob(promise: promise))
-        
-        app.get("foo") { req in
+        self.app.queues.use(.test)
+
+        let promise = self.app.eventLoopGroup.any().makePromise(of: Void.self)
+        self.app.queues.add(MyAsyncJob(promise: promise))
+
+        self.app.get("foo") { req in
             try await req.queue.dispatch(MyAsyncJob.self, .init(foo: "bar"))
             try await req.queue.dispatch(MyAsyncJob.self, .init(foo: "baz"))
             try await req.queue.dispatch(MyAsyncJob.self, .init(foo: "quux"))
             return "done"
         }
-        
-        try await app.testable().test(.GET, "foo") { res async in
+
+        try await self.app.testable().test(.GET, "foo") { res async in
             XCTAssertEqual(res.status, .ok)
             XCTAssertEqual(res.body.string, "done")
         }
-        
-        XCTAssertEqual(app.queues.test.queue.count, 3)
-        XCTAssertEqual(app.queues.test.jobs.count, 3)
-        let job = app.queues.test.first(MyAsyncJob.self)
-        XCTAssert(app.queues.test.contains(MyAsyncJob.self))
+
+        XCTAssertEqual(self.app.queues.test.queue.count, 3)
+        XCTAssertEqual(self.app.queues.test.jobs.count, 3)
+        let job = self.app.queues.test.first(MyAsyncJob.self)
+        XCTAssert(self.app.queues.test.contains(MyAsyncJob.self))
         XCTAssertNotNil(job)
         XCTAssertEqual(job!.foo, "bar")
-        
-        try await app.queues.queue.worker.run().get()
-        XCTAssertEqual(app.queues.test.queue.count, 0)
-        XCTAssertEqual(app.queues.test.jobs.count, 0)
-        
+
+        try await self.app.queues.queue.worker.run().get()
+        XCTAssertEqual(self.app.queues.test.queue.count, 0)
+        XCTAssertEqual(self.app.queues.test.jobs.count, 0)
+
         await XCTAssertNoThrowAsync(try await promise.futureResult.get())
     }
 
     func testAsyncJobWithAsyncQueue() async throws {
-        app.queues.use(.asyncTest)
+        self.app.queues.use(.asyncTest)
 
-        let promise = app.eventLoopGroup.any().makePromise(of: Void.self)
-        app.queues.add(MyAsyncJob(promise: promise))
-        
-        app.get("foo") { req in
+        let promise = self.app.eventLoopGroup.any().makePromise(of: Void.self)
+        self.app.queues.add(MyAsyncJob(promise: promise))
+
+        self.app.get("foo") { req in
             try await req.queue.dispatch(MyAsyncJob.self, .init(foo: "bar"))
             try await req.queue.dispatch(MyAsyncJob.self, .init(foo: "baz"))
             try await req.queue.dispatch(MyAsyncJob.self, .init(foo: "quux"))
             return "done"
         }
-        
-        try await app.testable().test(.GET, "foo") { res async in
+
+        try await self.app.testable().test(.GET, "foo") { res async in
             XCTAssertEqual(res.status, .ok)
             XCTAssertEqual(res.body.string, "done")
         }
-        
-        XCTAssertEqual(app.queues.asyncTest.queue.count, 3)
-        XCTAssertEqual(app.queues.asyncTest.jobs.count, 3)
-        let job = app.queues.asyncTest.first(MyAsyncJob.self)
-        XCTAssert(app.queues.asyncTest.contains(MyAsyncJob.self))
+
+        XCTAssertEqual(self.app.queues.asyncTest.queue.count, 3)
+        XCTAssertEqual(self.app.queues.asyncTest.jobs.count, 3)
+        let job = self.app.queues.asyncTest.first(MyAsyncJob.self)
+        XCTAssert(self.app.queues.asyncTest.contains(MyAsyncJob.self))
         XCTAssertNotNil(job)
         XCTAssertEqual(job!.foo, "bar")
-        
-        try await app.queues.queue.worker.run().get()
-        XCTAssertEqual(app.queues.asyncTest.queue.count, 0)
-        XCTAssertEqual(app.queues.asyncTest.jobs.count, 0)
+
+        try await self.app.queues.queue.worker.run().get()
+        XCTAssertEqual(self.app.queues.asyncTest.queue.count, 0)
+        XCTAssertEqual(self.app.queues.asyncTest.jobs.count, 0)
 
         await XCTAssertNoThrowAsync(try await promise.futureResult.get())
-    }
-}
-
-struct MyAsyncJob: AsyncJob {
-    let promise: EventLoopPromise<Void>
-    
-    struct Data: Codable {
-        var foo: String
-    }
-    
-    func dequeue(_ context: QueueContext, _ payload: Data) async throws {
-        self.promise.succeed()
     }
 }
