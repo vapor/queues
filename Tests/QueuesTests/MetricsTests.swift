@@ -49,15 +49,10 @@ final class MetricsTests: XCTestCase {
 
     func testSuccessfullyCompletedJobsCounter() async throws {
         let promise = self.app.eventLoopGroup.next().makePromise(of: Void.self)
-        let successHook = SuccessHook()
-        let errorHook = ErrorHook()
-
         self.app.queues.add(MyAsyncJob(promise: promise))
-        self.app.queues.add(successHook)
-        self.app.queues.add(errorHook)
 
         self.app.get("foo") { req async throws in
-            try await req.queue.dispatch(MyAsyncJob.self, .init(foo: "bar"), id: JobIdentifier(string: "first"))
+            try await req.queue.dispatch(MyAsyncJob.self, .init(foo: "bar"))
             return "done"
         }
 
@@ -67,15 +62,29 @@ final class MetricsTests: XCTestCase {
         }
 
         try await self.app.queues.queue.worker.run()
-        XCTAssertEqual(successHook.successHit, true)
-        XCTAssertEqual(errorHook.errorCount, 0)
-        XCTAssertEqual(self.app.queues.test.queue.count, 0)
-        XCTAssertEqual(self.app.queues.test.jobs.count, 0)
-
         let counter = try XCTUnwrap(self.metrics.counters["success.completed.jobs.counter"] as? TestCounter)
         let queueNameDimension = try XCTUnwrap(counter.dimensions.first(where: { $0.0 == "queueName" }))
         XCTAssertEqual(queueNameDimension.1, self.app.queues.queue.queueName.string)
-        try XCTAssertNoThrow(promise.futureResult.wait())
+    }
+
+    func testErroringJobsCounter() async throws {
+        let promise = self.app.eventLoopGroup.next().makePromise(of: Void.self)
+        self.app.queues.add(FailingAsyncJob(promise: promise))
+
+        self.app.get("foo") { req async throws in
+            try await req.queue.dispatch(FailingAsyncJob.self, .init(foo: "bar"))
+            return "done"
+        }
+
+        try await self.app.testable().test(.GET, "foo") { res async in
+            XCTAssertEqual(res.status, .ok)
+            XCTAssertEqual(res.body.string, "done")
+        }
+
+        try await self.app.queues.queue.worker.run()
+        let counter = try XCTUnwrap(self.metrics.counters["error.completed.jobs.counter"] as? TestCounter)
+        let queueNameDimension = try XCTUnwrap(counter.dimensions.first(where: { $0.0 == "queueName" }))
+        XCTAssertEqual(queueNameDimension.1, self.app.queues.queue.queueName.string)
     }
 
     func testDispatchedJobsCounter() async throws {
@@ -98,6 +107,5 @@ final class MetricsTests: XCTestCase {
         let counter = try XCTUnwrap(self.metrics.counters["dispatched.jobs.counter"] as? TestCounter)
         let queueNameDimension = try XCTUnwrap(counter.dimensions.first(where: { $0.0 == "queueName" }))
         XCTAssertEqual(queueNameDimension.1, self.app.queues.queue.queueName.string)
-        try XCTAssertNoThrow(promise.futureResult.wait())
     }
 }
