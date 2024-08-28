@@ -1,5 +1,6 @@
 @testable import CoreMetrics
 import Metrics
+import MetricsTestKit
 import NIOConcurrencyHelpers
 import Queues
 @testable import Vapor

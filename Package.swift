@@ -41,6 +41,7 @@ let package = Package(
                 .target(name: "Queues"),
                 .target(name: "XCTQueues"),
                 .product(name: "XCTVapor", package: "vapor"),
+                .product(name: "MetricsTestKit", package: "swift-metrics"),
             ],
             swiftSettings: swiftSettings
         ),
