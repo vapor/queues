@@ -14,8 +14,8 @@ let package = Package(
         .library(name: "XCTQueues", targets: ["XCTQueues"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/vapor/vapor.git", from: "4.101.1"),
-        .package(url: "https://github.com/apple/swift-nio.git", from: "2.65.0"),
+        .package(url: "https://github.com/vapor/vapor.git", from: "4.104.0"),
+        .package(url: "https://github.com/apple/swift-nio.git", from: "2.70.0"),
         .package(url: "https://github.com/apple/swift-metrics.git", from: "2.5.0"),
     ],
     targets: [
