@@ -8,10 +8,10 @@ import XCTVapor
 
 final class MetricsTests: XCTestCase {
     var app: Application!
-    var metrics: CapturingMetricsSystem!
+    var metrics: TestMetrics!
 
     override func setUp() async throws {
-        self.metrics = CapturingMetricsSystem()
+        self.metrics = TestMetrics()
         MetricsSystem.bootstrapInternal(self.metrics)
 
         self.app = try await Application.make(.testing)
@@ -38,7 +38,7 @@ final class MetricsTests: XCTestCase {
 
         try await self.app.queues.queue.worker.run()
 
-        let timer = try XCTUnwrap(self.metrics.timers["some-id.jobDurationTimer"] as? TestTimer)
+        let timer = try XCTUnwrap(self.metrics.timers.first(where: { $0.label == "some-id.jobDurationTimer" }))
         let successDimension = try XCTUnwrap(timer.dimensions.first(where: { $0.0 == "success" }))
         let idDimension = try XCTUnwrap(timer.dimensions.first(where: { $0.0 == "id" }))
         XCTAssertEqual(successDimension.1, "true")
@@ -62,7 +62,7 @@ final class MetricsTests: XCTestCase {
         }
 
         try await self.app.queues.queue.worker.run()
-        let counter = try XCTUnwrap(self.metrics.counters["success.completed.jobs.counter"] as? TestCounter)
+        let counter = try XCTUnwrap(self.metrics.counters.first(where: { $0.label == "success.completed.jobs.counter" }))
         let queueNameDimension = try XCTUnwrap(counter.dimensions.first(where: { $0.0 == "queueName" }))
         XCTAssertEqual(queueNameDimension.1, self.app.queues.queue.queueName.string)
     }
@@ -82,7 +82,7 @@ final class MetricsTests: XCTestCase {
         }
 
         try await self.app.queues.queue.worker.run()
-        let counter = try XCTUnwrap(self.metrics.counters["error.completed.jobs.counter"] as? TestCounter)
+        let counter = try XCTUnwrap(self.metrics.counters.first(where: { $0.label == "error.completed.jobs.counter" }))
         let queueNameDimension = try XCTUnwrap(counter.dimensions.first(where: { $0.0 == "queueName" }))
         XCTAssertEqual(queueNameDimension.1, self.app.queues.queue.queueName.string)
     }
@@ -104,8 +104,10 @@ final class MetricsTests: XCTestCase {
 
         try await self.app.queues.queue.worker.run()
 
-        let counter = try XCTUnwrap(self.metrics.counters["dispatched.jobs.counter"] as? TestCounter)
+        let counter = try XCTUnwrap(self.metrics.counters.first(where: { $0.label == "dispatched.jobs.counter" }))
         let queueNameDimension = try XCTUnwrap(counter.dimensions.first(where: { $0.0 == "queueName" }))
+        let jobNameDimension = try XCTUnwrap(counter.dimensions.first(where: { $0.0 == "jobName" }))
         XCTAssertEqual(queueNameDimension.1, self.app.queues.queue.queueName.string)
+        XCTAssertEqual(jobNameDimension.1, MyAsyncJob.name)
     }
 }

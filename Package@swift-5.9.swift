@@ -11,11 +11,12 @@ let package = Package(
     ],
     products: [
         .library(name: "Queues", targets: ["Queues"]),
-        .library(name: "XCTQueues", targets: ["XCTQueues"])
+        .library(name: "XCTQueues", targets: ["XCTQueues"]),
     ],
     dependencies: [
         .package(url: "https://github.com/vapor/vapor.git", from: "4.101.1"),
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.65.0"),
+        .package(url: "https://github.com/apple/swift-metrics.git", from: "2.5.0"),
     ],
     targets: [
         .target(
@@ -23,6 +24,7 @@ let package = Package(
             dependencies: [
                 .product(name: "Vapor", package: "vapor"),
                 .product(name: "NIOCore", package: "swift-nio"),
+                .product(name: "Metrics", package: "swift-metrics"),
             ],
             swiftSettings: swiftSettings
         ),

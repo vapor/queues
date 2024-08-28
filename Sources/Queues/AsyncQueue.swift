@@ -83,7 +83,10 @@ extension Queue {
         logger.trace("Pusing job to queue")
         try await self.push(id).get()
         logger.info("Dispatched job")
-        Counter(label: "dispatched.jobs.counter", dimensions: [("queueName", self.queueName.string)]).increment()
+        Counter(label: "dispatched.jobs.counter", dimensions: [
+            ("queueName", self.queueName.string),
+            ("jobName", J.name),
+        ]).increment()
 
         await self.sendNotification(of: "dispatch", logger: logger) {
             try await $0.dispatched(job: .init(id: id.string, queueName: self.queueName.string, jobData: storage), eventLoop: self.eventLoop).get()

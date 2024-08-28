@@ -16,7 +16,7 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/vapor/vapor.git", from: "4.101.1"),
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.65.0"),
-        .package(url: "https://github.com/apple/swift-metrics.git", "2.0.0"),
+        .package(url: "https://github.com/apple/swift-metrics.git", from: "2.5.0"),
     ],
     targets: [
         .target(

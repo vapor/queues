@@ -96,12 +96,11 @@ extension Queue {
             logger.trace("Pusing job to queue")
             return self.push(id)
         }.flatMapWithEventLoop { _, eventLoop in
-            Counter(label: "dispatched.jobs.counter", dimensions: [("queueName", self.queueName.string)]).increment()
-            self.logger.info("Dispatched queue job", metadata: [
-                "job_id": .string(id.string),
-                "job_name": .string(job.name),
-                "queue": .string(self.queueName.string),
-            ])
+            Counter(label: "dispatched.jobs.counter", dimensions: [
+                ("queueName", self.queueName.string),
+                ("jobName", J.name),
+            ]).increment()
+            self.logger.info("Dispatched queue job")
             return self.sendNotification(of: "dispatch", logger: logger) {
                 $0.dispatched(job: .init(id: id.string, queueName: self.queueName.string, jobData: storage), eventLoop: eventLoop)
             }
