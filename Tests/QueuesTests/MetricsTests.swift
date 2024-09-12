@@ -39,11 +39,11 @@ final class MetricsTests: XCTestCase {
 
         try await self.app.queues.queue.worker.run()
 
-        let timer = try XCTUnwrap(self.metrics.timers.first(where: { $0.label == "some-id.jobDurationTimer" }))
+        let timer = try XCTUnwrap(self.metrics.timers.first(where: { $0.label == "MyAsyncJob.jobDurationTimer" }))
         let successDimension = try XCTUnwrap(timer.dimensions.first(where: { $0.0 == "success" }))
-        let idDimension = try XCTUnwrap(timer.dimensions.first(where: { $0.0 == "id" }))
+        let idDimension = try XCTUnwrap(timer.dimensions.first(where: { $0.0 == "jobName" }))
         XCTAssertEqual(successDimension.1, "true")
-        XCTAssertEqual(idDimension.1, "some-id")
+        XCTAssertEqual(idDimension.1, "MyAsyncJob")
 
         try XCTAssertNoThrow(promise.futureResult.wait())
     }

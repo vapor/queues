@@ -76,7 +76,7 @@ public struct QueueWorker: Sendable {
             try await job._dequeue(self.queue.context, id: id.string, payload: jobData.payload).get()
 
             logger.trace("Job ran successfully", metadata: ["attempts-made": "\(jobData.currentAttempt)"])
-            self.updateMetrics(for: id, startTime: startTime, queue: self.queue)
+            self.updateMetrics(for: jobData.jobName, startTime: startTime, queue: self.queue)
             await self.queue.sendNotification(of: "success", logger: logger) {
                 try await $0.success(jobId: id.string, eventLoop: self.queue.context.eventLoop).get()
             }
@@ -86,7 +86,7 @@ public struct QueueWorker: Sendable {
                 return try await self.retry(id: id, job: job, jobData: jobData, error: error, logger: logger)
             } else {
                 logger.warning("Job failed, no retries remaining", metadata: ["error": "\(error)", "attempts-made": "\(jobData.currentAttempt)"])
-                self.updateMetrics(for: id, startTime: startTime, queue: self.queue, error: error)
+                self.updateMetrics(for: jobData.jobName, startTime: startTime, queue: self.queue, error: error)
 
                 try await job._error(self.queue.context, id: id.string, error, payload: jobData.payload).get()
                 await self.queue.sendNotification(of: "failure", logger: logger) {
@@ -117,17 +117,17 @@ public struct QueueWorker: Sendable {
     }
 
     private func updateMetrics(
-        for id: JobIdentifier,
+        for jobName: String,
         startTime: UInt64,
         queue: any Queue,
         error: (any Error)? = nil
     ) {
         // Checks how long the job took to complete
         Timer(
-            label: "\(id.string).jobDurationTimer",
+            label: "\(jobName).jobDurationTimer",
             dimensions: [
                 ("success", error == nil ? "true" : "false"),
-                ("id", id.string),
+                ("jobName", jobName),
             ],
             preferredDisplayUnit: .seconds
         ).recordNanoseconds(DispatchTime.now().uptimeNanoseconds - startTime)
