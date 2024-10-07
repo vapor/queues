@@ -180,7 +180,7 @@ public final class QueuesCommand: AsyncCommand, Sendable {
         self.box.withLockedValue { box in
             box.didShutdown = true
         
-            // stop running in case shutting downf rom signal
+            // stop running in case shutting down from signal
             self.application.running?.stop()
         
             // clear signal sources
@@ -202,7 +202,7 @@ public final class QueuesCommand: AsyncCommand, Sendable {
         let (jobTasks, scheduledTasks) = self.box.withLockedValue { box in
             box.didShutdown = true
         
-            // stop running in case shutting downf rom signal
+            // stop running in case shutting down from signal
             self.application.running?.stop()
             
             // clear signal sources
