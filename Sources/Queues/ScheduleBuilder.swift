@@ -139,6 +139,11 @@ public final class ScheduleBuilder: @unchecked Sendable {
         let builder: ScheduleBuilder
 
         public func `in`(_ month: Month) -> Monthly { self.builder.month = month; return self.builder.monthly() }
+        
+        public func `in`(_ month: Month, timezone: TimeZone) -> Monthly {
+            self.builder.timezone = timezone
+            return self.in(month)
+        }
     }
 
     /// An object to build a `Monthly` scheduled job
@@ -146,6 +151,11 @@ public final class ScheduleBuilder: @unchecked Sendable {
         let builder: ScheduleBuilder
 
         public func on(_ day: Day) -> Daily { self.builder.day = day; return self.builder.daily() }
+        
+        public func on(_ day: Day, timezone: TimeZone) -> Daily {
+            self.builder.timezone = timezone
+            return self.on(day)
+        }
     }
 
     /// An object to build a `Weekly` scheduled job
@@ -153,6 +163,11 @@ public final class ScheduleBuilder: @unchecked Sendable {
         let builder: ScheduleBuilder
 
         public func on(_ weekday: Weekday) -> Daily { self.builder.weekday = weekday; return self.builder.daily() }
+        
+        public func on(_ weekday: Weekday, timezone: TimeZone) -> Daily {
+            self.builder.timezone = timezone
+            return self.on(weekday)
+        }
     }
 
     /// An object to build a `Daily` scheduled job
@@ -164,6 +179,21 @@ public final class ScheduleBuilder: @unchecked Sendable {
         public func at(_ hour: Hour24, _ minute: Minute) { self.at(.init(hour, minute)) }
 
         public func at(_ hour: Hour12, _ minute: Minute, _ period: HourPeriod) { self.at(.init(hour, minute, period)) }
+        
+        public func at(_ time: Time, timezone: TimeZone) {
+            self.builder.timezone = timezone
+            self.at(time)
+        }
+        
+        public func at(_ hour: Hour24, _ minute: Minute, timezone: TimeZone) {
+            self.builder.timezone = timezone
+            self.at(hour, minute)
+        }
+        
+        public func at(_ hour: Hour12, _ minute: Minute, _ period: HourPeriod, timezone: TimeZone) {
+            self.builder.timezone = timezone
+            self.at(hour, minute, period)
+        }
     }
 
     /// An object to build a `Hourly` scheduled job
@@ -171,6 +201,11 @@ public final class ScheduleBuilder: @unchecked Sendable {
         let builder: ScheduleBuilder
 
         public func at(_ minute: Minute) { self.builder.minute = minute }
+        
+        public func at(_ minute: Minute, timezone: TimeZone) {
+            self.builder.timezone = timezone
+            self.at(minute)
+        }
     }
     
     /// An object to build a `EveryMinute` scheduled job
@@ -178,6 +213,11 @@ public final class ScheduleBuilder: @unchecked Sendable {
         let builder: ScheduleBuilder
 
         public func at(_ second: Second) { self.builder.second = second }
+        
+        public func at(_ second: Second, timezone: TimeZone) {
+            self.builder.timezone = timezone
+            self.at(second)
+        }
     }
     
     /// Retrieves the next date after the one given.
@@ -197,11 +237,17 @@ public final class ScheduleBuilder: @unchecked Sendable {
         default: break
         }
         components.month = self.month?.rawValue
+        if let timezone = self.timezone {
+            self.calendar.timeZone = timezone
+        }
         return calendar.nextDate(after: current, matching: components, matchingPolicy: .strict)
     }
     
     /// The calendar used to compute the next date
     var calendar: Calendar
+    
+    /// The timezone for the schedule
+    var timezone: TimeZone?
     
     /// Date to perform task (one-off job)
     var date: Date?
@@ -212,6 +258,9 @@ public final class ScheduleBuilder: @unchecked Sendable {
 
     /// Schedules a job using a specific `Calendar`
     public func using(_ calendar: Calendar) -> ScheduleBuilder { self.calendar = calendar; return self }
+    
+    /// Schedules a job using a specific timezone
+    public func `in`(timezone: TimeZone) -> ScheduleBuilder { self.timezone = timezone; return self }
 
     /// Schedules a job at a specific date
     public func at(_ date: Date) { self.date = date }
