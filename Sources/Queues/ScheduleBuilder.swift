@@ -180,18 +180,36 @@ public final class ScheduleBuilder: @unchecked Sendable {
 
         public func at(_ hour: Hour12, _ minute: Minute, _ period: HourPeriod) { self.at(.init(hour, minute, period)) }
         
-        public func at(_ time: Time, timezone: TimeZone) {
-            self.builder.timezone = timezone
+        public func at(_ time: Time, timezone identifier: String) {
+            if let tz = TimeZone(identifier: identifier) {
+                self.builder.timezone = tz
+            } else if let tz = TimeZone(abbreviation: identifier) {
+                self.builder.timezone = tz
+            } else {
+                self.builder.timezone = TimeZone(identifier: "UTC")!
+            }
             self.at(time)
         }
         
-        public func at(_ hour: Hour24, _ minute: Minute, timezone: TimeZone) {
-            self.builder.timezone = timezone
+        public func at(_ hour: Hour24, _ minute: Minute, timezone identifier: String) {
+            if let tz = TimeZone(identifier: identifier) {
+                self.builder.timezone = tz
+            } else if let tz = TimeZone(abbreviation: identifier) {
+                self.builder.timezone = tz
+            } else {
+                self.builder.timezone = TimeZone(identifier: "UTC")!
+            }
             self.at(hour, minute)
         }
         
-        public func at(_ hour: Hour12, _ minute: Minute, _ period: HourPeriod, timezone: TimeZone) {
-            self.builder.timezone = timezone
+        public func at(_ hour: Hour12, _ minute: Minute, _ period: HourPeriod, timezone identifier: String) {
+            if let tz = TimeZone(identifier: identifier) {
+                self.builder.timezone = tz
+            } else if let tz = TimeZone(abbreviation: identifier) {
+                self.builder.timezone = tz
+            } else {
+                self.builder.timezone = TimeZone(identifier: "UTC")!
+            }
             self.at(hour, minute, period)
         }
     }
@@ -285,4 +303,17 @@ public final class ScheduleBuilder: @unchecked Sendable {
 
     /// Runs a job every second
     public func everySecond() { self.millisecond = 0 }
+
+    /// Schedules a job using a specific timezone identifier
+    @discardableResult
+    public func `in`(timezone identifier: String) -> ScheduleBuilder {
+        if let tz = TimeZone(identifier: identifier) {
+            self.timezone = tz
+        } else if let tz = TimeZone(abbreviation: identifier) {
+            self.timezone = tz
+        } else {
+            self.timezone = TimeZone(identifier: "UTC")!
+        }
+        return self
+    }
 }
