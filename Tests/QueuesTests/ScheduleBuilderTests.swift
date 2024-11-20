@@ -157,6 +157,140 @@ final class ScheduleBuilderTests: XCTestCase {
         )
     }
     
+    func testTimezoneConfiguration() throws {
+        // Test timezone initialization
+        let nyBuilder = ScheduleBuilder()
+            .in(timezone: TimeZone(identifier: "America/New_York")!)
+        
+        // Schedule job for 9am New York time
+        nyBuilder.daily().at("9:00am")
+        
+        // Reference dates
+        let nyDate = Date(
+            calendar: .calendar(timezone: "America/New_York"),
+            hour: 9, 
+            minute: 0
+        )
+        
+        let utcDate = Date(
+            calendar: .calendar(timezone: "UTC"),
+            hour: 14,  // 9am NY = 2pm UTC
+            minute: 0
+        )
+        
+        // Test that next run time is correct regardless of input timezone
+        XCTAssertEqual(
+            nyBuilder.nextDate(current: nyDate.addingTimeInterval(-3600)),
+            nyDate
+        )
+        XCTAssertEqual(
+            nyBuilder.nextDate(current: utcDate.addingTimeInterval(-3600)),
+            utcDate
+        )
+    }
+    
+    func testTimezoneAcrossDateBoundary() throws {
+        let tokyoBuilder = ScheduleBuilder()
+            .in(timezone: TimeZone(identifier: "Asia/Tokyo")!)
+        
+        // Schedule for midnight Tokyo time
+        tokyoBuilder.daily().at(.midnight)
+        
+        // Create a reference date: January 1, 2020 11:00 PM Los Angeles time
+        // At this time, it's already January 2, 2020 4:00 PM in Tokyo
+        let laDate = Date(
+            calendar: .calendar(timezone: "America/Los_Angeles"),
+            year: 2020,
+            month: 1,
+            day: 1,
+            hour: 23,  // 11 PM LA time
+            minute: 0
+        )
+        
+        // The next midnight in Tokyo (January 3, 2020 00:00 Tokyo time)
+        // will be January 2, 2020 7:00 AM LA time
+        let expectedDate = Date(
+            calendar: .calendar(timezone: "America/Los_Angeles"),
+            year: 2020,
+            month: 1,
+            day: 2,
+            hour: 7,   // 7 AM LA = midnight Tokyo (next day)
+            minute: 0
+        )
+        
+        XCTAssertEqual(
+            tokyoBuilder.nextDate(current: laDate),
+            expectedDate,
+            "When it's 11 PM on Jan 1 in LA, the next midnight in Tokyo should be 7 AM on Jan 2 LA time"
+        )
+    }
+    
+    func testTimezoneWithYearlySchedule() throws {
+        let dubaiBuilder = ScheduleBuilder()
+            .in(timezone: TimeZone(identifier: "Asia/Dubai")!)
+        
+        // Schedule for New Year's Day at noon Dubai time
+        dubaiBuilder.yearly()
+            .in(.january)
+            .on(.first)
+            .at(.noon)
+        
+        // Test from December 31st London time
+        let londonDate = Date(
+            calendar: .calendar(timezone: "Europe/London"),
+            year: 2020,    // Add explicit year
+            month: 12,
+            day: 31,
+            hour: 8,      // 8am London = noon Dubai
+            minute: 0
+        )
+        
+        let expectedDate = Date(
+            calendar: .calendar(timezone: "Europe/London"),
+            year: 2021,    // Next year
+            month: 1,
+            day: 1,
+            hour: 8,      // 8am London = noon Dubai
+            minute: 0
+        )
+        
+        XCTAssertEqual(
+            dubaiBuilder.nextDate(current: londonDate),
+            expectedDate
+        )
+    }
+    
+    func testTimezoneConsistency() throws {
+        let sydneyBuilder = ScheduleBuilder()
+            .in(timezone: TimeZone(identifier: "Australia/Sydney")!)
+        
+        // Schedule for 3pm Sydney time
+        sydneyBuilder.daily().at("3:00pm")
+        
+        // Test across multiple days to ensure DST handling
+        let startDate = Date(
+            calendar: .calendar(timezone: "Australia/Sydney"),
+            month: 4,  // April (DST transition month in Australia)
+            day: 1,
+            hour: 15,
+            minute: 0
+        )
+        
+        var currentDate = startDate
+        for _ in 1...5 {
+            let nextDate = sydneyBuilder.nextDate(current: currentDate)
+            XCTAssertNotNil(nextDate)
+            
+            // Verify time remains at 3pm Sydney time
+            let components = Calendar.calendar(timezone: "Australia/Sydney")
+                .dateComponents([.hour, .minute], from: nextDate!)
+            
+            XCTAssertEqual(components.hour, 15)  // 3pm = 15:00
+            XCTAssertEqual(components.minute, 0)
+            
+            currentDate = nextDate!
+        }
+    }
 }
 
 final class Cleanup: ScheduledJob {
