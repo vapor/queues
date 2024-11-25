@@ -13,7 +13,7 @@ extension Queue {
 /// The worker that runs ``Job``s.
 public struct QueueWorker: Sendable {
     let queue: any Queue
-
+    
     /// Run the queue until there is no more work to be done.
     /// This is a thin wrapper for ELF-style callers.
     public func run() -> EventLoopFuture<Void> {
@@ -34,6 +34,11 @@ public struct QueueWorker: Sendable {
         var logger = self.queue.logger
         logger[metadataKey: "queue"] = "\(self.queue.queueName.string)"
         logger.trace("Popping job from queue")
+
+        Gauge(
+            label: "jobs.in.progress.gauge", 
+            dimensions: [("queueName", self.queue.queueName.string)]
+        ).record(1)
 
         guard let id = try await self.queue.pop().get() else {
             // No job found, go around again.
@@ -122,17 +127,15 @@ public struct QueueWorker: Sendable {
         queue: any Queue,
         error: (any Error)? = nil
     ) {
-        // Checks how long the job took to complete
         Timer(
-            label: "\(jobName).jobDurationTimer",
+            label: "\(jobName).duration.timer",
             dimensions: [
                 ("success", error == nil ? "true" : "false"),
                 ("jobName", jobName),
             ],
-            preferredDisplayUnit: .seconds
+            preferredDisplayUnit: .milliseconds
         ).recordNanoseconds(DispatchTime.now().uptimeNanoseconds - startTime)
 
-        // Adds the completed job to a different counter depending on its result
         if error != nil {
             Counter(
                 label: "error.completed.jobs.counter",
@@ -144,5 +147,10 @@ public struct QueueWorker: Sendable {
                 dimensions: [("queueName", queue.queueName.string)]
             ).increment()
         }
+
+        Gauge(
+            label: "jobs.in.progress.gauge",
+            dimensions: [("queueName", queue.queueName.string)]
+        ).record(-1)
     }
 }
