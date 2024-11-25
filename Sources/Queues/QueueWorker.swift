@@ -35,11 +35,6 @@ public struct QueueWorker: Sendable {
         logger[metadataKey: "queue"] = "\(self.queue.queueName.string)"
         logger.trace("Popping job from queue")
 
-        Gauge(
-            label: "jobs.in.progress.gauge", 
-            dimensions: [("queueName", self.queue.queueName.string)]
-        ).record(1)
-
         guard let id = try await self.queue.pop().get() else {
             // No job found, go around again.
             logger.trace("No pending jobs")
@@ -69,6 +64,11 @@ public struct QueueWorker: Sendable {
         await self.queue.sendNotification(of: "dequeue", logger: logger) {
             try await $0.didDequeue(jobId: id.string, eventLoop: self.queue.eventLoop).get()
         }
+
+        Gauge(
+            label: "jobs.in.progress.gauge", 
+            dimensions: [("queueName", self.queue.queueName.string)]
+        ).record(1)
 
         try await self.runOneJob(id: id, job: job, jobData: data, logger: logger)
         return true
