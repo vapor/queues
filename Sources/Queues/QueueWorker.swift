@@ -65,10 +65,10 @@ public struct QueueWorker: Sendable {
             try await $0.didDequeue(jobId: id.string, eventLoop: self.queue.eventLoop).get()
         }
 
-        Gauge(
-            label: "jobs.in.progress.gauge", 
+        Meter(
+            label: "jobs.in.progress.meter", 
             dimensions: [("queueName", self.queue.queueName.string)]
-        ).record(1)
+        ).increment()
 
         try await self.runOneJob(id: id, job: job, jobData: data, logger: logger)
         return true
@@ -148,9 +148,9 @@ public struct QueueWorker: Sendable {
             ).increment()
         }
 
-        Gauge(
-            label: "jobs.in.progress.gauge",
+        Meter(
+            label: "jobs.in.progress.meter",
             dimensions: [("queueName", queue.queueName.string)]
-        ).record(-1)
+        ).decrement()
     }
 }
