@@ -13,7 +13,7 @@ extension Queue {
 /// The worker that runs ``Job``s.
 public struct QueueWorker: Sendable {
     let queue: any Queue
-    
+
     /// Run the queue until there is no more work to be done.
     /// This is a thin wrapper for ELF-style callers.
     public func run() -> EventLoopFuture<Void> {
