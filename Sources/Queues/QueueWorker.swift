@@ -65,6 +65,11 @@ public struct QueueWorker: Sendable {
             try await $0.didDequeue(jobId: id.string, eventLoop: self.queue.eventLoop).get()
         }
 
+        Meter(
+            label: "jobs.in.progress.meter", 
+            dimensions: [("queueName", self.queue.queueName.string)]
+        ).increment()
+
         try await self.runOneJob(id: id, job: job, jobData: data, logger: logger)
         return true
     }
@@ -122,17 +127,15 @@ public struct QueueWorker: Sendable {
         queue: any Queue,
         error: (any Error)? = nil
     ) {
-        // Checks how long the job took to complete
         Timer(
             label: "\(jobName).jobDurationTimer",
             dimensions: [
                 ("success", error == nil ? "true" : "false"),
                 ("jobName", jobName),
             ],
-            preferredDisplayUnit: .seconds
+            preferredDisplayUnit: .milliseconds
         ).recordNanoseconds(DispatchTime.now().uptimeNanoseconds - startTime)
 
-        // Adds the completed job to a different counter depending on its result
         if error != nil {
             Counter(
                 label: "error.completed.jobs.counter",
@@ -144,5 +147,10 @@ public struct QueueWorker: Sendable {
                 dimensions: [("queueName", queue.queueName.string)]
             ).increment()
         }
+
+        Meter(
+            label: "jobs.in.progress.meter",
+            dimensions: [("queueName", queue.queueName.string)]
+        ).decrement()
     }
 }
