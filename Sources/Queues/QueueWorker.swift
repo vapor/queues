@@ -128,7 +128,7 @@ public struct QueueWorker: Sendable {
         error: (any Error)? = nil
     ) {
         Timer(
-            label: "\(jobName).duration.timer",
+            label: "\(jobName).jobDurationTimer",
             dimensions: [
                 ("success", error == nil ? "true" : "false"),
                 ("jobName", jobName),
