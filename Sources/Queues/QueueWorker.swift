@@ -108,7 +108,7 @@ public struct QueueWorker: Sendable {
             payload: jobData.payload,
             maxRetryCount: jobData.maxRetryCount,
             jobName: jobData.jobName,
-            delayUntil: .init(timeIntervalSinceNow: Double(delay)),
+            delayUntil: delay == 0 ? nil : .init(timeIntervalSinceNow: Double(delay)),
             queuedAt: .init(),
             attempts: jobData.currentAttempt
         )
