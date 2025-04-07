@@ -114,7 +114,7 @@ public struct QueueWorker: Sendable {
         )
 
         logger.warning("Job failed, retrying", metadata: [
-            "retry-delay": "\(delay)", "error": "\(String(reflecitng: error))", "next-attempt": "\(updatedData.currentAttempt)", "retries-left": "\(updatedData.remainingAttempts)",
+            "retry-delay": "\(delay)", "error": "\(String(reflecting: error))", "next-attempt": "\(updatedData.currentAttempt)", "retries-left": "\(updatedData.remainingAttempts)",
         ])
         try await self.queue.clear(id).get()
         try await self.queue.set(id, to: updatedData).get()
