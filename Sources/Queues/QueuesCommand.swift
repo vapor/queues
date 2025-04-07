@@ -108,7 +108,7 @@ public final class QueuesCommand: AsyncCommand, Sendable {
                 return worker.run().map {
                     worker.queue.logger.trace("Worker ran the task successfully")
                 }.recover { error in
-                    worker.queue.logger.error("Job run failed", metadata: ["error": "\(error)"])
+                    worker.queue.logger.error("Job run failed", metadata: ["error": "\(String(reflecting: error))"])
                 }.map {
                     if self.box.withLockedValue({ $0.didShutdown }) {
                         worker.queue.logger.trace("Shutting down, cancelling the task")
@@ -164,7 +164,7 @@ public final class QueuesCommand: AsyncCommand, Sendable {
             task.done.whenComplete { result in
                 switch result {
                 case .failure(let error):
-                    context.logger.error("Scheduled job failed", metadata: ["name": "\(job.job.name)", "error": "\(error)"])
+                    context.logger.error("Scheduled job failed", metadata: ["name": "\(job.job.name)", "error": "\(String(reflecting: error))"])
                 case .success: break
                 }
                 // Explicitly spin the event loop so we don't deadlock on a reentrant call to this method.

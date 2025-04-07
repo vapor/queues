@@ -116,7 +116,7 @@ extension Queue {
         logger.trace("Sending notification", metadata: ["kind": "\(kind)"])
         return self.configuration.notificationHooks.map {
             notification($0).flatMapErrorWithEventLoop { error, eventLoop in
-                logger.warning("Failed to send notification", metadata: ["kind": "\(kind)", "error": "\(error)"])
+                logger.warning("Failed to send notification", metadata: ["kind": "\(kind)", "error": "\(String(reflecting: error))"])
                 return eventLoop.makeSucceededVoidFuture()
             }
         }.flatten(on: self.eventLoop)
@@ -131,7 +131,7 @@ extension Queue {
             do {
                 try await notification(hook)
             } catch {
-                logger.warning("Failed to send notification", metadata: ["kind": "\(kind)", "error": "\(error)"])
+                logger.warning("Failed to send notification", metadata: ["kind": "\(kind)", "error": "\(String(reflecting: error))"])
             }
         }
     }

@@ -90,7 +90,7 @@ public struct QueueWorker: Sendable {
                 // N.B.: `return` from here so we don't clear the job data.
                 return try await self.retry(id: id, job: job, jobData: jobData, error: error, logger: logger)
             } else {
-                logger.warning("Job failed, no retries remaining", metadata: ["error": "\(error)", "attempts-made": "\(jobData.currentAttempt)"])
+                logger.warning("Job failed, no retries remaining", metadata: ["error": "\(String(reflecting: error))", "attempts-made": "\(jobData.currentAttempt)"])
                 self.updateMetrics(for: jobData.jobName, startTime: startTime, queue: self.queue, error: error)
 
                 try await job._error(self.queue.context, id: id.string, error, payload: jobData.payload).get()
@@ -114,7 +114,7 @@ public struct QueueWorker: Sendable {
         )
 
         logger.warning("Job failed, retrying", metadata: [
-            "retry-delay": "\(delay)", "error": "\(error)", "next-attempt": "\(updatedData.currentAttempt)", "retries-left": "\(updatedData.remainingAttempts)",
+            "retry-delay": "\(delay)", "error": "\(String(reflecting: error))", "next-attempt": "\(updatedData.currentAttempt)", "retries-left": "\(updatedData.remainingAttempts)",
         ])
         try await self.queue.clear(id).get()
         try await self.queue.set(id, to: updatedData).get()
