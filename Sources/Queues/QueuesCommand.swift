@@ -31,6 +31,7 @@ public final class QueuesCommand: AsyncCommand, Sendable {
     struct Box: Sendable {
         var jobTasks: [RepeatedTask]
         var scheduledTasks: [String: AnyScheduledJob.Task]
+        var recoveryTask: RepeatedTask?  // Periodic stale job recovery task (like Sidekiq Beat)
         var signalSources: [any DispatchSourceSignal]
         var didShutdown: Bool
     }
@@ -42,7 +43,7 @@ public final class QueuesCommand: AsyncCommand, Sendable {
     ///   - scheduled: This parameter is a historical artifact and has no effect.
     public init(application: Application, scheduled: Bool = false) {
         self.application = application
-        self.box = .init(.init(jobTasks: [], scheduledTasks: [:], signalSources: [], didShutdown: false))
+        self.box = .init(.init(jobTasks: [], scheduledTasks: [:], recoveryTask: nil, signalSources: [], didShutdown: false))
     }
 
     // See `AsyncCommand.run(using:signature:)`.
@@ -142,6 +143,38 @@ public final class QueuesCommand: AsyncCommand, Sendable {
 
         self.box.withLockedValue { $0.jobTasks = tasks }
         self.application.logger.trace("Finished adding jobTasks, total count: \(tasks.count)")
+
+        // Schedule periodic stale job recovery (like Sidekiq Beat - runs every 15 seconds by default)
+        let recoveryInterval = self.application.queues.configuration.staleJobRecoveryInterval
+        let recoveryQueue = self.application.queues.queue(queueName, on: self.application.eventLoopGroup.any())
+
+        let recoveryTask = self.application.eventLoopGroup.any().scheduleRepeatedAsyncTask(
+            initialDelay: recoveryInterval,  // Wait before first check (after startup recovery)
+            delay: recoveryInterval
+        ) { task in
+            recoveryQueue.logger.trace("Running periodic stale job recovery check")
+
+            return recoveryQueue.recoverStaleJobs().map { count in
+                if count > 0 {
+                    recoveryQueue.logger.info("Periodic recovery: recovered stale jobs", metadata: ["count": "\(count)"])
+                }
+            }.recover { error in
+                recoveryQueue.logger.error("Periodic recovery failed", metadata: ["error": "\(String(reflecting: error))"])
+            }.map {
+                // Check if shutdown was requested
+                if self.box.withLockedValue({ $0.didShutdown }) {
+                    recoveryQueue.logger.trace("Shutting down, cancelling recovery task")
+                    task.cancel()
+                }
+            }
+        }
+
+        self.box.withLockedValue { $0.recoveryTask = recoveryTask }
+        let recoveryIntervalSeconds = Double(recoveryInterval.nanoseconds) / 1_000_000_000.0
+        self.application.logger.info("Started periodic stale job recovery", metadata: [
+            "interval": "\(Int(recoveryIntervalSeconds))s",
+            "queue": .string(queueName.string)
+        ])
     }
 
     /// Starts the scheduled jobs in-process
@@ -216,11 +249,15 @@ public final class QueuesCommand: AsyncCommand, Sendable {
             box.scheduledTasks.values.forEach {
                 $0.task.syncCancel(on: self.application.eventLoopGroup.any())
             }
+            // stop periodic recovery task
+            if let recoveryTask = box.recoveryTask {
+                recoveryTask.syncCancel(on: self.application.eventLoopGroup.any())
+            }
         }
     }
 
     public func asyncShutdown() async {
-        let (jobTasks, scheduledTasks) = self.box.withLockedValue { box in
+        let (jobTasks, scheduledTasks, recoveryTask) = self.box.withLockedValue { box in
             box.didShutdown = true
 
             // stop running in case shutting down from signal
@@ -231,7 +268,7 @@ public final class QueuesCommand: AsyncCommand, Sendable {
             box.signalSources = []
 
             // Release the lock before we start any suspensions
-            return (box.jobTasks, box.scheduledTasks)
+            return (box.jobTasks, box.scheduledTasks, box.recoveryTask)
         }
 
         // stop all job queue workers
@@ -241,6 +278,10 @@ public final class QueuesCommand: AsyncCommand, Sendable {
         // stop all scheduled jobs
         for scheduledTask in scheduledTasks.values {
             await scheduledTask.task.asyncCancel(on: self.application.eventLoopGroup.any())
+        }
+        // stop periodic recovery task
+        if let recoveryTask = recoveryTask {
+            await recoveryTask.asyncCancel(on: self.application.eventLoopGroup.any())
         }
     }
 
