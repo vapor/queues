@@ -11,6 +11,7 @@ public struct QueuesConfiguration: Sendable {
         var workerCount: WorkerCount = .default
         var staleJobTimeout: TimeAmount = .seconds(300)  // 5 minutes default (like Sidekiq)
         var staleJobRecoveryInterval: TimeAmount = .seconds(15)  // 15 seconds default (like Sidekiq Beat)
+        var enableStaleJobRecovery: Bool = true  // Enable recovery by default (can be disabled)
         var userInfo: [AnySendableHashable: any Sendable] = [:]
 
         var jobs: [String: any AnyJob] = [:]
@@ -66,6 +67,14 @@ public struct QueuesConfiguration: Sendable {
         set { self.dataBox.withLockedValue { $0.staleJobRecoveryInterval = newValue } }
     }
 
+    /// Enable or disable stale job recovery. Defaults to `true`.
+    /// When disabled, stale jobs will not be recovered on startup or periodically.
+    /// This can be useful for simple use cases where recovery overhead is not needed.
+    public var enableStaleJobRecovery: Bool {
+        get { self.dataBox.withLockedValue { $0.enableStaleJobRecovery } }
+        set { self.dataBox.withLockedValue { $0.enableStaleJobRecovery = newValue } }
+    }
+
     /// A logger
     public let logger: Logger
 
@@ -97,6 +106,7 @@ public struct QueuesConfiguration: Sendable {
         workerCount: WorkerCount = .default,
         staleJobTimeout: TimeAmount = .seconds(300),  // 5 minutes default
         staleJobRecoveryInterval: TimeAmount = .seconds(15),  // 15 seconds default (like Sidekiq Beat)
+        enableStaleJobRecovery: Bool = true,  // Enabled by default
         logger: Logger = .init(label: "codes.vapor.queues")
     ) {
         self.logger = logger
@@ -105,6 +115,7 @@ public struct QueuesConfiguration: Sendable {
         self.workerCount = workerCount
         self.staleJobTimeout = staleJobTimeout
         self.staleJobRecoveryInterval = staleJobRecoveryInterval
+        self.enableStaleJobRecovery = enableStaleJobRecovery
     }
 
     /// Adds a new ``Job`` to the queue configuration.

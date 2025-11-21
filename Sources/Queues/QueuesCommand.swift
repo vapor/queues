@@ -86,25 +86,30 @@ public final class QueuesCommand: AsyncCommand, Sendable {
     ///
     /// - Parameter queueName: The queue to run the jobs on
     public func startJobs(on queueName: QueueName) throws {
-        // Recover stale jobs first (before starting workers)
         let queue = self.application.queues.queue(queueName, on: self.application.eventLoopGroup.any())
-        let recoveryFuture = queue.recoverStaleJobs()
 
-        // Log recovery result, but don't block - start workers regardless
-        recoveryFuture.whenComplete { result in
-            switch result {
-            case .success(let count):
-                if count > 0 {
-                    self.application.logger.info("Recovered stale jobs", metadata: ["count": "\(count)", "queue": .string(queueName.string)])
-                } else {
-                    self.application.logger.trace("No stale jobs to recover", metadata: ["queue": .string(queueName.string)])
+        // Recover stale jobs on startup (if recovery is enabled)
+        if self.application.queues.configuration.enableStaleJobRecovery {
+            let recoveryFuture = queue.recoverStaleJobs()
+
+            // Log recovery result, but don't block - start workers regardless
+            recoveryFuture.whenComplete { result in
+                switch result {
+                case .success(let count):
+                    if count > 0 {
+                        self.application.logger.info("Recovered stale jobs", metadata: ["count": "\(count)", "queue": .string(queueName.string)])
+                    } else {
+                        self.application.logger.trace("No stale jobs to recover", metadata: ["queue": .string(queueName.string)])
+                    }
+                case .failure(let error):
+                    self.application.logger.error("Failed to recover stale jobs", metadata: [
+                        "queue": .string(queueName.string),
+                        "error": "\(String(reflecting: error))"
+                    ])
                 }
-            case .failure(let error):
-                self.application.logger.error("Failed to recover stale jobs", metadata: [
-                    "queue": .string(queueName.string),
-                    "error": "\(String(reflecting: error))"
-                ])
             }
+        } else {
+            self.application.logger.trace("Stale job recovery is disabled", metadata: ["queue": .string(queueName.string)])
         }
 
         let workerCount: Int
@@ -145,36 +150,41 @@ public final class QueuesCommand: AsyncCommand, Sendable {
         self.application.logger.trace("Finished adding jobTasks, total count: \(tasks.count)")
 
         // Schedule periodic stale job recovery (like Sidekiq Beat - runs every 15 seconds by default)
-        let recoveryInterval = self.application.queues.configuration.staleJobRecoveryInterval
-        let recoveryQueue = self.application.queues.queue(queueName, on: self.application.eventLoopGroup.any())
+        // Only if recovery is enabled
+        if self.application.queues.configuration.enableStaleJobRecovery {
+            let recoveryInterval = self.application.queues.configuration.staleJobRecoveryInterval
+            let recoveryQueue = self.application.queues.queue(queueName, on: self.application.eventLoopGroup.any())
 
-        let recoveryTask = self.application.eventLoopGroup.any().scheduleRepeatedAsyncTask(
-            initialDelay: recoveryInterval,  // Wait before first check (after startup recovery)
-            delay: recoveryInterval
-        ) { task in
-            recoveryQueue.logger.trace("Running periodic stale job recovery check")
+            let recoveryTask = self.application.eventLoopGroup.any().scheduleRepeatedAsyncTask(
+                initialDelay: recoveryInterval,  // Wait before first check (after startup recovery)
+                delay: recoveryInterval
+            ) { task in
+                recoveryQueue.logger.trace("Running periodic stale job recovery check")
 
-            return recoveryQueue.recoverStaleJobs().map { count in
-                if count > 0 {
-                    recoveryQueue.logger.info("Periodic recovery: recovered stale jobs", metadata: ["count": "\(count)"])
-                }
-            }.recover { error in
-                recoveryQueue.logger.error("Periodic recovery failed", metadata: ["error": "\(String(reflecting: error))"])
-            }.map {
-                // Check if shutdown was requested
-                if self.box.withLockedValue({ $0.didShutdown }) {
-                    recoveryQueue.logger.trace("Shutting down, cancelling recovery task")
-                    task.cancel()
+                return recoveryQueue.recoverStaleJobs().map { count in
+                    if count > 0 {
+                        recoveryQueue.logger.info("Periodic recovery: recovered stale jobs", metadata: ["count": "\(count)"])
+                    }
+                }.recover { error in
+                    recoveryQueue.logger.error("Periodic recovery failed", metadata: ["error": "\(String(reflecting: error))"])
+                }.map {
+                    // Check if shutdown was requested
+                    if self.box.withLockedValue({ $0.didShutdown }) {
+                        recoveryQueue.logger.trace("Shutting down, cancelling recovery task")
+                        task.cancel()
+                    }
                 }
             }
-        }
 
-        self.box.withLockedValue { $0.recoveryTask = recoveryTask }
-        let recoveryIntervalSeconds = Double(recoveryInterval.nanoseconds) / 1_000_000_000.0
-        self.application.logger.info("Started periodic stale job recovery", metadata: [
-            "interval": "\(Int(recoveryIntervalSeconds))s",
-            "queue": .string(queueName.string)
-        ])
+            self.box.withLockedValue { $0.recoveryTask = recoveryTask }
+            let recoveryIntervalSeconds = Double(recoveryInterval.nanoseconds) / 1_000_000_000.0
+            self.application.logger.info("Started periodic stale job recovery", metadata: [
+                "interval": "\(Int(recoveryIntervalSeconds))s",
+                "queue": .string(queueName.string)
+            ])
+        } else {
+            self.application.logger.trace("Periodic stale job recovery is disabled", metadata: ["queue": .string(queueName.string)])
+        }
     }
 
     /// Starts the scheduled jobs in-process
