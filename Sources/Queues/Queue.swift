@@ -1,4 +1,3 @@
-
 import Foundation
 import Logging
 import Metrics
@@ -29,6 +28,14 @@ public protocol Queue: Sendable {
     /// Pushes the next job into a queue
     /// - Parameter id: The ID of the job
     func push(_ id: JobIdentifier) -> EventLoopFuture<Void>
+
+    /// Recovers stale jobs from the processing queue. This is called on worker startup.
+    /// Jobs older than `staleJobTimeout` will be requeued.
+    /// 
+    /// Default implementation returns 0 (no recovery support).
+    /// Drivers that support recovery should implement this method.
+    /// - Returns: The number of stale jobs recovered
+    func recoverStaleJobs() -> EventLoopFuture<Int>
 }
 
 extension Queue {
@@ -98,7 +105,7 @@ extension Queue {
         }.flatMapWithEventLoop { _, eventLoop in
             Counter(label: "dispatched.jobs.counter", dimensions: [
                 ("queueName", self.queueName.string),
-                ("jobName", J.name),
+                ("jobName", J.name)
             ]).increment()
             self.logger.info("Dispatched queue job")
             return self.sendNotification(of: "dispatch", logger: logger) {
@@ -134,5 +141,13 @@ extension Queue {
                 logger.warning("Failed to send notification", metadata: ["kind": "\(kind)", "error": "\(String(reflecting: error))"])
             }
         }
+    }
+
+    /// Default implementation of ``Queue/recoverStaleJobs()``.
+    /// Drivers that support recovery should provide their own implementation.
+    /// - Returns: The number of stale jobs recovered (default: 0)
+    func recoverStaleJobs() -> EventLoopFuture<Int> {
+        // Default implementation: no recovery support
+        return self.eventLoop.makeSucceededFuture(0)
     }
 }

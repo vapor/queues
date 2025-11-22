@@ -9,15 +9,18 @@ public struct QueuesConfiguration: Sendable {
         var refreshInterval: TimeAmount = .seconds(1)
         var persistenceKey: String = "vapor_queues"
         var workerCount: WorkerCount = .default
+        var staleJobTimeout: TimeAmount = .seconds(300)  // 5 minutes default (like Sidekiq)
+        var staleJobRecoveryInterval: TimeAmount = .seconds(15)  // 15 seconds default (like Sidekiq Beat)
+        var enableStaleJobRecovery: Bool = true  // Enable recovery by default (can be disabled)
         var userInfo: [AnySendableHashable: any Sendable] = [:]
-        
+
         var jobs: [String: any AnyJob] = [:]
         var scheduledJobs: [AnyScheduledJob] = []
         var notificationHooks: [any JobEventDelegate] = []
     }
-    
+
     private let dataBox: NIOLockedValueBox<DataBox> = .init(.init())
-    
+
     /// The number of seconds to wait before checking for the next job. Defaults to `1`
     public var refreshInterval: TimeAmount {
         get { self.dataBox.withLockedValue { $0.refreshInterval } }
@@ -49,44 +52,72 @@ public struct QueuesConfiguration: Sendable {
         get { self.dataBox.withLockedValue { $0.workerCount } }
         set { self.dataBox.withLockedValue { $0.workerCount = newValue } }
     }
-    
+
+    /// The timeout for considering a job in the processing queue as stale and eligible for recovery.
+    /// Defaults to 5 minutes (300 seconds). Jobs older than this timeout will be requeued on worker startup.
+    public var staleJobTimeout: TimeAmount {
+        get { self.dataBox.withLockedValue { $0.staleJobTimeout } }
+        set { self.dataBox.withLockedValue { $0.staleJobTimeout = newValue } }
+    }
+
+    /// The interval at which stale jobs are checked and recovered. Defaults to 15 seconds (like Sidekiq Beat).
+    /// This periodic check ensures that stale jobs are recovered even if no workers restart.
+    public var staleJobRecoveryInterval: TimeAmount {
+        get { self.dataBox.withLockedValue { $0.staleJobRecoveryInterval } }
+        set { self.dataBox.withLockedValue { $0.staleJobRecoveryInterval = newValue } }
+    }
+
+    /// Enable or disable stale job recovery. Defaults to `true`.
+    /// When disabled, stale jobs will not be recovered on startup or periodically.
+    /// This can be useful for simple use cases where recovery overhead is not needed.
+    public var enableStaleJobRecovery: Bool {
+        get { self.dataBox.withLockedValue { $0.enableStaleJobRecovery } }
+        set { self.dataBox.withLockedValue { $0.enableStaleJobRecovery = newValue } }
+    }
+
     /// A logger
     public let logger: Logger
-    
+
     // Arbitrary user info to be stored
     public var userInfo: [AnySendableHashable: any Sendable] {
         get { self.dataBox.withLockedValue { $0.userInfo } }
         set { self.dataBox.withLockedValue { $0.userInfo = newValue } }
     }
-    
+
     var jobs: [String: any AnyJob] {
         get { self.dataBox.withLockedValue { $0.jobs } }
         set { self.dataBox.withLockedValue { $0.jobs = newValue } }
     }
-    
+
     var scheduledJobs: [AnyScheduledJob] {
         get { self.dataBox.withLockedValue { $0.scheduledJobs } }
         set { self.dataBox.withLockedValue { $0.scheduledJobs = newValue } }
     }
-    
+
     var notificationHooks: [any JobEventDelegate] {
         get { self.dataBox.withLockedValue { $0.notificationHooks } }
         set { self.dataBox.withLockedValue { $0.notificationHooks = newValue } }
     }
-    
+
     /// Creates an empty ``QueuesConfiguration``.
     public init(
         refreshInterval: TimeAmount = .seconds(1),
         persistenceKey: String = "vapor_queues",
         workerCount: WorkerCount = .default,
+        staleJobTimeout: TimeAmount = .seconds(300),  // 5 minutes default
+        staleJobRecoveryInterval: TimeAmount = .seconds(15),  // 15 seconds default (like Sidekiq Beat)
+        enableStaleJobRecovery: Bool = true,  // Enabled by default
         logger: Logger = .init(label: "codes.vapor.queues")
     ) {
         self.logger = logger
         self.refreshInterval = refreshInterval
         self.persistenceKey = persistenceKey
         self.workerCount = workerCount
+        self.staleJobTimeout = staleJobTimeout
+        self.staleJobRecoveryInterval = staleJobRecoveryInterval
+        self.enableStaleJobRecovery = enableStaleJobRecovery
     }
-    
+
     /// Adds a new ``Job`` to the queue configuration.
     ///
     /// This must be called on all ``Job`` objects before they can be run in a queue.
@@ -99,7 +130,7 @@ public struct QueuesConfiguration: Sendable {
         }
         self.jobs[J.name] = job
     }
-    
+
     /// Schedules a new job for execution at a later date.
     ///
     ///     config.schedule(Cleanup())

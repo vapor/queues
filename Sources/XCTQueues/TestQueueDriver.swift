@@ -20,7 +20,6 @@ extension Application.Queues.Provider {
 }
 
 struct TestQueuesDriver: QueuesDriver {
-    init() {}
 
     func makeQueue(with context: QueueContext) -> any Queue {
         TestQueue(_context: .init(context))
@@ -32,7 +31,6 @@ struct TestQueuesDriver: QueuesDriver {
 }
 
 struct AsyncTestQueuesDriver: QueuesDriver {
-    init() {}
     func makeQueue(with context: QueueContext) -> any Queue { AsyncTestQueue(_context: .init(context)) }
     func shutdown() {}
 }
@@ -144,6 +142,11 @@ struct TestQueue: Queue {
             return context.eventLoop.makeSucceededVoidFuture()
         }
     }
+
+    // Test queue doesn't support recovery - uses default implementation
+    func recoverStaleJobs() -> EventLoopFuture<Int> {
+        return self.eventLoop.makeSucceededFuture(0)
+    }
 }
 
 struct AsyncTestQueue: AsyncQueue {
@@ -155,4 +158,9 @@ struct AsyncTestQueue: AsyncQueue {
     func clear(_ id: JobIdentifier) async throws { self._context.withLockedValue { $0.application.queues.asyncTest.jobs[id] = nil } }
     func pop() async throws -> JobIdentifier? { self._context.withLockedValue { $0.application.queues.asyncTest.queue.popLast() } }
     func push(_ id: JobIdentifier) async throws { self._context.withLockedValue { $0.application.queues.asyncTest.queue.append(id) } }
+
+    // Test queue doesn't support recovery - uses default implementation
+    func recoverStaleJobs() -> EventLoopFuture<Int> {
+        return self.eventLoop.makeSucceededFuture(0)
+    }
 }
