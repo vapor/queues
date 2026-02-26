@@ -28,16 +28,32 @@ final class AnyScheduledJob: Sendable {
     struct Task: Sendable {
         let task: RepeatedTask
         let done: EventLoopFuture<Void>
+        let scheduledDate: Date
     }
 
-    func schedule(context: QueueContext) -> Task? {
+    /// Schedule the next run of this job.
+    ///
+    /// - Parameters:
+    ///   - context: The queue context.
+    ///   - previousDate: The date this job was last scheduled to run. When provided,
+    ///     `nextDate` is calculated relative to this date rather than `Date()`, which
+    ///     prevents a double-fire caused by timer jitter on some platforms (e.g.
+    ///     Firecracker microVMs on Fly.io) where the NIO timer fires a fraction of a
+    ///     second early.  If the timer fires at 19:59:59.8 instead of 20:00:00, and we
+    ///     then call `nextDate(current: Date())`, we get back 20:00:00 (still in the
+    ///     future) and the job fires again.  By passing the originally-scheduled date
+    ///     instead, `nextDate` correctly advances to the following occurrence.
+    func schedule(context: QueueContext, after previousDate: Date? = nil) -> Task? {
         var logger_ = context.logger
         logger_[metadataKey: "job-name"] = "\(self.job.name)"
         let logger = logger_
-        
+
         logger.trace("Beginning the scheduler process")
-        
-        guard let date = self.scheduler.nextDate() else {
+
+        // Use the previously-scheduled date as the reference point so that small
+        // clock-jitter cannot cause the same occurrence to be returned twice.
+        let searchFrom = previousDate ?? Date()
+        guard let date = self.scheduler.nextDate(current: searchFrom) else {
             logger.debug("Scheduler returned no date")
             return nil
         }
@@ -52,6 +68,7 @@ final class AnyScheduledJob: Sendable {
             logger.trace("Running scheduled job")
             self.job.run(context: context).cascade(to: promise)
         }
-        return .init(task: task, done: promise.futureResult)
+        return .init(task: task, done: promise.futureResult, scheduledDate: date)
     }
 }
+
