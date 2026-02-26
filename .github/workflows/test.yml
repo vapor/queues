@@ -8,8 +8,8 @@ on:
 
 jobs:
   unit-tests:
-    permissions:
-      contents: read
+     permissions:
+       contents: read
      uses: vapor/ci/.github/workflows/run-unit-tests.yml@main
      with:
        with_android: true
