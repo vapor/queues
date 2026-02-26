@@ -1,15 +1,18 @@
+import ConsoleKit
+@preconcurrency import Dispatch
 import Vapor
-import class NIOConcurrencyHelpers.NIOAtomic
-import class NIO.RepeatedTask
+import NIOConcurrencyHelpers
+import NIOCore
+import Atomics
 
 /// The command to start the Queue job
-public final class QueuesCommand: Command {
-    /// See `Command.signature`
+public final class QueuesCommand: AsyncCommand, Sendable {
+    // See `Command.signature`.
     public let signature = Signature()
     
-    /// See `Command.Signature`
+    // See `Command.Signature`.
     public struct Signature: CommandSignature {
-        public init() { }
+        public init() {}
         
         @Option(name: "queue", help: "Specifies a single queue to run")
         var queue: String?
@@ -18,57 +21,51 @@ public final class QueuesCommand: Command {
         var scheduled: Bool
     }
     
-    /// See `Command.help`
-    public var help: String {
-        return "Starts the Vapor Queues worker"
-    }
+    // See `Command.help`.
+    public var help: String { "Starts the Vapor Queues worker" }
     
     private let application: Application
-    private var jobTasks: [RepeatedTask]
-    private var scheduledTasks: [String: AnyScheduledJob.Task]
-    private var lock: Lock
-    private var signalSources: [DispatchSourceSignal]
-    private var didShutdown: Bool
     
-    private let isShuttingDown: NIOAtomic<Bool>
+    private let box: NIOLockedValueBox<Box>
     
-    private var eventLoopGroup: EventLoopGroup {
-        self.application.eventLoopGroup
+    struct Box: Sendable {
+        var jobTasks: [RepeatedTask]
+        var scheduledTasks: [String: AnyScheduledJob.Task]
+        var signalSources: [any DispatchSourceSignal]
+        var didShutdown: Bool
     }
-
-    /// Create a new `QueueCommand`
+    
+    /// Create a new ``QueuesCommand``.
+    /// 
+    /// - Parameters:
+    ///   - application: The active Vapor `Application`.
+    ///   - scheduled: This parameter is a historical artifact and has no effect.
     public init(application: Application, scheduled: Bool = false) {
         self.application = application
-        self.jobTasks = []
-        self.scheduledTasks = [:]
-        self.isShuttingDown = .makeAtomic(value: false)
-        self.signalSources = []
-        self.didShutdown = false
-        self.lock = .init()
+        self.box = .init(.init(jobTasks: [], scheduledTasks: [:], signalSources: [], didShutdown: false))
     }
     
-    /// Runs the command
-    /// - Parameters:
-    ///   - context: A `CommandContext` for the command to run on
-    ///   - signature: The signature of the command
-    public func run(using context: CommandContext, signature: QueuesCommand.Signature) throws {
-        self.application.logger.trace("Begginning the run function")
-
+    // See `AsyncCommand.run(using:signature:)`.
+    public func run(using context: CommandContext, signature: QueuesCommand.Signature) async throws {
         // shutdown future
-        let promise = self.application.eventLoopGroup.next().makePromise(of: Void.self)
+        let promise = self.application.eventLoopGroup.any().makePromise(of: Void.self)
         self.application.running = .start(using: promise)
         
         // setup signal sources for shutdown
         let signalQueue = DispatchQueue(label: "codes.vapor.jobs.command")
         func makeSignalSource(_ code: Int32) {
+            #if canImport(Darwin)
+            /// https://github.com/swift-server/swift-service-lifecycle/blob/main/Sources/UnixSignals/UnixSignalsSequence.swift#L77-L82
+            signal(code, SIG_IGN)
+            #endif
+            
             let source = DispatchSource.makeSignalSource(signal: code, queue: signalQueue)
             source.setEventHandler {
                 print() // clear ^C
                 promise.succeed(())
             }
             source.resume()
-            self.signalSources.append(source)
-            signal(code, SIG_IGN)
+            self.box.withLockedValue { $0.signalSources.append(source) }
         }
         makeSignalSource(SIGTERM)
         makeSignalSource(SIGINT)
@@ -77,55 +74,53 @@ public final class QueuesCommand: Command {
             self.application.logger.info("Starting scheduled jobs worker")
             try self.startScheduledJobs()
         } else {
-            let queue: QueueName = signature.queue
-                .flatMap { .init(string: $0) } ?? .default
+            let queue: QueueName = signature.queue.map { .init(string: $0) } ?? .default
+            
             self.application.logger.info("Starting jobs worker", metadata: ["queue": .string(queue.string)])
             try self.startJobs(on: queue)
         }
     }
     
     /// Starts an in-process jobs worker for queued tasks
+    ///
     /// - Parameter queueName: The queue to run the jobs on
     public func startJobs(on queueName: QueueName) throws {
         let workerCount: Int
         switch self.application.queues.configuration.workerCount {
         case .default:
-            var count = 0
-            for _ in self.eventLoopGroup.makeIterator() {
-                count += 1
-            }
-            workerCount = count
-            self.application.logger.trace("Default workerCount, setting to \(workerCount)")
+            workerCount = self.application.eventLoopGroup.makeIterator().reduce(0, { n, _ in n + 1 })
+            self.application.logger.trace("Using default worker count", metadata: ["workerCount": "\(workerCount)"])
         case .custom(let custom):
             workerCount = custom
-            self.application.logger.trace("Custom workerCount, setting to \(workerCount)")
+            self.application.logger.trace("Using custom worker count", metadata: ["workerCount": "\(workerCount)"])
         }
-        for i in 0..<workerCount {
-            self.application.logger.trace("Booting worker: \(i)")
-            let eventLoop = self.eventLoopGroup.next()
+
+        var tasks: [RepeatedTask] = []
+        for eventLoop in self.application.eventLoopGroup.makeIterator().prefix(workerCount) {
+            self.application.logger.trace("Booting worker")
+
             let worker = self.application.queues.queue(queueName, on: eventLoop).worker
             let task = eventLoop.scheduleRepeatedAsyncTask(
-                initialDelay: .seconds(0),
+                initialDelay: .zero,
                 delay: worker.queue.configuration.refreshInterval
             ) { task in
-                self.application.logger.trace("Running refresh task")
-
-                // run task
+                worker.queue.logger.trace("Running refresh task")
                 return worker.run().map {
-                    self.application.logger.trace("Worker ran the task successfully")
-                    //Check if shutting down
-                    if self.isShuttingDown.load() {
-                        self.application.logger.trace("Shutting down, cancelling the task")
+                    worker.queue.logger.trace("Worker ran the task successfully")
+                }.recover { error in
+                    worker.queue.logger.error("Job run failed", metadata: ["error": "\(String(reflecting: error))"])
+                }.map {
+                    if self.box.withLockedValue({ $0.didShutdown }) {
+                        worker.queue.logger.trace("Shutting down, cancelling the task")
                         task.cancel()
                     }
-                }.recover { error in
-                    worker.queue.logger.error("Job run failed: \(error)")
                 }
             }
-            self.jobTasks.append(task)
+            tasks.append(task)
         }
 
-        self.application.logger.trace("Finished adding jobTasks, total count: \(jobTasks.count)")
+        self.box.withLockedValue { $0.jobTasks = tasks }
+        self.application.logger.trace("Finished adding jobTasks, total count: \(tasks.count)")
     }
     
     /// Starts the scheduled jobs in-process
@@ -139,68 +134,96 @@ public final class QueuesCommand: Command {
 
         self.application.logger.trace("Beginning the scheduling process")
         self.application.queues.configuration.scheduledJobs.forEach {
-            self.application.logger.trace("Scheduling \($0.job.name)")
+            self.application.logger.trace("Scheduling job", metadata: ["name": "\($0.job.name)"])
             self.schedule($0)
         }
     }
     
     private func schedule(_ job: AnyScheduledJob, minCurrentDate: Date? = nil) {
-        if self.isShuttingDown.load() {
-            self.application.logger.trace("Application is shutting down, cancelling scheduling \(job.job.name)")
-            return
-        }
+        self.box.withLockedValue { box in
+            if box.didShutdown {
+                self.application.logger.trace("Application is shutting down, not scheduling job", metadata: ["name": "\(job.job.name)"])
+                return
+            }
 
-        self.lock.lock()
-        defer { self.lock.unlock() }
-        
-        let context = QueueContext(
-            queueName: QueueName(string: "scheduled"),
-            configuration: self.application.queues.configuration,
-            application: self.application,
-            logger: self.application.logger,
-            on: self.eventLoopGroup.next()
-        )
-        
-        if let task = job.schedule(context: context, minCurrentDate: minCurrentDate) {
-            self.application.logger.trace("Job \(job.job.name) was scheduled successfully")
-            self.scheduledTasks[job.job.name] = task
+            let context = QueueContext(
+                queueName: QueueName(string: "scheduled"),
+                configuration: self.application.queues.configuration,
+                application: self.application,
+                logger: self.application.logger,
+                on: self.application.eventLoopGroup.any()
+            )
+            
+            guard let task = job.schedule(context: context, minCurrentDate: minCurrentDate) else {
+                return
+            }
+
+            self.application.logger.trace("Job was scheduled successfully", metadata: ["name": "\(job.job.name)"])
+            box.scheduledTasks[job.job.name] = task
+
             task.done.whenComplete { result in
                 switch result {
                 case .failure(let error):
-                    context.logger.error("\(job.job.name) failed: \(error)")
+                    context.logger.error("Scheduled job failed", metadata: ["name": "\(job.job.name)", "error": "\(String(reflecting: error))"])
                 case .success: break
                 }
-                self.schedule(job, minCurrentDate: task.scheduledDate)
+                // Explicitly spin the event loop so we don't deadlock on a reentrant call to this method.
+                context.eventLoop.execute {
+                    self.schedule(job, minCurrentDate: task.scheduledDate)
+                }
             }
         }
     }
     
     /// Shuts down the jobs worker
     public func shutdown() {
-        self.lock.lock()
-        defer { self.lock.unlock() }
-
-        self.isShuttingDown.store(true)
-        self.didShutdown = true
+        self.box.withLockedValue { box in
+            box.didShutdown = true
         
-        // stop running in case shutting downf rom signal
-        self.application.running?.stop()
+            // stop running in case shutting down from signal
+            self.application.running?.stop()
         
-        // clear signal sources
-        self.signalSources.forEach { $0.cancel() } // clear refs
-        self.signalSources = []
+            // clear signal sources
+            box.signalSources.forEach { $0.cancel() } // clear refs
+            box.signalSources = []
+        
+            // stop all job queue workers
+            box.jobTasks.forEach {
+                $0.syncCancel(on: self.application.eventLoopGroup.any())
+            }
+            // stop all scheduled jobs
+            box.scheduledTasks.values.forEach {
+                $0.task.syncCancel(on: self.application.eventLoopGroup.any())
+            }
+        }
+    }
+    
+    public func asyncShutdown() async {
+        let (jobTasks, scheduledTasks) = self.box.withLockedValue { box in
+            box.didShutdown = true
+        
+            // stop running in case shutting down from signal
+            self.application.running?.stop()
+            
+            // clear signal sources
+            box.signalSources.forEach { $0.cancel() } // clear refs
+            box.signalSources = []
+        
+            // Release the lock before we start any suspensions
+            return (box.jobTasks, box.scheduledTasks)
+        }
         
         // stop all job queue workers
-        self.jobTasks.forEach {
-            $0.syncCancel(on: self.eventLoopGroup.next())
+        for jobTask in jobTasks {
+            await jobTask.asyncCancel(on: self.application.eventLoopGroup.any())
         }
         // stop all scheduled jobs
-        self.scheduledTasks.values.forEach {
-            $0.task.syncCancel(on: self.eventLoopGroup.next())
+        for scheduledTask in scheduledTasks.values {
+            await scheduledTask.task.asyncCancel(on: self.application.eventLoopGroup.any())
         }
     }
     
     deinit {
-        assert(self.didShutdown, "JobsCommand did not shutdown before deinit")
+        assert(self.box.withLockedValue { $0.didShutdown }, "JobsCommand did not shutdown before deinit")
     }
 }

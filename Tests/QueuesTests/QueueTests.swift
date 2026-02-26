@@ -1,305 +1,583 @@
-import Queues
-import Vapor
-import XCTVapor
-import XCTQueues
-@testable import Vapor
+import Atomics
 import NIOConcurrencyHelpers
+import Queues
+import XCTest
+import XCTQueues
+import XCTVapor
+
+func XCTAssertEqualAsync<T>(
+    _ expression1: @autoclosure () async throws -> T,
+    _ expression2: @autoclosure () async throws -> T,
+    _ message: @autoclosure () -> String = "",
+    file: StaticString = #filePath, line: UInt = #line
+) async where T: Equatable {
+    do {
+        let expr1 = try await expression1(), expr2 = try await expression2()
+        return XCTAssertEqual(expr1, expr2, message(), file: file, line: line)
+    } catch {
+        return XCTAssertEqual(try { () -> Bool in throw error }(), false, message(), file: file, line: line)
+    }
+}
+
+func XCTAssertTrueAsync(
+    _ predicate: @autoclosure () async throws -> Bool,
+    _ message: @autoclosure () -> String = "",
+    file: StaticString = #filePath, line: UInt = #line
+) async {
+    do {
+        let result = try await predicate()
+        XCTAssertTrue(result, message(), file: file, line: line)
+    } catch {
+        return XCTAssertTrue(try { throw error }(), message(), file: file, line: line)
+    }
+}
+
+func XCTAssertFalseAsync(
+    _ predicate: @autoclosure () async throws -> Bool,
+    _ message: @autoclosure () -> String = "",
+    file: StaticString = #filePath, line: UInt = #line
+) async {
+    do {
+        let result = try await predicate()
+        XCTAssertFalse(result, message(), file: file, line: line)
+    } catch {
+        return XCTAssertFalse(try { throw error }(), message(), file: file, line: line)
+    }
+}
 
 final class QueueTests: XCTestCase {
-    func testVaporIntegrationWithInProcessJob() throws {
-        let app = Application(.testing)
-        app.queues.use(.test)
-        defer { app.shutdown() }
-        
-        let jobSignal = app.eventLoopGroup.next().makePromise(of: String.self)
-        app.queues.add(Foo(promise: jobSignal))
-        try app.queues.startInProcessJobs(on: .default)
-    
-        app.get("bar") { req in
-            req.queue.dispatch(Foo.self, .init(foo: "Bar payload"))
-                .map { _ in "job bar dispatched" }
+    var app: Application!
+
+    override class func setUp() {
+        XCTAssert(isLoggingConfigured)
+    }
+
+    override func setUp() async throws {
+        self.app = try await Application.make(.testing)
+        self.app.queues.use(.test)
+    }
+
+    override func tearDown() async throws {
+        try await self.app.asyncShutdown()
+        self.app = nil
+    }
+
+    func testVaporIntegrationWithInProcessJob() async throws {
+        let jobSignal1 = self.app.eventLoopGroup.any().makePromise(of: String.self)
+        self.app.queues.add(Foo1(promise: jobSignal1))
+        let jobSignal2 = self.app.eventLoopGroup.any().makePromise(of: String.self)
+        self.app.queues.add(Foo2(promise: jobSignal2))
+        try self.app.queues.startInProcessJobs(on: .default)
+
+        self.app.get("bar1") { req in
+            try await req.queue.dispatch(Foo1.self, .init(foo: "Bar payload")).get()
+            return "job bar dispatched"
         }
-        
-        try app.testable().test(.GET, "bar") { res in
+
+        self.app.get("bar2") { req in
+            try await req.queue.dispatch(Foo2.self, .init(foo: "Bar payload"))
+            return "job bar dispatched"
+        }
+
+        try await self.app.testable().test(.GET, "bar1") { res async in
+            XCTAssertEqual(res.status, .ok)
+            XCTAssertEqual(res.body.string, "job bar dispatched")
+        }.test(.GET, "bar2") { res async in
             XCTAssertEqual(res.status, .ok)
             XCTAssertEqual(res.body.string, "job bar dispatched")
         }
 
-        try XCTAssertEqual(jobSignal.futureResult.wait(), "Bar payload")
-    }
-    
-    func testVaporIntegration() throws {
-        let app = Application(.testing)
-        defer { app.shutdown() }
-        app.queues.use(.test)
-        
-        let promise = app.eventLoopGroup.next().makePromise(of: String.self)
-        app.queues.add(Foo(promise: promise))
-        
-        app.get("foo") { req in
-            req.queue.dispatch(Foo.self, .init(foo: "bar"))
-                .map { _ in "done" }
-        }
-        
-        try app.testable().test(.GET, "foo") { res in
-            XCTAssertEqual(res.status, .ok)
-            XCTAssertEqual(res.body.string, "done")
-        }
-        
-        XCTAssertEqual(app.queues.test.queue.count, 1)
-        XCTAssertEqual(app.queues.test.jobs.count, 1)
-        let job = app.queues.test.first(Foo.self)
-        XCTAssert(app.queues.test.contains(Foo.self))
-        XCTAssertNotNil(job)
-        XCTAssertEqual(job!.foo, "bar")
-        
-        try app.queues.queue.worker.run().wait()
-        XCTAssertEqual(app.queues.test.queue.count, 0)
-        XCTAssertEqual(app.queues.test.jobs.count, 0)
-        
-        try XCTAssertEqual(promise.futureResult.wait(), "bar")
+        await XCTAssertEqualAsync(try await jobSignal1.futureResult.get(), "Bar payload")
+        await XCTAssertEqualAsync(try await jobSignal2.futureResult.get(), "Bar payload")
     }
 
-    func testSettingCustomId() throws {
-        let app = Application(.testing)
-        defer { app.shutdown() }
-        app.queues.use(.test)
-        
-        let promise = app.eventLoopGroup.next().makePromise(of: String.self)
-        app.queues.add(Foo(promise: promise))
-        
-        app.get("foo") { req in
-            req.queue.dispatch(Foo.self, .init(foo: "bar"), id: JobIdentifier(string: "my-custom-id"))
-                .map { _ in "done" }
+    func testVaporIntegration() async throws {
+        let promise = self.app.eventLoopGroup.any().makePromise(of: String.self)
+        self.app.queues.add(Foo1(promise: promise))
+
+        self.app.get("foo") { req in
+            try await req.queue.dispatch(Foo1.self, .init(foo: "bar"))
+            return "done"
         }
-        
-        try app.testable().test(.GET, "foo") { res in
+
+        try await self.app.testable().test(.GET, "foo") { res async in
             XCTAssertEqual(res.status, .ok)
             XCTAssertEqual(res.body.string, "done")
         }
-        
-        XCTAssertEqual(app.queues.test.queue.count, 1)
-        XCTAssertEqual(app.queues.test.jobs.count, 1)
-        XCTAssertTrue(app.queues.test.jobs.keys.map(\.string).contains("my-custom-id"))
-        
-        try app.queues.queue.worker.run().wait()
-        XCTAssertEqual(app.queues.test.queue.count, 0)
-        XCTAssertEqual(app.queues.test.jobs.count, 0)
-        
-        try XCTAssertEqual(promise.futureResult.wait(), "bar")
+
+        XCTAssertEqual(self.app.queues.test.queue.count, 1)
+        XCTAssertEqual(self.app.queues.test.jobs.count, 1)
+        let job = self.app.queues.test.first(Foo1.self)
+        XCTAssert(self.app.queues.test.contains(Foo1.self))
+        XCTAssertNotNil(job)
+        XCTAssertEqual(job!.foo, "bar")
+
+        try await self.app.queues.queue.worker.run()
+        XCTAssertEqual(self.app.queues.test.queue.count, 0)
+        XCTAssertEqual(self.app.queues.test.jobs.count, 0)
+
+        await XCTAssertEqualAsync(try await promise.futureResult.get(), "bar")
     }
-    
-    func testScheduleBuilderAPI() throws {
-        let app = Application(.testing)
-        defer { app.shutdown() }
-        
+
+    func testRunUntilEmpty() async throws {
+        let promise1 = self.app.eventLoopGroup.any().makePromise(of: String.self)
+        self.app.queues.add(Foo1(promise: promise1))
+        let promise2 = self.app.eventLoopGroup.any().makePromise(of: String.self)
+        self.app.queues.add(Foo2(promise: promise2))
+
+        self.app.get("foo") { req in
+            try await req.queue.dispatch(Foo1.self, .init(foo: "bar"))
+            try await req.queue.dispatch(Foo1.self, .init(foo: "quux"))
+            try await req.queue.dispatch(Foo2.self, .init(foo: "baz"))
+            return "done"
+        }
+
+        try await self.app.testable().test(.GET, "foo") { res async in
+            XCTAssertEqual(res.status, .ok)
+            XCTAssertEqual(res.body.string, "done")
+        }
+
+        XCTAssertEqual(self.app.queues.test.queue.count, 3)
+        XCTAssertEqual(self.app.queues.test.jobs.count, 3)
+        try await self.app.queues.queue.worker.run()
+        XCTAssertEqual(self.app.queues.test.queue.count, 0)
+        XCTAssertEqual(self.app.queues.test.jobs.count, 0)
+
+        await XCTAssertEqualAsync(try await promise1.futureResult.get(), "quux")
+        await XCTAssertEqualAsync(try await promise2.futureResult.get(), "baz")
+    }
+
+    func testSettingCustomId() async throws {
+        let promise = self.app.eventLoopGroup.any().makePromise(of: String.self)
+        self.app.queues.add(Foo1(promise: promise))
+
+        self.app.get("foo") { req in
+            try await req.queue.dispatch(Foo1.self, .init(foo: "bar"), id: JobIdentifier(string: "my-custom-id"))
+            return "done"
+        }
+
+        try await self.app.testable().test(.GET, "foo") { res async in
+            XCTAssertEqual(res.status, .ok)
+            XCTAssertEqual(res.body.string, "done")
+        }
+
+        XCTAssertEqual(self.app.queues.test.queue.count, 1)
+        XCTAssertEqual(self.app.queues.test.jobs.count, 1)
+        XCTAssert(self.app.queues.test.jobs.keys.map(\.string).contains("my-custom-id"))
+
+        try await self.app.queues.queue.worker.run()
+        XCTAssertEqual(self.app.queues.test.queue.count, 0)
+        XCTAssertEqual(self.app.queues.test.jobs.count, 0)
+
+        await XCTAssertEqualAsync(try await promise.futureResult.get(), "bar")
+    }
+
+    func testScheduleBuilderAPI() async throws {
         // yearly
-        app.queues.schedule(Cleanup())
-            .yearly()
-            .in(.may)
-            .on(23)
-            .at(.noon)
+        self.app.queues.schedule(Cleanup()).yearly().in(.may).on(23).at(.noon)
 
         // monthly
-        app.queues.schedule(Cleanup())
-            .monthly()
-            .on(15)
-            .at(.midnight)
+        self.app.queues.schedule(Cleanup()).monthly().on(15).at(.midnight)
 
         // weekly
-        app.queues.schedule(Cleanup())
-            .weekly()
-            .on(.monday)
-            .at("3:13am")
+        self.app.queues.schedule(Cleanup()).weekly().on(.monday).at("3:13am")
 
         // daily
-        app.queues.schedule(Cleanup())
-            .daily()
-            .at("5:23pm")
+        self.app.queues.schedule(Cleanup()).daily().at("5:23pm")
 
         // daily 2
-        app.queues.schedule(Cleanup())
-            .daily()
-            .at(5, 23, .pm)
+        self.app.queues.schedule(Cleanup()).daily().at(5, 23, .pm)
 
         // daily 3
-        app.queues.schedule(Cleanup())
-            .daily()
-            .at(17, 23)
+        self.app.queues.schedule(Cleanup()).daily().at(17, 23)
 
         // hourly
-        app.queues.schedule(Cleanup())
-            .hourly()
-            .at(30)
-    }
-    
-    func testRepeatingScheduledJob() throws {
-        let app = Application(.testing)
-        defer { app.shutdown() }
-        
-        XCTAssertEqual(TestingScheduledJob.count.load(), 0)
-        app.queues.schedule(TestingScheduledJob()).everySecond()
-        try app.queues.startScheduledJobs()
-        
-        let promise = app.eventLoopGroup.next().makePromise(of: Void.self)
-        app.eventLoopGroup.next().scheduleTask(in: .seconds(5)) { () -> Void in
-            XCTAssert(TestingScheduledJob.count.load() > 4)
-            promise.succeed(())
-        }
-        
-        try promise.futureResult.wait()
+        self.app.queues.schedule(Cleanup()).hourly().at(30)
     }
 
-    func testFailingScheduledJob() throws {
-        let app = Application(.testing)
-        defer { app.shutdown() }
-        
-        app.queues.schedule(FailingScheduledJob()).everySecond()
-        try app.queues.startScheduledJobs()
-        
-        let promise = app.eventLoopGroup.next().makePromise(of: Void.self)
-        app.eventLoopGroup.next().scheduleTask(in: .seconds(1)) { () -> Void in
-            promise.succeed(())
+    func testRepeatingScheduledJob() async throws {
+        let scheduledJob = TestingScheduledJob()
+        XCTAssertEqual(scheduledJob.count.load(ordering: .relaxed), 0)
+        self.app.queues.schedule(scheduledJob).everySecond()
+        try self.app.queues.startScheduledJobs()
+
+        let promise = self.app.eventLoopGroup.any().makePromise(of: Void.self)
+        self.app.eventLoopGroup.any().scheduleTask(in: .seconds(5)) {
+            XCTAssert(scheduledJob.count.load(ordering: .relaxed) > 4)
+            promise.succeed()
         }
-        try promise.futureResult.wait()
+
+        try await promise.futureResult.get()
     }
 
-    func testCustomWorkerCount() throws {
+    func testAsyncRepeatingScheduledJob() async throws {
+        let scheduledJob = AsyncTestingScheduledJob()
+        XCTAssertEqual(scheduledJob.count.load(ordering: .relaxed), 0)
+        self.app.queues.schedule(scheduledJob).everySecond()
+        try self.app.queues.startScheduledJobs()
+
+        let promise = self.app.eventLoopGroup.any().makePromise(of: Void.self)
+        self.app.eventLoopGroup.any().scheduleTask(in: .seconds(5)) {
+            XCTAssert(scheduledJob.count.load(ordering: .relaxed) > 4)
+            promise.succeed()
+        }
+
+        try await promise.futureResult.get()
+    }
+
+    func testFailingScheduledJob() async throws {
+        self.app.queues.schedule(FailingScheduledJob()).everySecond()
+        try self.app.queues.startScheduledJobs()
+
+        let promise = self.app.eventLoopGroup.any().makePromise(of: Void.self)
+        self.app.eventLoopGroup.any().scheduleTask(in: .seconds(1)) {
+            promise.succeed()
+        }
+        try await promise.futureResult.get()
+    }
+
+    func testAsyncFailingScheduledJob() async throws {
+        self.app.queues.schedule(AsyncFailingScheduledJob()).everySecond()
+        try self.app.queues.startScheduledJobs()
+
+        let promise = self.app.eventLoopGroup.any().makePromise(of: Void.self)
+        self.app.eventLoopGroup.any().scheduleTask(in: .seconds(1)) {
+            promise.succeed()
+        }
+        try await promise.futureResult.get()
+    }
+
+    func testCustomWorkerCount() async throws {
         // Setup custom ELG with 4 threads
         let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 4)
-        defer { try! eventLoopGroup.syncShutdownGracefully() }
 
-        let app = Application(.testing, .shared(eventLoopGroup))
-        defer { app.shutdown() }
+        do {
+            let count = self.app.eventLoopGroup.any().makePromise(of: Int.self)
+            self.app.queues.use(custom: WorkerCountDriver(count: count))
+            // Limit worker count to less than 4 threads
+            self.app.queues.configuration.workerCount = 2
 
-        let count = app.eventLoopGroup.next().makePromise(of: Int.self)
-        app.queues.use(custom: WorkerCountDriver(count: count))
-        // Limit worker count to less than 4 threads
-        app.queues.configuration.workerCount = 2
-
-        try app.queues.startInProcessJobs(on: .default)
-        try XCTAssertEqual(count.futureResult.wait(), 2)
+            try self.app.queues.startInProcessJobs(on: .default)
+            await XCTAssertEqualAsync(try await count.futureResult.get(), 2)
+        } catch {
+            try? await eventLoopGroup.shutdownGracefully()
+            throw error
+        }
+        try await eventLoopGroup.shutdownGracefully()
     }
 
-    func testSuccessHooks() throws {
-        let app = Application(.testing)
-        defer { app.shutdown() }
-        app.queues.use(.test)
+    func testSuccessHooks() async throws {
+        let promise = self.app.eventLoopGroup.any().makePromise(of: String.self)
+        let successHook = SuccessHook()
+        let errorHook = ErrorHook()
+        let dispatchHook = DispatchHook()
+        let dequeuedHook = DequeuedHook()
+        self.app.queues.add(Foo1(promise: promise))
+        self.app.queues.add(successHook)
+        self.app.queues.add(errorHook)
+        self.app.queues.add(dispatchHook)
+        self.app.queues.add(dequeuedHook)
 
-        let promise = app.eventLoopGroup.next().makePromise(of: String.self)
-        app.queues.add(Foo(promise: promise))
-        app.queues.add(SuccessHook())
-        app.queues.add(ErrorHook())
-        app.queues.add(DispatchHook())
-        app.queues.add(DequeuedHook())
-        ErrorHook.errorCount = 0
-        DequeuedHook.successHit = false
-
-        app.get("foo") { req in
-            req.queue.dispatch(Foo.self, .init(foo: "bar"))
-                .map { _ in "done" }
+        self.app.get("foo") { req in
+            try await req.queue.dispatch(Foo1.self, .init(foo: "bar"))
+            return "done"
         }
 
-        XCTAssertEqual(DispatchHook.successHit, false)
-        try app.testable().test(.GET, "foo") { res in
+        XCTAssertFalse(dispatchHook.successHit)
+        try await self.app.testable().test(.GET, "foo") { res async in
             XCTAssertEqual(res.status, .ok)
             XCTAssertEqual(res.body.string, "done")
-            XCTAssertEqual(DispatchHook.successHit, true)
+            XCTAssertTrue(dispatchHook.successHit)
         }
 
-        XCTAssertEqual(SuccessHook.successHit, false)
-        XCTAssertEqual(ErrorHook.errorCount, 0)
-        XCTAssertEqual(app.queues.test.queue.count, 1)
-        XCTAssertEqual(app.queues.test.jobs.count, 1)
-        let job = app.queues.test.first(Foo.self)
-        XCTAssert(app.queues.test.contains(Foo.self))
+        XCTAssertFalse(successHook.successHit)
+        XCTAssertEqual(errorHook.errorCount, 0)
+        XCTAssertEqual(self.app.queues.test.queue.count, 1)
+        XCTAssertEqual(self.app.queues.test.jobs.count, 1)
+        let job = self.app.queues.test.first(Foo1.self)
+        XCTAssert(self.app.queues.test.contains(Foo1.self))
         XCTAssertNotNil(job)
         XCTAssertEqual(job!.foo, "bar")
-        XCTAssertEqual(DequeuedHook.successHit, false)
+        XCTAssertFalse(dequeuedHook.successHit)
 
-        try app.queues.queue.worker.run().wait()
-        XCTAssertEqual(SuccessHook.successHit, true)
-        XCTAssertEqual(ErrorHook.errorCount, 0)
-        XCTAssertEqual(app.queues.test.queue.count, 0)
-        XCTAssertEqual(app.queues.test.jobs.count, 0)
-        XCTAssertEqual(DequeuedHook.successHit, true)
-        
-        try XCTAssertEqual(promise.futureResult.wait(), "bar")
+        try await self.app.queues.queue.worker.run()
+        XCTAssertTrue(successHook.successHit)
+        XCTAssertEqual(errorHook.errorCount, 0)
+        XCTAssertEqual(self.app.queues.test.queue.count, 0)
+        XCTAssertEqual(self.app.queues.test.jobs.count, 0)
+        XCTAssertTrue(dequeuedHook.successHit)
+
+        await XCTAssertEqualAsync(try await promise.futureResult.get(), "bar")
     }
 
-    func testFailureHooks() throws {
-        let app = Application(.testing)
-        defer { app.shutdown() }
-        app.queues.use(.test)
-        app.queues.add(Bar())
-        app.queues.add(SuccessHook())
-        app.queues.add(ErrorHook())
+    func testAsyncSuccessHooks() async throws {
+        let promise = self.app.eventLoopGroup.any().makePromise(of: String.self)
+        let successHook = AsyncSuccessHook()
+        let errorHook = AsyncErrorHook()
+        let dispatchHook = AsyncDispatchHook()
+        let dequeuedHook = AsyncDequeuedHook()
+        self.app.queues.add(Foo1(promise: promise))
+        self.app.queues.add(successHook)
+        self.app.queues.add(errorHook)
+        self.app.queues.add(dispatchHook)
+        self.app.queues.add(dequeuedHook)
 
-        app.get("foo") { req in
-            req.queue.dispatch(Bar.self, .init(foo: "bar"), maxRetryCount: 3)
-                .map { _ in "done" }
+        self.app.get("foo") { req in
+            try await req.queue.dispatch(Foo1.self, .init(foo: "bar"))
+            return "done"
         }
 
-        try app.testable().test(.GET, "foo") { res in
+        await XCTAssertFalseAsync(await dispatchHook.successHit)
+        try await self.app.testable().test(.GET, "foo") { res async in
+            XCTAssertEqual(res.status, .ok)
+            XCTAssertEqual(res.body.string, "done")
+            await XCTAssertTrueAsync(await dispatchHook.successHit)
+        }
+
+        await XCTAssertFalseAsync(await successHook.successHit)
+        await XCTAssertEqualAsync(await errorHook.errorCount, 0)
+        XCTAssertEqual(self.app.queues.test.queue.count, 1)
+        XCTAssertEqual(self.app.queues.test.jobs.count, 1)
+        let job = self.app.queues.test.first(Foo1.self)
+        XCTAssert(self.app.queues.test.contains(Foo1.self))
+        XCTAssertNotNil(job)
+        XCTAssertEqual(job!.foo, "bar")
+        await XCTAssertFalseAsync(await dequeuedHook.successHit)
+
+        try await self.app.queues.queue.worker.run()
+        await XCTAssertTrueAsync(await successHook.successHit)
+        await XCTAssertEqualAsync(await errorHook.errorCount, 0)
+        XCTAssertEqual(self.app.queues.test.queue.count, 0)
+        XCTAssertEqual(self.app.queues.test.jobs.count, 0)
+        await XCTAssertTrueAsync(await dequeuedHook.successHit)
+
+        await XCTAssertEqualAsync(try await promise.futureResult.get(), "bar")
+    }
+
+    func testFailureHooks() async throws {
+        self.app.queues.use(.test)
+        self.app.queues.add(Bar())
+        let successHook = SuccessHook()
+        let errorHook = ErrorHook()
+        self.app.queues.add(successHook)
+        self.app.queues.add(errorHook)
+
+        self.app.get("foo") { req in
+            try await req.queue.dispatch(Bar.self, .init(foo: "bar"), maxRetryCount: 3)
+            return "done"
+        }
+
+        try await self.app.testable().test(.GET, "foo") { res async in
             XCTAssertEqual(res.status, .ok)
             XCTAssertEqual(res.body.string, "done")
         }
 
-        XCTAssertEqual(SuccessHook.successHit, false)
-        XCTAssertEqual(ErrorHook.errorCount, 0)
-        XCTAssertEqual(app.queues.test.queue.count, 1)
-        XCTAssertEqual(app.queues.test.jobs.count, 1)
-        let job = app.queues.test.first(Bar.self)
-        XCTAssert(app.queues.test.contains(Bar.self))
+        XCTAssertFalse(successHook.successHit)
+        XCTAssertEqual(errorHook.errorCount, 0)
+        XCTAssertEqual(self.app.queues.test.queue.count, 1)
+        XCTAssertEqual(self.app.queues.test.jobs.count, 1)
+        let job = self.app.queues.test.first(Bar.self)
+        XCTAssert(self.app.queues.test.contains(Bar.self))
         XCTAssertNotNil(job)
 
-        try app.queues.queue.worker.run().wait()
-        XCTAssertEqual(SuccessHook.successHit, false)
-        XCTAssertEqual(ErrorHook.errorCount, 1)
-        XCTAssertEqual(app.queues.test.queue.count, 0)
-        XCTAssertEqual(app.queues.test.jobs.count, 0)
+        try await self.app.queues.queue.worker.run()
+        try await self.app.queues.queue.worker.run()
+        try await self.app.queues.queue.worker.run()
+        try await self.app.queues.queue.worker.run()
+        XCTAssertFalse(successHook.successHit)
+        XCTAssertEqual(errorHook.errorCount, 1)
+        XCTAssertEqual(self.app.queues.test.queue.count, 0)
+        XCTAssertEqual(self.app.queues.test.jobs.count, 0)
+    }
+
+    func testAsyncFailureHooks() async throws {
+        self.app.queues.use(.test)
+        self.app.queues.add(Bar())
+        let successHook = AsyncSuccessHook()
+        let errorHook = AsyncErrorHook()
+        self.app.queues.add(successHook)
+        self.app.queues.add(errorHook)
+
+        self.app.get("foo") { req in
+            try await req.queue.dispatch(Bar.self, .init(foo: "bar"), maxRetryCount: 3)
+            return "done"
+        }
+
+        try await self.app.testable().test(.GET, "foo") { res async in
+            XCTAssertEqual(res.status, .ok)
+            XCTAssertEqual(res.body.string, "done")
+        }
+
+        await XCTAssertFalseAsync(await successHook.successHit)
+        await XCTAssertEqualAsync(await errorHook.errorCount, 0)
+        XCTAssertEqual(self.app.queues.test.queue.count, 1)
+        XCTAssertEqual(self.app.queues.test.jobs.count, 1)
+        let job = self.app.queues.test.first(Bar.self)
+        XCTAssert(self.app.queues.test.contains(Bar.self))
+        XCTAssertNotNil(job)
+
+        try await self.app.queues.queue.worker.run()
+        try await self.app.queues.queue.worker.run()
+        try await self.app.queues.queue.worker.run()
+        try await self.app.queues.queue.worker.run()
+        await XCTAssertFalseAsync(await successHook.successHit)
+        await XCTAssertEqualAsync(await errorHook.errorCount, 1)
+        XCTAssertEqual(self.app.queues.test.queue.count, 0)
+        XCTAssertEqual(self.app.queues.test.jobs.count, 0)
+    }
+
+    func testFailureHooksWithDelay() async throws {
+        self.app.queues.add(Baz())
+        let successHook = SuccessHook()
+        let errorHook = ErrorHook()
+        self.app.queues.add(successHook)
+        self.app.queues.add(errorHook)
+
+        self.app.get("foo") { req in
+            try await req.queue.dispatch(Baz.self, .init(foo: "baz"), maxRetryCount: 1)
+            return "done"
+        }
+
+        try await self.app.testable().test(.GET, "foo") { res async in
+            XCTAssertEqual(res.status, .ok)
+            XCTAssertEqual(res.body.string, "done")
+        }
+
+        XCTAssertFalse(successHook.successHit)
+        XCTAssertEqual(errorHook.errorCount, 0)
+        XCTAssertEqual(self.app.queues.test.queue.count, 1)
+        XCTAssertEqual(self.app.queues.test.jobs.count, 1)
+        var job = self.app.queues.test.first(Baz.self)
+        XCTAssert(self.app.queues.test.contains(Baz.self))
+        XCTAssertNotNil(job)
+
+        try await self.app.queues.queue.worker.run()
+        XCTAssertFalse(successHook.successHit)
+        XCTAssertEqual(errorHook.errorCount, 0)
+        XCTAssertEqual(self.app.queues.test.queue.count, 1)
+        XCTAssertEqual(self.app.queues.test.jobs.count, 1)
+        job = self.app.queues.test.first(Baz.self)
+        XCTAssert(self.app.queues.test.contains(Baz.self))
+        XCTAssertNotNil(job)
+
+        sleep(1)
+
+        try await self.app.queues.queue.worker.run()
+        XCTAssertFalse(successHook.successHit)
+        XCTAssertEqual(errorHook.errorCount, 1)
+        XCTAssertEqual(self.app.queues.test.queue.count, 0)
+        XCTAssertEqual(self.app.queues.test.jobs.count, 0)
+    }
+
+    func testAsyncFailureHooksWithDelay() async throws {
+        self.app.queues.add(Baz())
+        let successHook = AsyncSuccessHook()
+        let errorHook = AsyncErrorHook()
+        self.app.queues.add(successHook)
+        self.app.queues.add(errorHook)
+
+        self.app.get("foo") { req in
+            try await req.queue.dispatch(Baz.self, .init(foo: "baz"), maxRetryCount: 1)
+            return "done"
+        }
+
+        try await self.app.testable().test(.GET, "foo") { res async in
+            XCTAssertEqual(res.status, .ok)
+            XCTAssertEqual(res.body.string, "done")
+        }
+
+        await XCTAssertFalseAsync(await successHook.successHit)
+        await XCTAssertEqualAsync(await errorHook.errorCount, 0)
+        XCTAssertEqual(self.app.queues.test.queue.count, 1)
+        XCTAssertEqual(self.app.queues.test.jobs.count, 1)
+        var job = self.app.queues.test.first(Baz.self)
+        XCTAssert(self.app.queues.test.contains(Baz.self))
+        XCTAssertNotNil(job)
+
+        try await self.app.queues.queue.worker.run()
+        await XCTAssertFalseAsync(await successHook.successHit)
+        await XCTAssertEqualAsync(await errorHook.errorCount, 0)
+        XCTAssertEqual(self.app.queues.test.queue.count, 1)
+        XCTAssertEqual(self.app.queues.test.jobs.count, 1)
+        job = self.app.queues.test.first(Baz.self)
+        XCTAssert(self.app.queues.test.contains(Baz.self))
+        XCTAssertNotNil(job)
+
+        sleep(1)
+
+        try await self.app.queues.queue.worker.run()
+        await XCTAssertFalseAsync(await successHook.successHit)
+        await XCTAssertEqualAsync(await errorHook.errorCount, 1)
+        XCTAssertEqual(self.app.queues.test.queue.count, 0)
+        XCTAssertEqual(self.app.queues.test.jobs.count, 0)
+    }
+
+    func testStuffThatIsntActuallyUsedAnywhere() {
+        XCTAssertEqual(self.app.queues.queue(.default).key, "vapor_queues[default]")
+        XCTAssertNotNil(QueuesEventLoopPreference.indifferent.delegate(for: self.app.eventLoopGroup))
+        XCTAssertNotNil(QueuesEventLoopPreference.delegate(on: self.app.eventLoopGroup.any()).delegate(for: self.app.eventLoopGroup))
     }
 }
 
-class DispatchHook: JobEventDelegate {
-    static var successHit = false
+final class DispatchHook: JobEventDelegate, @unchecked Sendable {
+    var successHit = false
 
-    func dispatched(job: JobEventData, eventLoop: EventLoop) -> EventLoopFuture<Void> {
-        Self.successHit = true
-        return eventLoop.future()
+    func dispatched(job _: JobEventData, eventLoop: any EventLoop) -> EventLoopFuture<Void> {
+        self.successHit = true
+        return eventLoop.makeSucceededVoidFuture()
     }
 }
 
-class SuccessHook: JobEventDelegate {
-    static var successHit = false
+final class SuccessHook: JobEventDelegate, @unchecked Sendable {
+    var successHit = false
 
-    func success(jobId: String, eventLoop: EventLoop) -> EventLoopFuture<Void> {
-        Self.successHit = true
-        return eventLoop.future()
+    func success(jobId _: String, eventLoop: any EventLoop) -> EventLoopFuture<Void> {
+        self.successHit = true
+        return eventLoop.makeSucceededVoidFuture()
     }
 }
 
-class ErrorHook: JobEventDelegate {
-    static var errorCount = 0
+final class ErrorHook: JobEventDelegate, @unchecked Sendable {
+    var errorCount = 0
 
-    func error(jobId: String, error: Error, eventLoop: EventLoop) -> EventLoopFuture<Void> {
-        Self.errorCount += 1
-        return eventLoop.future()
+    func error(jobId _: String, error _: any Error, eventLoop: any EventLoop) -> EventLoopFuture<Void> {
+        self.errorCount += 1
+        return eventLoop.makeSucceededVoidFuture()
     }
 }
 
-class DequeuedHook: JobEventDelegate {
-    static var successHit = false
+final class DequeuedHook: JobEventDelegate, @unchecked Sendable {
+    var successHit = false
 
-    func didDequeue(jobId: String, eventLoop: EventLoop) -> EventLoopFuture<Void> {
-        Self.successHit = true
-        return eventLoop.future()
+    func didDequeue(jobId _: String, eventLoop: any EventLoop) -> EventLoopFuture<Void> {
+        self.successHit = true
+        return eventLoop.makeSucceededVoidFuture()
     }
 }
 
-final class WorkerCountDriver: QueuesDriver {
+actor AsyncDispatchHook: AsyncJobEventDelegate {
+    var successHit = false
+    func dispatched(job _: JobEventData) async throws { self.successHit = true }
+}
+
+actor AsyncSuccessHook: AsyncJobEventDelegate {
+    var successHit = false
+    func success(jobId _: String) async throws { self.successHit = true }
+}
+
+actor AsyncErrorHook: AsyncJobEventDelegate {
+    var errorCount = 0
+    func error(jobId _: String, error _: any Error) async throws { self.errorCount += 1 }
+}
+
+actor AsyncDequeuedHook: AsyncJobEventDelegate {
+    var successHit = false
+    func didDequeue(jobId _: String) async throws { self.successHit = true }
+}
+
+final class WorkerCountDriver: QueuesDriver, @unchecked Sendable {
     let count: EventLoopPromise<Int>
-    let lock: Lock
+    let lock: NIOLock
     var recordedEventLoops: Set<ObjectIdentifier>
 
     init(count: EventLoopPromise<Int>) {
@@ -308,11 +586,11 @@ final class WorkerCountDriver: QueuesDriver {
         self.recordedEventLoops = []
     }
 
-    func makeQueue(with context: QueueContext) -> Queue {
+    func makeQueue(with context: QueueContext) -> any Queue {
         WorkerCountQueue(driver: self, context: context)
     }
 
-    func record(eventLoop: EventLoop) {
+    func record(eventLoop: any EventLoop) {
         self.lock.lock()
         defer { self.lock.unlock() }
         let previousCount = self.recordedEventLoops.count
@@ -331,67 +609,73 @@ final class WorkerCountDriver: QueuesDriver {
         let driver: WorkerCountDriver
         var context: QueueContext
 
-        func get(_ id: JobIdentifier) -> EventLoopFuture<JobData> {
-            fatalError()
-        }
-
-        func set(_ id: JobIdentifier, to data: JobData) -> EventLoopFuture<Void> {
-            fatalError()
-        }
-
-        func clear(_ id: JobIdentifier) -> EventLoopFuture<Void> {
-            fatalError()
-        }
-
+        func get(_: JobIdentifier) -> EventLoopFuture<JobData> { fatalError() }
+        func set(_: JobIdentifier, to _: JobData) -> EventLoopFuture<Void> { fatalError() }
+        func clear(_: JobIdentifier) -> EventLoopFuture<Void> { fatalError() }
         func pop() -> EventLoopFuture<JobIdentifier?> {
             self.driver.record(eventLoop: self.context.eventLoop)
             return self.context.eventLoop.makeSucceededFuture(nil)
         }
 
-        func push(_ id: JobIdentifier) -> EventLoopFuture<Void> {
-            fatalError()
-        }
+        func push(_: JobIdentifier) -> EventLoopFuture<Void> { fatalError() }
     }
 }
 
-struct Failure: Error { }
 struct FailingScheduledJob: ScheduledJob {
-    func run(context: QueueContext) -> EventLoopFuture<Void> {
-        context.eventLoop.makeFailedFuture(Failure())
-    }    
+    func run(context: QueueContext) -> EventLoopFuture<Void> { context.eventLoop.makeFailedFuture(Failure()) }
+}
+
+struct AsyncFailingScheduledJob: AsyncScheduledJob {
+    func run(context _: QueueContext) async throws { throw Failure() }
 }
 
 struct TestingScheduledJob: ScheduledJob {
-    static var count = NIOAtomic<Int>.makeAtomic(value: 0)
-    
+    var count = ManagedAtomic<Int>(0)
+
     func run(context: QueueContext) -> EventLoopFuture<Void> {
-        TestingScheduledJob.count.add(1)
-        return context.eventLoop.future()
+        self.count.wrappingIncrement(ordering: .relaxed)
+        return context.eventLoop.makeSucceededVoidFuture()
     }
 }
 
-extension ByteBuffer {
-    var string: String {
-        return .init(decoding: self.readableBytesView, as: UTF8.self)
-    }
+struct AsyncTestingScheduledJob: AsyncScheduledJob {
+    var count = ManagedAtomic<Int>(0)
+    func run(context _: QueueContext) async throws { self.count.wrappingIncrement(ordering: .relaxed) }
 }
 
-
-struct Foo: Job {
+struct Foo1: Job {
     let promise: EventLoopPromise<String>
-    
+
     struct Data: Codable {
         var foo: String
     }
-    
+
     func dequeue(_ context: QueueContext, _ data: Data) -> EventLoopFuture<Void> {
         self.promise.succeed(data.foo)
-        return context.eventLoop.makeSucceededFuture(())
+        return context.eventLoop.makeSucceededVoidFuture()
     }
-    
-    func error(_ context: QueueContext, _ error: Error, _ data: Data) -> EventLoopFuture<Void> {
+
+    func error(_ context: QueueContext, _ error: any Error, _: Data) -> EventLoopFuture<Void> {
         self.promise.fail(error)
-        return context.eventLoop.makeSucceededFuture(())
+        return context.eventLoop.makeSucceededVoidFuture()
+    }
+}
+
+struct Foo2: Job {
+    let promise: EventLoopPromise<String>
+
+    struct Data: Codable {
+        var foo: String
+    }
+
+    func dequeue(_ context: QueueContext, _ data: Data) -> EventLoopFuture<Void> {
+        self.promise.succeed(data.foo)
+        return context.eventLoop.makeSucceededVoidFuture()
+    }
+
+    func error(_ context: QueueContext, _ error: any Error, _: Data) -> EventLoopFuture<Void> {
+        self.promise.fail(error)
+        return context.eventLoop.makeSucceededVoidFuture()
     }
 }
 
@@ -400,11 +684,29 @@ struct Bar: Job {
         var foo: String
     }
 
-    func dequeue(_ context: QueueContext, _ data: Data) -> EventLoopFuture<Void> {
-        return context.eventLoop.makeFailedFuture(Abort(.badRequest))
+    func dequeue(_ context: QueueContext, _: Data) -> EventLoopFuture<Void> {
+        context.eventLoop.makeFailedFuture(Abort(.badRequest))
     }
 
-    func error(_ context: QueueContext, _ error: Error, _ data: Data) -> EventLoopFuture<Void> {
-        return context.eventLoop.makeSucceededFuture(())
+    func error(_ context: QueueContext, _: any Error, _: Data) -> EventLoopFuture<Void> {
+        context.eventLoop.makeSucceededVoidFuture()
+    }
+}
+
+struct Baz: Job {
+    struct Data: Codable {
+        var foo: String
+    }
+
+    func dequeue(_ context: QueueContext, _: Data) -> EventLoopFuture<Void> {
+        context.eventLoop.makeFailedFuture(Abort(.badRequest))
+    }
+
+    func error(_ context: QueueContext, _: any Error, _: Data) -> EventLoopFuture<Void> {
+        context.eventLoop.makeSucceededVoidFuture()
+    }
+
+    func nextRetryIn(attempt: Int) -> Int {
+        attempt
     }
 }

@@ -1,134 +1,156 @@
+import Dispatch
+import Foundation
+import Logging
+import Metrics
+import NIOCore
+
 extension Queue {
     public var worker: QueueWorker {
         .init(queue: self)
     }
 }
 
-/// The worker that runs the `Job`
-public struct QueueWorker {
-    let queue: Queue
+/// The worker that runs ``Job``s.
+public struct QueueWorker: Sendable {
+    let queue: any Queue
 
-    init(queue: Queue) {
-        self.queue = queue
-    }
-    
-    /// Logic to run the queue
+    /// Run the queue until there is no more work to be done.
+    /// This is a thin wrapper for ELF-style callers.
     public func run() -> EventLoopFuture<Void> {
-        queue.logger.trace("Popping job from queue")
-        return self.queue.pop().flatMap { id in
-            //No job found, go to the next iteration
-            guard let id = id else {
-                self.queue.logger.trace("Did not receive ID from pop")
-                return self.queue.eventLoop.makeSucceededFuture(())
-            }
-
-            self.queue.logger.trace("Received job \(id)")
-            self.queue.logger.trace("Getting data for job \(id)")
-
-            return self.queue.get(id).flatMap { data in
-                var logger = self.queue.logger
-                logger[metadataKey: "job_id"] = .string(id.string)
-
-                logger.trace("Received job data for \(id): \(data)")
-                // If the job has a delay, we must check to make sure we can execute.
-                // If the delay has not passed yet, requeue the job
-                if let delay = data.delayUntil, delay >= Date() {
-                    logger.trace("Requeing job \(id) for execution later because the delayUntil value of \(delay) has not passed yet")
-                    return self.queue.push(id)
-                }
-
-                guard let job = self.queue.configuration.jobs[data.jobName] else {
-                    logger.error("No job named \(data.jobName) is registered")
-                    return self.queue.eventLoop.makeSucceededFuture(())
-                }
-
-                logger.trace("Sending dequeued notification hooks")
-
-                _ = self.queue.configuration.notificationHooks.map {
-                    $0.didDequeue(jobId: id.string, eventLoop: self.queue.eventLoop)
-                }.flatten(on: self.queue.eventLoop).flatMapError { error in
-                    logger.error("Could not send didDequeue notification: \(error)")
-                    return self.queue.eventLoop.future()
-                }
-
-                logger.info("Dequeing job", metadata: [
-                    "job_id": .string(id.string),
-                    "job_name": .string(data.jobName),
-                    "queue": .string(self.queue.queueName.string)
-                ])
-
-                return self.run(
-                    id: id,
-                    name: data.jobName,
-                    job: job,
-                    payload: data.payload,
-                    logger: logger,
-                    remainingTries: data.maxRetryCount,
-                    jobData: data
-                ).flatMap {
-                    logger.trace("Job done being run")
-                    return self.queue.clear(id)
-                }
-            }
+        self.queue.eventLoop.makeFutureWithTask {
+            try await self.run()
         }
     }
 
-    private func run(
-        id: JobIdentifier,
-        name: String,
-        job: AnyJob,
-        payload: [UInt8],
-        logger: Logger,
-        remainingTries: Int,
-        jobData: JobData
-    ) -> EventLoopFuture<Void> {
-        logger.trace("Running the queue job (remaining tries: \(remainingTries)")
-        let futureJob = job._dequeue(self.queue.context, id: id.string, payload: payload)
-        return futureJob.map { complete in
-            logger.trace("Ran job successfully")
-            logger.trace("Sending success notification hooks")
-            _ = self.queue.configuration.notificationHooks.map {
-                $0.success(jobId: id.string, eventLoop: self.queue.context.eventLoop)
-            }.flatten(on: self.queue.context.eventLoop).flatMapError { error in
-                self.queue.logger.error("Could not send success notification: \(error)")
-                return self.queue.context.eventLoop.future()
+    /// Run the queue until there is no more work to be done.
+    /// This is the main async entrypoint for a queue worker.
+    public func run() async throws {
+        while try await self.runOneJob() {}
+    }
+
+    /// Pop a job off the queue and try to run it. If no jobs are available, do
+    /// nothing. Returns whether a job was run.
+    private func runOneJob() async throws -> Bool {
+        var logger = self.queue.logger
+        logger[metadataKey: "queue"] = "\(self.queue.queueName.string)"
+        logger.trace("Popping job from queue")
+
+        guard let id = try await self.queue.pop().get() else {
+            // No job found, go around again.
+            logger.trace("No pending jobs")
+            return false
+        }
+
+        logger[metadataKey: "job-id"] = "\(id.string)"
+        logger.trace("Found pending job")
+
+        let data = try await self.queue.get(id).get()
+        logger.trace("Received job data", metadata: ["job-data": "\(data)"])
+        logger[metadataKey: "job-name"] = "\(data.jobName)"
+
+        guard let job = self.queue.configuration.jobs[data.jobName] else {
+            logger.warning("No job with the desired name is registered, discarding")
+            try await self.queue.clear(id).get()
+            return false
+        }
+
+        // If the job has a delay that isn't up yet, requeue it.
+        guard (data.delayUntil ?? .distantPast) < Date() else {
+            logger.trace("Job is delayed, requeueing for later execution", metadata: ["delayed-until": "\(data.delayUntil ?? .distantPast)"])
+            try await self.queue.push(id).get()
+            return false
+        }
+
+        await self.queue.sendNotification(of: "dequeue", logger: logger) {
+            try await $0.didDequeue(jobId: id.string, eventLoop: self.queue.eventLoop).get()
+        }
+
+        Meter(
+            label: "jobs.in.progress.meter", 
+            dimensions: [("queueName", self.queue.queueName.string)]
+        ).increment()
+
+        try await self.runOneJob(id: id, job: job, jobData: data, logger: logger)
+        return true
+    }
+
+    private func runOneJob(id: JobIdentifier, job: any AnyJob, jobData: JobData, logger: Logger) async throws {
+        let startTime = DispatchTime.now().uptimeNanoseconds
+        logger.info("Dequeing and running job", metadata: ["attempt": "\(jobData.currentAttempt)", "retries-left": "\(jobData.remainingAttempts)"])
+        do {
+            try await job._dequeue(self.queue.context, id: id.string, payload: jobData.payload).get()
+
+            logger.trace("Job ran successfully", metadata: ["attempts-made": "\(jobData.currentAttempt)"])
+            self.updateMetrics(for: jobData.jobName, startTime: startTime, queue: self.queue)
+            await self.queue.sendNotification(of: "success", logger: logger) {
+                try await $0.success(jobId: id.string, eventLoop: self.queue.context.eventLoop).get()
             }
-
-            return complete
-        }.flatMapError { error in
-            logger.trace("Job failed (remaining tries: \(remainingTries)")
-            if remainingTries == 0 {
-                logger.error("Job failed with error: \(error)", metadata: [
-                    "job_id": .string(id.string),
-                    "job_name": .string(name),
-                    "queue": .string(self.queue.queueName.string)
-                ])
-
-                logger.trace("Sending failure notification hooks")
-                _ = self.queue.configuration.notificationHooks.map {
-                    $0.error(jobId: id.string, error: error, eventLoop: self.queue.context.eventLoop)
-                }.flatten(on: self.queue.context.eventLoop).flatMapError { error in
-                    self.queue.logger.error("Failed to send error notification: \(error)")
-                    return self.queue.context.eventLoop.future()
-                }
-
-                return job._error(self.queue.context, id: id.string, error, payload: payload)
+        } catch {
+            if jobData.remainingAttempts > 0 {
+                // N.B.: `return` from here so we don't clear the job data.
+                return try await self.retry(id: id, job: job, jobData: jobData, error: error, logger: logger)
             } else {
-                logger.error("Job failed, retrying... \(error)", metadata: [
-                    "job_id": .string(id.string),
-                    "job_name": .string(name),
-                    "queue": .string(self.queue.queueName.string)
-                ])
-                return self.run(
-                    id: id,
-                    name: name,
-                    job: job,
-                    payload: payload,
-                    logger: logger,
-                    remainingTries: remainingTries - 1,
-                    jobData: jobData
-                )
+                logger.warning("Job failed, no retries remaining", metadata: ["error": "\(String(reflecting: error))", "attempts-made": "\(jobData.currentAttempt)"])
+                self.updateMetrics(for: jobData.jobName, startTime: startTime, queue: self.queue, error: error)
+
+                try await job._error(self.queue.context, id: id.string, error, payload: jobData.payload).get()
+                await self.queue.sendNotification(of: "failure", logger: logger) {
+                    try await $0.error(jobId: id.string, error: error, eventLoop: self.queue.context.eventLoop).get()
+                }
             }
         }
+        try await self.queue.clear(id).get()
+    }
+
+    private func retry(id: JobIdentifier, job: any AnyJob, jobData: JobData, error: any Error, logger: Logger) async throws {
+        let delay = Swift.max(0, job._nextRetryIn(attempt: jobData.currentAttempt))
+        let updatedData = JobData(
+            payload: jobData.payload,
+            maxRetryCount: jobData.maxRetryCount,
+            jobName: jobData.jobName,
+            delayUntil: delay == 0 ? nil : .init(timeIntervalSinceNow: Double(delay)),
+            queuedAt: .init(),
+            attempts: jobData.currentAttempt
+        )
+
+        logger.warning("Job failed, retrying", metadata: [
+            "retry-delay": "\(delay)", "error": "\(String(reflecting: error))", "next-attempt": "\(updatedData.currentAttempt)", "retries-left": "\(updatedData.remainingAttempts)",
+        ])
+        try await self.queue.clear(id).get()
+        try await self.queue.set(id, to: updatedData).get()
+        try await self.queue.push(id).get()
+    }
+
+    private func updateMetrics(
+        for jobName: String,
+        startTime: UInt64,
+        queue: any Queue,
+        error: (any Error)? = nil
+    ) {
+        Timer(
+            label: "\(jobName).jobDurationTimer",
+            dimensions: [
+                ("success", error == nil ? "true" : "false"),
+                ("jobName", jobName),
+            ],
+            preferredDisplayUnit: .milliseconds
+        ).recordNanoseconds(DispatchTime.now().uptimeNanoseconds - startTime)
+
+        if error != nil {
+            Counter(
+                label: "error.completed.jobs.counter",
+                dimensions: [("queueName", queue.queueName.string)]
+            ).increment()
+        } else {
+            Counter(
+                label: "success.completed.jobs.counter",
+                dimensions: [("queueName", queue.queueName.string)]
+            ).increment()
+        }
+
+        Meter(
+            label: "jobs.in.progress.meter",
+            dimensions: [("queueName", queue.queueName.string)]
+        ).decrement()
     }
 }

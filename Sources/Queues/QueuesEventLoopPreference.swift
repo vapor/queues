@@ -1,12 +1,4 @@
-//
-//  JobsEventLoopPreference.swift
-//  
-//
-//  Created by Jimmy McDermott on 10/24/19.
-//
-
-import Foundation
-import NIO
+import NIOCore
 
 /// Determines which event loop the jobs worker uses while executing jobs.
 public enum QueuesEventLoopPreference {
@@ -17,13 +9,13 @@ public enum QueuesEventLoopPreference {
     /// called back (delegated to) on the supplied EventLoop.
     /// If possible, the connection should also be on this EventLoop for
     /// improved performance.
-    case delegate(on: EventLoop)
+    case delegate(on: any EventLoop)
 
     /// Returns the delegate EventLoop given an EventLoopGroup.
-    public func delegate(for eventLoopGroup: EventLoopGroup) -> EventLoop {
+    public func delegate(for eventLoopGroup: any EventLoopGroup) -> any EventLoop {
         switch self {
         case .indifferent:
-            return eventLoopGroup.next()
+            return eventLoopGroup.any()
         case .delegate(let eventLoop):
             return eventLoop
         }
