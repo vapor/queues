@@ -460,7 +460,7 @@ final class QueueTests: XCTestCase {
         XCTAssert(self.app.queues.test.contains(Baz.self))
         XCTAssertNotNil(job)
 
-        try await Task.sleep(1_000_000_000)
+        try await Task.sleep(nanoseconds: 1_000_000_000)
 
         try await self.app.queues.queue.worker.run()
         XCTAssertFalse(successHook.successHit)
@@ -503,7 +503,7 @@ final class QueueTests: XCTestCase {
         XCTAssert(self.app.queues.test.contains(Baz.self))
         XCTAssertNotNil(job)
 
-        try await Task.sleep(1_000_000_000)
+        try await Task.sleep(nanoseconds: 1_000_000_000)
 
         try await self.app.queues.queue.worker.run()
         await XCTAssertFalseAsync(await successHook.successHit)
