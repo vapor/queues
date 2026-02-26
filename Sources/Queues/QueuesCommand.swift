@@ -139,7 +139,7 @@ public final class QueuesCommand: AsyncCommand, Sendable {
         }
     }
     
-    private func schedule(_ job: AnyScheduledJob) {
+    private func schedule(_ job: AnyScheduledJob, after previousDate: Date? = nil) {
         self.box.withLockedValue { box in
             if box.didShutdown {
                 self.application.logger.trace("Application is shutting down, not scheduling job", metadata: ["name": "\(job.job.name)"])
@@ -153,14 +153,18 @@ public final class QueuesCommand: AsyncCommand, Sendable {
                 logger: self.application.logger,
                 on: self.application.eventLoopGroup.any()
             )
-            
-            guard let task = job.schedule(context: context) else {
+
+            guard let task = job.schedule(context: context, after: previousDate) else {
                 return
             }
 
             self.application.logger.trace("Job was scheduled successfully", metadata: ["name": "\(job.job.name)"])
             box.scheduledTasks[job.job.name] = task
 
+            // Capture the date this occurrence was scheduled for so we can pass it
+            // to the next call.  This prevents a double-fire caused by timer jitter
+            // (see AnyScheduledJob.schedule(context:after:) for details).
+            let scheduledDate = task.scheduledDate
             task.done.whenComplete { result in
                 switch result {
                 case .failure(let error):
@@ -169,7 +173,7 @@ public final class QueuesCommand: AsyncCommand, Sendable {
                 }
                 // Explicitly spin the event loop so we don't deadlock on a reentrant call to this method.
                 context.eventLoop.execute {
-                    self.schedule(job)
+                    self.schedule(job, after: scheduledDate)
                 }
             }
         }
@@ -227,3 +231,4 @@ public final class QueuesCommand: AsyncCommand, Sendable {
         assert(self.box.withLockedValue { $0.didShutdown }, "JobsCommand did not shutdown before deinit")
     }
 }
+
